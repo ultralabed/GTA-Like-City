@@ -2,7 +2,7 @@
 // Every number in here is measured from the furniture's own middle (or from the wall it hangs on).
 PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase}]});
 
-PREFAB.rug=()=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(2.5,3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
+PREFAB.rug=o=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(o.w||2.5,o.d||3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
 
 // low cabinet with a TV above it. Stands against a wall; the screen faces +x.
 PREFAB.tvConsole=()=>{
@@ -33,7 +33,7 @@ PREFAB.sofa=()=>{
   const sit=z=>({type:'tv',ap:[-.8,z],an:[-.03,.62,z],yaw:-Math.PI/2,pose:'sit',label:'看電視',tv:true});
   return{solid:[[-.5,.57,-1.2,1.2]],
     boxes:[[-.48,.3,0,.54,-1.05,1.05],[.27,.55,0,.91,-1.05,1.05],[-.48,.48,0,.63,-1.19,-.97],[-.48,.48,0,.63,.97,1.19]],
-    spots:[sit(-.48),sit(.48),{type:'sleep',ap:[-.8,0],an:[-.07,.66,0],lie:true,pose:'lie',label:'睡覺 💤'}]};
+    spots:[sit(-.48),sit(.48),{type:'sleep',ap:[-.8,0],an:[-.07,.66,0],lie:true,solo:true,pose:'lie',label:'在沙發睡覺 💤'}]};
 };
 
 // glass top on brass legs, with a wooden shelf underneath
@@ -119,4 +119,23 @@ PREFAB.door=()=>{
   box(.95,2.1,.05,M.walnut,0,1.05,-.02);box(1.07,2.16,.03,M.trim,0,1.08,-.012);
   cyl(.022,.022,.14,M.brass,-.35,1.02,-.07,16).rotation.x=Math.PI/2;
   return{spots:[{type:'out',ap:[0,-.45],yaw:0,pose:'idle',hide:true,shared:true,label:'出門上班'}]};
+};
+
+// double bed. The pillows are at the +z end. Two people can sleep in it, one from each side.
+PREFAB.bed=()=>{
+  box(1.62,.22,2.08,M.walnut,0,.17,0,{r:.02});                          // frame
+  box(1.5,.2,1.96,M.linen,0,.37,0,{r:.06});                             // mattress
+  box(1.62,.95,.08,M.walnut,0,.6,1.06,{r:.02});                         // headboard
+  [-.37,.37].forEach(x=>box(.6,.12,.38,M.ceramic,x,.52,.72,{r:.05}));   // pillows
+  box(1.54,.08,1.25,M.teal,0,.48,-.34,{r:.035});                        // blanket
+  [[-.72,-.95],[.72,-.95],[-.72,.95],[.72,.95]].forEach(p=>cyl(.03,.025,.08,M.black,p[0],.04,p[1],12));
+  const lie=x=>({type:'sleep',ap:[x<0?-1.05:1.05,0],an:[x,.6,-.12],lie:true,pref:2,pose:'lie',label:'睡覺 💤'});
+  return{solid:[[-.81,.81,-1.04,1.1]],boxes:[[-.8,.8,0,.47,-1.03,1.03],[-.8,.8,0,1.07,1.02,1.1]],spots:[lie(-.36),lie(.36)]};
+};
+
+// wardrobe. Stands against a wall; the doors face -z.
+PREFAB.wardrobe=()=>{
+  box(1.4,2.1,.55,M.walnut,0,1.05,-.275,{r:.012});
+  [-.35,.35].forEach(x=>{box(.66,1.98,.02,M.trim,x,1.06,-.56);cyl(.012,.012,.3,M.brass,x<0?x+.27:x-.27,1.05,-.585,10);});
+  return{solid:[[-.72,.72,-.58,0]],boxes:[[-.7,.7,0,2.1,-.55,0]]};
 };

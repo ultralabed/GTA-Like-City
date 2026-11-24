@@ -1,10 +1,11 @@
 /* ---------- reflections: photograph the room itself and use it as the mirror image ---------- */
-const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null;
+const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null,bakedRoom=null;
 function bakeEnv(){
   const hadDust=dust.visible;dust.visible=false;dyn.visible=false;scene.environment=null;
-  scene.position.y=-1.4;scene.updateMatrixWorld(true);
+  const r=roomAt(pos.x,pos.z)||rooms[0];bakedRoom=r;                  // photograph the room you are standing in
+  scene.position.set(-r.cx,-1.4,-r.cz);scene.updateMatrixWorld(true);
   const rt=pmrem.fromScene(scene,.03,.05,60);
-  scene.position.y=0;scene.updateMatrixWorld(true);dust.visible=hadDust;dyn.visible=true;
+  scene.position.set(0,0,0);scene.updateMatrixWorld(true);dust.visible=hadDust;dyn.visible=true;
   scene.environment=rt.texture;if(envRT)envRT.dispose();envRT=rt;
 }
 

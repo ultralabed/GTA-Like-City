@@ -235,6 +235,7 @@ const plaster=noiseBump(256,2600,1,5,1.5), weave=weaveBump(7);
 const M={
   floor:new THREE.MeshStandardMaterial({map:woodMap,bumpMap:woodBump,bumpScale:.006,roughness:.3}),
   wall:new THREE.MeshStandardMaterial({color:0xe4dacb,bumpMap:plaster,bumpScale:.003,roughness:.92}),
+  sage:new THREE.MeshStandardMaterial({color:0x8c9a7e,bumpMap:plaster,bumpScale:.003,roughness:.9}),
   accent:new THREE.MeshStandardMaterial({color:0x1c4a50,bumpMap:plaster,bumpScale:.003,roughness:.88}),
   ceil:new THREE.MeshStandardMaterial({color:0xf1ece4,roughness:.95}),
   trim:new THREE.MeshStandardMaterial({color:0xf4efe6,roughness:.55}),
@@ -252,41 +253,65 @@ const M={
   rug:new THREE.MeshStandardMaterial({map:rugTexture(),bumpMap:weave,bumpScale:.01,roughness:1})
 };
 
-/* ---------- room data ---------- */
-// Everything that makes THIS room this room. Change the numbers and the room changes;
+/* ---------- house data ---------- */
+// Everything that makes THIS house this house. Change the numbers and the house changes;
 // nothing below this file knows where the sofa is. Units are metres; x is left-right, z is front-back.
-// rot turns a piece of furniture in quarter turns (0, 1, 2, 3).
-const ROOM={
-  name:'夕陽小房間',
-  w:6,d:5,h:2.8,
-  walls:{west:'wall',east:'accent',south:'wall',north:'wall'},     // material names from the materials file
-  window:{half:1.7,y0:.45,y1:2.45},                               // always on the north wall (-z), where the sun is
+//
+// A room:  x,z = where its middle is in the house.  w,d = how wide and deep it is inside.
+// walls:   one entry per side. mat = material name. open = holes in that wall:
+//            {kind:'window', c, half, y0, y1}   c = where along the wall (in the room's own x or z)
+//            {kind:'door',   c, half, y1}       an open doorway you can walk through
+//          a side set to null has no wall of its own: the room next door already built it.
+// furniture: positions are measured from the middle of the room. rot = quarter turns (0, 1, 2, 3).
+const HOUSE={
+  h:2.8,                                                       // ceiling height, same in every room
   start:{x:1.9,z:1.3,yaw:.62,pitch:-.06},                         // where you stand when the page opens
   clock:18.67,
-  furniture:[
-    {type:'rug',x:-.95,z:.3},
-    {type:'tvConsole',x:-3,z:.3},
-    {type:'sofa',x:.45,z:.3},
-    {type:'coffeeTable',x:-1,z:.3},
-    {type:'bookshelf',x:3,z:-1},
-    {type:'art',x:-1.3,z:2.5,seed:0},
-    {type:'art',x:-.2,z:2.5,seed:1},
-    {type:'plant',x:-2.4,z:-1.9},
-    {type:'lampCorner',x:-2.45,z:1.95},
-    {type:'neon',x:3,z:1.15},
-    {type:'door',x:1.9,z:2.5},
-    // places on the open floor where people do things
-    {type:'spot',kind:'window',x:-.5,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
-    {type:'spot',kind:'window',x:.6,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
-    {type:'spot',kind:'stretch',x:1.7,z:.5,yaw:Math.PI,pose:'stretch',label:'伸展'},
-    {type:'spot',kind:'dance',x:-1.85,z:-.95,yaw:Math.PI/2,pose:'dance',label:'跳舞'},
-    {type:'spot',kind:'dance',x:-.9,z:-1.25,yaw:-2.2,pose:'dance',label:'跳舞'},
-    {type:'spot',kind:'ball',chase:true,pose:'idle',label:'踢籃球'}
+  rooms:[
+    {id:'living',name:'客廳',x:0,z:0,w:6,d:5,
+      walls:{
+        north:{mat:'wall',open:[{kind:'window',c:0,half:1.7,y0:.45,y1:2.45}]},
+        east:{mat:'accent',open:[{kind:'door',c:.2,half:.45,y1:2.1}]},
+        south:{mat:'wall'},west:{mat:'wall'}},
+      furniture:[
+        {type:'rug',x:-.95,z:.3},
+        {type:'tvConsole',x:-3,z:.3},
+        {type:'sofa',x:.45,z:.3},
+        {type:'coffeeTable',x:-1,z:.3},
+        {type:'bookshelf',x:3,z:-1.05},
+        {type:'art',x:-1.3,z:2.5,seed:0},
+        {type:'art',x:-.2,z:2.5,seed:1},
+        {type:'plant',x:-2.4,z:-1.9},
+        {type:'lampCorner',x:-2.45,z:1.95},
+        {type:'neon',x:3,z:1.3},
+        {type:'door',x:1.9,z:2.5},
+        // places on the open floor where people do things
+        {type:'spot',kind:'window',x:-.5,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
+        {type:'spot',kind:'window',x:.6,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
+        {type:'spot',kind:'stretch',x:1.75,z:1.4,yaw:Math.PI,pose:'stretch',label:'伸展'},
+        {type:'spot',kind:'dance',x:-1.85,z:-.95,yaw:Math.PI/2,pose:'dance',label:'跳舞'},
+        {type:'spot',kind:'dance',x:-.9,z:-1.25,yaw:-2.2,pose:'dance',label:'跳舞'},
+        {type:'spot',kind:'ball',chase:true,pose:'idle',label:'踢籃球'}
+      ]},
+    {id:'bedroom',name:'臥室',x:5.16,z:-.5,w:4,d:4,
+      walls:{
+        north:{mat:'wall',open:[{kind:'window',c:0,half:1.1,y0:.75,y1:2.3}]},
+        east:{mat:'sage'},south:{mat:'wall'},
+        west:null},                                               // the living room's east wall is this room's west wall
+      furniture:[
+        {type:'rug',x:-.6,z:.3,w:1.6,d:2.2},
+        {type:'bed',x:.88,z:-.3,rot:1},
+        {type:'wardrobe',x:-.9,z:2},
+        {type:'lampCorner',x:1.3,z:1.35},
+        {type:'plant',x:-1.55,z:-1.55},
+        {type:'art',x:.9,z:2,seed:1},
+        {type:'spot',kind:'window',x:-.4,z:-1.5,yaw:Math.PI,pose:'window',label:'看海'}
+      ]}
   ],
   balls:[
     {kind:'basket',x:1.7,z:-1.9},{kind:'beach',x:-1.6,z:1.3},{kind:'bowl',x:2.3,z:.4},
     {kind:'tennis',x:-1.9,z:-.6},{kind:'tennis',x:-1.7,z:-.95},{kind:'tennis',x:-.85,y:.445,z:.75},
-    {kind:'orb',x:2.4,z:1.75}
+    {kind:'orb',x:2.4,z:1.9},{kind:'tennis',x:4.2,z:.6}
   ],
   people:[
     {name:'小美',h:1.64,skin:0xe8b996,hair:0x2a1a16,top:0xd9623f,bottom:0xe9dfcf,shoe:0xf4f0e8,long:true,
@@ -295,7 +320,12 @@ const ROOM={
       shift:[22,6],bed:[8,16],patience:.35,playful:.9,w:{energy:1,fun:1.2,fit:1.2,calm:.7,care:.6}}
   ]
 };
-const RW=ROOM.w/2,RD=ROOM.d/2,RH=ROOM.h;
+const RH=HOUSE.h,WALL_T=.16;
+// each room's inside edges, and the box that holds the whole house
+const rooms=HOUSE.rooms.map(R=>Object.assign({},R,{cx:R.x,cz:R.z,x0:R.x-R.w/2,x1:R.x+R.w/2,z0:R.z-R.d/2,z1:R.z+R.d/2}));
+const HB={x0:Math.min(...rooms.map(r=>r.x0)),x1:Math.max(...rooms.map(r=>r.x1)),z0:Math.min(...rooms.map(r=>r.z0)),z1:Math.max(...rooms.map(r=>r.z1))};
+const HC={x:(HB.x0+HB.x1)/2,z:(HB.z0+HB.z1)/2};
+function roomAt(x,z){return rooms.find(r=>x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)||null;}   // doorways count as inside
 
 /* ---------- builders ---------- */
 // Lists the rest of the game reads. Furniture fills them in when it is placed.
@@ -321,16 +351,21 @@ function cyl(rt,rb,h,mat,x,y,z,seg,open){const m=new THREE.Mesh(new THREE.Cylind
 const PREFAB={},spotCount={};let furnSeq=0;
 const lieQ=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
   new THREE.Vector3(-1,0,0),new THREE.Vector3(0,0,1),new THREE.Vector3(0,1,0)));   // lying on your back, head toward +z
-function place(item){
-  const g=new THREE.Group(),rot=(item.rot||0)*Math.PI/2,c=Math.cos(rot),s=Math.sin(rot),ox=item.x||0,oz=item.z||0;
+// makeFrame(): a group sitting at (ox,oz), turned by rot, plus the maths to carry points and areas along with it
+function makeFrame(ox,oz,rot){
+  const g=new THREE.Group(),c=Math.round(Math.cos(rot)),s=Math.round(Math.sin(rot));
   g.position.set(ox,0,oz);g.rotation.y=rot;scene.add(g);
-  const prev=cur;cur=g;const d=PREFAB[item.type](item)||{};cur=prev;
   const pt=(x,z)=>[ox+x*c+z*s,oz-x*s+z*c];
   const span=(x0,x1,z0,z1)=>{const a=pt(x0,z0),b=pt(x1,z1);return[Math.min(a[0],b[0]),Math.max(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[1],b[1])];};
+  return{g,pt,span};
+}
+function place(item,R){
+  const rot=(item.rot||0)*Math.PI/2,F=makeFrame((R?R.cx:0)+(item.x||0),(R?R.cz:0)+(item.z||0),rot),g=F.g,pt=F.pt,span=F.span;
+  const prev=cur;cur=g;const d=PREFAB[item.type](item)||{};cur=prev;
   (d.solid||[]).forEach(q=>colliders.push(span(q[0],q[1],q[2],q[3])));
   (d.boxes||[]).forEach(q=>{const r=span(q[0],q[1],q[4],q[5]);pboxes.push([r[0],r[1],q[2],q[3],r[2],r[3]]);});
   const id=++furnSeq;
-  (d.spots||[]).forEach(sp=>{const n=spotCount[sp.type]=(spotCount[sp.type]||0)+1,o=Object.assign({},sp,{owner:id});
+  (d.spots||[]).forEach(sp=>{const n=spotCount[sp.type]=(spotCount[sp.type]||0)+1,o=Object.assign({},sp,{owner:id,room:R?R.id:null});
     o.ap=pt(sp.ap[0],sp.ap[1]);
     if(sp.an){const a=pt(sp.an[0],sp.an[2]);o.an=[a[0],sp.an[1],a[1]];}
     if(sp.yaw!=null)o.yaw=sp.yaw+rot;
@@ -343,7 +378,7 @@ function place(item){
 // Every number in here is measured from the furniture's own middle (or from the wall it hangs on).
 PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase}]});
 
-PREFAB.rug=()=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(2.5,3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
+PREFAB.rug=o=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(o.w||2.5,o.d||3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
 
 // low cabinet with a TV above it. Stands against a wall; the screen faces +x.
 PREFAB.tvConsole=()=>{
@@ -374,7 +409,7 @@ PREFAB.sofa=()=>{
   const sit=z=>({type:'tv',ap:[-.8,z],an:[-.03,.62,z],yaw:-Math.PI/2,pose:'sit',label:'看電視',tv:true});
   return{solid:[[-.5,.57,-1.2,1.2]],
     boxes:[[-.48,.3,0,.54,-1.05,1.05],[.27,.55,0,.91,-1.05,1.05],[-.48,.48,0,.63,-1.19,-.97],[-.48,.48,0,.63,.97,1.19]],
-    spots:[sit(-.48),sit(.48),{type:'sleep',ap:[-.8,0],an:[-.07,.66,0],lie:true,pose:'lie',label:'睡覺 💤'}]};
+    spots:[sit(-.48),sit(.48),{type:'sleep',ap:[-.8,0],an:[-.07,.66,0],lie:true,solo:true,pose:'lie',label:'在沙發睡覺 💤'}]};
 };
 
 // glass top on brass legs, with a wooden shelf underneath
@@ -462,39 +497,77 @@ PREFAB.door=()=>{
   return{spots:[{type:'out',ap:[0,-.45],yaw:0,pose:'idle',hide:true,shared:true,label:'出門上班'}]};
 };
 
-/* ---------- build the room from its data ---------- */
-(function(){
-  const T=.16,W=ROOM.w,D=ROOM.d,wm=ROOM.walls,win=ROOM.window,WX=win.half,WY0=win.y0,WY1=win.y1,zw=-RD-T/2;
-  box(W+2*T,T,D+2*T,M.floor,0,-T/2,0);
-  box(W+2*T,T,D+2*T,M.ceil,0,RH+T/2,0);
-  box(T,RH,D,M[wm.west],-RW-T/2,RH/2,0);
-  box(T,RH,D,M[wm.east],RW+T/2,RH/2,0);
-  box(W+2*T,RH,T,M[wm.south],0,RH/2,RD+T/2);
-  // north wall with the window cut out of it
-  const side=RW-WX;
-  box(side+T,RH,T,M[wm.north],-(RW+WX+T)/2,RH/2,zw);
-  box(side+T,RH,T,M[wm.north],(RW+WX+T)/2,RH/2,zw);
-  box(2*WX,WY0,T,M[wm.north],0,WY0/2,zw);
-  box(2*WX,RH-WY1,T,M[wm.north],0,(RH+WY1)/2,zw);
-  box(2*WX+.1,.04,.3,M.trim,0,WY0+.02,-RD+.02);                                              // sill
-  [-WX+.03,-WX/3,WX/3,WX-.03].forEach(x=>box(.05,WY1-WY0,.06,M.black,x,(WY0+WY1)/2,zw));       // mullions
-  [WY0+.03,WY1-.03].forEach(y=>box(2*WX,.05,.06,M.black,0,y,zw));
-  box(2*WX,WY1-WY0,.012,M.glass,0,(WY0+WY1)/2,zw,{shadow:false}).receiveShadow=false;
-  // baseboards
-  [[W,.1,.02,0,.05,RD-.01],[.02,.1,D,-RW+.01,.05,0],[.02,.1,D,RW-.01,.05,0],[side,.1,.02,-(RW+WX)/2,.05,-RD+.01],[side,.1,.02,(RW+WX)/2,.05,-RD+.01]]
-    .forEach(a=>box(a[0],a[1],a[2],M.trim,a[3],a[4],a[5]));
-  // curtains
-  [-1,1].forEach(s=>{for(let i=0;i<5;i++)box(.1,2.45,.07,M.linen,s*(WX+.08+i*.085),1.27,-RD+.1+(i%2)*.035,{r:.03});});
-  box(2*WX+1.1,.03,.03,M.brass,0,2.55,-RD+.1);
-  ROOM.furniture.forEach(place);
-})();
+// double bed. The pillows are at the +z end. Two people can sleep in it, one from each side.
+PREFAB.bed=()=>{
+  box(1.62,.22,2.08,M.walnut,0,.17,0,{r:.02});                          // frame
+  box(1.5,.2,1.96,M.linen,0,.37,0,{r:.06});                             // mattress
+  box(1.62,.95,.08,M.walnut,0,.6,1.06,{r:.02});                         // headboard
+  [-.37,.37].forEach(x=>box(.6,.12,.38,M.ceramic,x,.52,.72,{r:.05}));   // pillows
+  box(1.54,.08,1.25,M.teal,0,.48,-.34,{r:.035});                        // blanket
+  [[-.72,-.95],[.72,-.95],[-.72,.95],[.72,.95]].forEach(p=>cyl(.03,.025,.08,M.black,p[0],.04,p[1],12));
+  const lie=x=>({type:'sleep',ap:[x<0?-1.05:1.05,0],an:[x,.6,-.12],lie:true,pref:2,pose:'lie',label:'睡覺 💤'});
+  return{solid:[[-.81,.81,-1.04,1.1]],boxes:[[-.8,.8,0,.47,-1.03,1.03],[-.8,.8,0,1.07,1.02,1.1]],spots:[lie(-.36),lie(.36)]};
+};
+
+// wardrobe. Stands against a wall; the doors face -z.
+PREFAB.wardrobe=()=>{
+  box(1.4,2.1,.55,M.walnut,0,1.05,-.275,{r:.012});
+  [-.35,.35].forEach(x=>{box(.66,1.98,.02,M.trim,x,1.06,-.56);cyl(.012,.012,.3,M.brass,x<0?x+.27:x-.27,1.05,-.585,10);});
+  return{solid:[[-.72,.72,-.58,0]],boxes:[[-.7,.7,0,2.1,-.55,0]]};
+};
+
+/* ---------- build the house from its data ---------- */
+// One wall, built in its own frame: u runs along the wall, the inside of the room is toward +z, the wall itself sits at z < 0.
+// Holes (windows, doorways) are cut by building the wall in pieces around them.
+function buildWall(R,side,def){
+  const T=WALL_T,horiz=side==='north'||side==='south',L=horiz?R.w:R.d,W=R.walls;
+  const rot={north:0,south:Math.PI,east:-Math.PI/2,west:Math.PI/2}[side],sign=(side==='north'||side==='east')?1:-1;
+  const ox=R.cx+(side==='east'?R.w/2:side==='west'?-R.w/2:0),oz=R.cz+(side==='south'?R.d/2:side==='north'?-R.d/2:0);
+  const F=makeFrame(ox,oz,rot),prev=cur;cur=F.g;
+  // long walls cover the corners, but only where a side wall actually meets them
+  const lo=side==='north'?'west':'east',hi=side==='north'?'east':'west';
+  const u0=-L/2-(horiz&&W[lo]?T:0),u1=L/2+(horiz&&W[hi]?T:0),mat=M[def.mat];
+  const piece=(a,b,y0,y1)=>{if(b-a<.01||y1-y0<.01)return;
+    box(b-a,y1-y0,T,mat,(a+b)/2,(y0+y1)/2,-T/2);
+    const s=F.span(a,b,-T,0);pboxes.push([s[0],s[1],y0,y1,s[2],s[3]]);
+    if(y0<1){colliders.push(s);if(y0===0)box(b-a,.1,.02,M.trim,(a+b)/2,.05,.01);}};          // reaches the floor: you cannot walk through it
+  const holes=(def.open||[]).map(o=>Object.assign({},o,{u:o.c*sign})).sort((a,b)=>a.u-b.u);
+  let u=u0;
+  for(const o of holes){const a=o.u-o.half,b=o.u+o.half,y0=o.y0||0,y1=o.y1;
+    piece(u,a,0,RH);piece(a,b,0,y0);piece(a,b,y1,RH);u=b;
+    if(o.kind==='window'){const WX=o.half,ym=(y0+y1)/2;
+      box(2*WX+.1,.04,.3,M.trim,o.u,y0+.02,.02);                                              // sill
+      [-WX+.03,-WX/3,WX/3,WX-.03].forEach(x=>box(.05,y1-y0,.06,M.black,o.u+x,ym,-T/2));        // mullions
+      [y0+.03,y1-.03].forEach(y=>box(2*WX,.05,.06,M.black,o.u,y,-T/2));
+      box(2*WX,y1-y0,.012,M.glass,o.u,ym,-T/2,{shadow:false}).receiveShadow=false;
+      const s=F.span(a,b,-T/2-.01,-T/2+.01);pboxes.push([s[0],s[1],y0,y1,s[2],s[3]]);         // balls bounce off the glass
+      [-1,1].forEach(k=>{for(let i=0;i<5;i++)box(.1,y1+.1-.05,.07,M.linen,o.u+k*(WX+.08+i*.085),(y1+.1+.05)/2,.1+(i%2)*.035,{r:.03});});   // curtains
+      box(2*WX+1.1,.03,.03,M.brass,o.u,y1+.1,.1);
+    }else{                                                                                    // doorway: a wooden frame around the hole
+      [a-.03,b+.03].forEach(x=>box(.06,y1+.06,T+.04,M.walnut,x,(y1+.06)/2,-T/2));
+      box(b-a+.12,.06,T+.04,M.walnut,o.u,y1+.03,-T/2);
+    }}
+  piece(u,u1,0,RH);
+  cur=prev;
+}
+rooms.forEach(R=>{
+  const T=WALL_T,W=R.walls,ex0=W.west?T:0,ex1=W.east?T:0,ez0=W.north?T:0,ez1=W.south?T:0;
+  // floor and ceiling reach under this room's own walls, and stop where the neighbour's begin
+  const fw=R.w+ex0+ex1,fd=R.d+ez0+ez1,fx=R.cx+(ex1-ex0)/2,fz=R.cz+(ez1-ez0)/2;
+  box(fw,T,fd,M.floor,fx,-T/2,fz);
+  box(fw,T,fd,M.ceil,fx,RH+T/2,fz);
+  for(const side of['north','east','south','west'])if(W[side])buildWall(R,side,W[side]);
+  R.furniture.forEach(it=>place(it,R));
+});
 
 /* ---------- outside ---------- */
 renderer.localClippingEnabled=true;
-const skyGeo=new THREE.PlaneGeometry(50,25);
-function skyLayer(mode,z,bright){const m=new THREE.MeshBasicMaterial({map:skyTexture(mode),fog:false,transparent:mode!==1,depthWrite:false});
-  m.color.setScalar(bright);const p=new THREE.Mesh(skyGeo,m);p.position.set(0,6,z);p.renderOrder=[-9,-10,-8][mode];scene.add(p);return m;}
-const skyNightMat=skyLayer(1,-14,1),skyDuskMat=skyLayer(0,-13.98,1.3),skyDayMat=skyLayer(2,-13.96,1.45);
+// the view outside is painted on the inside of a big drum around the house, so every window sees it
+const SKY_R=16,skyGeo=new THREE.CylinderGeometry(1,1,25,72,1,true);
+function skyLayer(mode,r,bright){const t=skyTexture(mode);t.wrapS=THREE.MirroredRepeatWrapping;t.repeat.set(2,1);
+  const m=new THREE.MeshBasicMaterial({map:t,fog:false,transparent:mode!==1,depthWrite:false,side:THREE.BackSide});
+  m.color.setScalar(bright);const p=new THREE.Mesh(skyGeo,m);p.scale.set(r,1,r);p.position.set(HC.x,6,HC.z);p.renderOrder=[-9,-10,-8][mode];scene.add(p);return m;}
+const skyNightMat=skyLayer(1,SKY_R,1),skyDuskMat=skyLayer(0,SKY_R-.02,1.3),skyDayMat=skyLayer(2,SKY_R-.04,1.45);
 const horizon=[new THREE.Plane(new THREE.Vector3(0,1,0),-1.24)];
 const glowC=cv(128,128);(function(){const g=glowC.getContext('2d'),gr=g.createRadialGradient(64,64,0,64,64,64);
   gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.2,'rgba(255,255,255,.45)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);})();
@@ -506,9 +579,10 @@ const glow=new THREE.Mesh(new THREE.PlaneGeometry(9,9),glowMat);glow.renderOrder
 /* ---------- lights ---------- */
 const hemi=new THREE.HemisphereLight(0xffc7a0,0x3a2630,.3);scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xffa25e,3);
-sun.position.set(2.6,3.4,-7.2);sun.target.position.set(0,.5,0);scene.add(sun,sun.target);
+sun.position.set(2.6,3.4,-7.2);sun.target.position.set(HC.x,.5,HC.z);scene.add(sun,sun.target);
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
-Object.assign(sun.shadow.camera,{left:-4.5,right:4.5,top:4.5,bottom:-4.5,near:1,far:16});
+const SH=Math.max(HB.x1-HB.x0,HB.z1-HB.z0)/2+1.6;     // the sun's shadow has to cover the whole house
+Object.assign(sun.shadow.camera,{left:-SH,right:SH,top:SH,bottom:-SH,near:1,far:26});
 sun.shadow.bias=-.0004;sun.shadow.normalBias=.025;sun.shadow.radius=3;
 
 // dust floating in the sun beam
@@ -542,7 +616,7 @@ $('bOrb').onclick=()=>{S.orb=!S.orb;applySwitches();
   say(S.orb?'引力球開了：它把別的球吸過來，別的球也用一樣大的力把它拉回去。':'引力球關了。');};
 
 /* ---------- time: the clock runs, the sun and moon move, the light changes ---------- */
-let clock=ROOM.clock,speedIdx=1,sliding=false;
+let clock=HOUSE.clock,speedIdx=1,sliding=false;
 const SPEEDS=[[0,'暫停'],[2/60,'正常'],[15/60,'快轉']];   // game hours per real second
 const ss=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 const cNight=new THREE.Color(0x5a6cff),cDusk=new THREE.Color(0xffc7a0),cDay=new THREE.Color(0xd4e6ff),
@@ -551,14 +625,15 @@ function applyTime(){
   const h=clock,isDay=h>=6&&h<18,a=(isDay?h-6:(h-18+24)%24)/12*Math.PI;
   const e=Math.sin(a),se=Math.sin((h-6)/12*Math.PI);     // e: height of whichever is up, se: sun height (negative at night)
   sunDir.set(Math.cos(a)*.75,e*.62,-1).normalize();
-  sun.position.copy(sun.target.position).addScaledVector(sunDir,9);
+  sun.position.copy(sun.target.position).addScaledVector(sunDir,12);
   const up=ss(-.02,.15,e),hi=ss(.05,.5,e);
   if(isDay){sun.color.copy(cLow).lerp(cHigh,hi);sun.intensity=(2.3-.5*hi)*up;}else{sun.color.copy(cMoon);sun.intensity=.14*up;}
   const duskW=ss(-.3,-.02,se),dayW=ss(.12,.5,se);dark=1-duskW;
   skyDuskMat.opacity=duskW;skyDayMat.opacity=dayW;
   hemi.color.copy(cNight).lerp(cDusk,duskW).lerp(cDay,dayW);hemi.intensity=.02+.08*duskW+.1*dayW;
   exposureTarget=1.15-.15*duskW;
-  const k=-13.9/sunDir.z;disc.position.set(sunDir.x*k,1.4+sunDir.y*k,-13.9);glow.position.copy(disc.position);glow.position.z=-13.92;
+  const k=(SKY_R-.1)/Math.hypot(sunDir.x,sunDir.z);disc.position.set(HC.x+sunDir.x*k,1.4+sunDir.y*k,HC.z+sunDir.z*k);disc.lookAt(HC.x,disc.position.y,HC.z);
+  glow.position.set(HC.x+sunDir.x*k*1.002,disc.position.y,HC.z+sunDir.z*k*1.002);glow.quaternion.copy(disc.quaternion);
   if(isDay){disc.scale.setScalar(1);discMat.color.setRGB(5+hi,2.2+3.3*hi,.9+3.6*hi);glowMat.color.setRGB(1,.55+.4*hi,.3+.6*hi);glowMat.opacity=.9;}
   else{disc.scale.setScalar(.6);discMat.color.setRGB(1.7,1.8,2.1);glowMat.color.setRGB(.5,.6,.9);glowMat.opacity=.35;}
   dust.visible=isDay&&e>.03;
@@ -605,7 +680,7 @@ const BALLS={                                            // name, radius (m), ma
   tennis:['網球',.033,.058,.74,.12,()=>std('tennis',{roughness:.95})],
   orb:['引力球',.14,30,.3,.02,()=>orbMat]
 };
-ROOM.balls.forEach(q=>{const B=BALLS[q.kind];addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z).kind=q.kind;});
+HOUSE.balls.forEach(q=>{const B=BALLS[q.kind];addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z).kind=q.kind;});
 const basket=bodies.find(b=>b.kind==='basket'),orb=bodies.find(b=>b.kind==='orb');
 const fwd=new THREE.Vector3();
 function kick(b){
@@ -660,10 +735,10 @@ function physStep(dt){
     const r=b.r;
     if(b.p.y<r)contact(b,0,1,0,r-b.p.y,0,0,0);
     if(b.p.y>RH-r)contact(b,0,-1,0,b.p.y-(RH-r),0,0,0);
-    if(b.p.x<-RW+r)contact(b,1,0,0,-RW+r-b.p.x,0,0,0);
-    if(b.p.x>RW-r)contact(b,-1,0,0,b.p.x-(RW-r),0,0,0);
-    if(b.p.z<-RD+r)contact(b,0,0,1,-RD+r-b.p.z,0,0,0);
-    if(b.p.z>RD-r)contact(b,0,0,-1,b.p.z-(RD-r),0,0,0);
+    if(b.p.x<HB.x0+r)contact(b,1,0,0,HB.x0+r-b.p.x,0,0,0);            // the walls are in pboxes; this is the last line of defence
+    if(b.p.x>HB.x1-r)contact(b,-1,0,0,b.p.x-(HB.x1-r),0,0,0);
+    if(b.p.z<HB.z0+r)contact(b,0,0,1,HB.z0+r-b.p.z,0,0,0);
+    if(b.p.z>HB.z1-r)contact(b,0,0,-1,b.p.z-(HB.z1-r),0,0,0);
     for(const q of pboxes){
       const cx=Math.max(q[0],Math.min(q[1],b.p.x)),cy=Math.max(q[2],Math.min(q[3],b.p.y)),cz=Math.max(q[4],Math.min(q[5],b.p.z));
       const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;
@@ -687,11 +762,11 @@ function syncBalls(dt){for(const b of bodies){
   b.mesh.position.copy(b.p);}}
 
 /* ---------- people who live here ---------- */
-const NR=.2,GC=.1,GW=Math.round(2*RW/GC),GH=Math.round(2*RD/GC),grid=new Uint8Array(GW*GH);
-function nBlocked(x,z){if(x<-RW+NR||x>RW-NR||z<-RD+NR||z>RD-NR)return true;
+const NR=.2,GC=.1,GW=Math.round((HB.x1-HB.x0)/GC),GH=Math.round((HB.z1-HB.z0)/GC),grid=new Uint8Array(GW*GH);
+function nBlocked(x,z){if(!roomAt(x,z))return true;
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
-for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(-RW+(i+.5)*GC,-RD+(j+.5)*GC)?1:0;
-const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x+RW)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z+RD)/GC)));
+for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(HB.x0+(i+.5)*GC,HB.z0+(j+.5)*GC)?1:0;
+const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-HB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-HB.z0)/GC)));
 function nearestFree(i,j){if(!grid[j*GW+i])return j*GW+i;
   for(let r=1;r<14;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;
     const a=i+di,b=j+dj;if(a<0||b<0||a>=GW||b>=GH)continue;if(!grid[b*GW+a])return b*GW+a;}
@@ -709,8 +784,8 @@ function findPath(x0,z0,x1,z1){                         // A* over a 10 cm grid,
       const n=nj*GW+ni;if(grid[n]||closed[n])continue;if(di&&dj&&(grid[cj*GW+ni]||grid[nj*GW+ci]))continue;
       const ng=gs[cur]+(di&&dj?1.414:1);if(ng<gs[n]){gs[n]=ng;from[n]=cur;open.push(n);}}}
   if(ei!==si&&from[ei]<0)return null;
-  const pts=[nBlocked(x1,z1)?[-RW+(ex+.5)*GC,-RD+(ez+.5)*GC]:[x1,z1]];
-  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([-RW+(c%GW+.5)*GC,-RD+((c/GW|0)+.5)*GC]);pts.reverse();
+  const pts=[nBlocked(x1,z1)?[HB.x0+(ex+.5)*GC,HB.z0+(ez+.5)*GC]:[x1,z1]];
+  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([HB.x0+(c%GW+.5)*GC,HB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
   const out=[];let cx=x0,cz=z0,i=0;
   while(i<pts.length){let k=pts.length-1;while(k>i&&!lineFree(cx,cz,pts[k][0],pts[k][1]))k--;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
   return out;
@@ -748,7 +823,7 @@ function makePerson(o){
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
-const people=ROOM.people.map(makePerson);
+const people=HOUSE.people.map(makePerson);
 
 /* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
 // Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
@@ -769,12 +844,13 @@ const GOALS={                                                           // type 
 const inSpan=(sp,h)=>sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
   const type=GOALS[id].type,other=people.find(m=>m!==n),ow=other&&!other.hidden?other.want:null,O=ow?ACT[ow]:null;
+  let best=null;
   for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
     if(A.shared)return k;                                                // the door: any number of people
     if(k===ow)continue;
-    if(O&&O.owner===A.owner&&(A.lie||O.lie))continue;                    // someone lying on a sofa takes the whole sofa
-    return k;}
-  return null;
+    if(O&&O.owner===A.owner&&(A.solo||O.solo))continue;                  // someone lying on a sofa takes the whole sofa
+    if(!best||(A.pref||0)>(ACT[best].pref||0))best=k;}                   // a bed beats a sofa
+  return best;
 }
 function utility(n,id){
   const g=GOALS[id];
@@ -892,7 +968,7 @@ function updNPC(n,dt,t){
     if(A.chase){label=A.label;n.repath-=dt;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
-        const cl=Math.hypot(basket.p.x,basket.p.z)||1,kx=bx/bd*.4-basket.p.x/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-basket.p.z/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
+        const rc=roomAt(basket.p.x,basket.p.z)||rooms[0],cxr=basket.p.x-rc.cx,czr=basket.p.z-rc.cz,cl=Math.hypot(cxr,czr)||1,kx=bx/bd*.4-cxr/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-czr/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
         basket.v.x+=kx/kl*J/basket.m;basket.v.z+=kz/kl*J/basket.m;basket.v.y+=1.8;n.kickCd=2.5;n.path=[];n.repath=1.2;n.goal.kicks++;basket.kickBy=n.o.name;
         say(n.o.name+'踢了籃球：球被推 '+J.toFixed(1)+' 牛頓·秒，'+n.o.name+'的腳也被球往回推一樣多。');}
       else if(n.repath<=0){n.repath=.8;n.path=bd>.4?(findPath(n.pos.x,n.pos.z,basket.p.x,basket.p.z)||[]):[];}
@@ -945,7 +1021,8 @@ function autoHome(){
   const wl=dark>.5&&awake;
   if(wl!==wantLamp){wantLamp=wl;if(S.lamp!==wl){S.lamp=wl;applySwitches();}}
   if(watching!==wantTv){wantTv=watching;if(S.tv!==watching){S.tv=watching;applySwitches();}}
-  const txt='28 樓 · '+(home.length?'在家：'+home.join('、'):'沒有人在家');
+  const here=roomAt(pos.x,pos.z);if(here&&here!==bakedRoom){envDirty=true;envTimer=0;}           // walked into another room: redo the reflections
+  const txt='你在'+(here?here.name:'門口')+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家');
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
   if(!$('minds').hidden)$('minds').textContent=people.map(n=>{const pr=progress(n);
     return n.o.name+' '+moodFace(n)+'　目標：'+GOALS[n.goal.id].label+(pr>=0?' '+Math.round(pr*100)+'%':'')+(n.resume?'（之後回去'+GOALS[n.resume.id].label+'）':'')+
@@ -953,12 +1030,13 @@ function autoHome(){
 }
 
 /* ---------- reflections: photograph the room itself and use it as the mirror image ---------- */
-const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null;
+const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null,bakedRoom=null;
 function bakeEnv(){
   const hadDust=dust.visible;dust.visible=false;dyn.visible=false;scene.environment=null;
-  scene.position.y=-1.4;scene.updateMatrixWorld(true);
+  const r=roomAt(pos.x,pos.z)||rooms[0];bakedRoom=r;                  // photograph the room you are standing in
+  scene.position.set(-r.cx,-1.4,-r.cz);scene.updateMatrixWorld(true);
   const rt=pmrem.fromScene(scene,.03,.05,60);
-  scene.position.y=0;scene.updateMatrixWorld(true);dust.visible=hadDust;dyn.visible=true;
+  scene.position.set(0,0,0);scene.updateMatrixWorld(true);dust.visible=hadDust;dyn.visible=true;
   scene.environment=rt.texture;if(envRT)envRT.dispose();envRT=rt;
 }
 
@@ -998,13 +1076,13 @@ function resize(){
 addEventListener('resize',resize);resize();
 
 /* ---------- walking + looking ---------- */
-const pos=new THREE.Vector3(ROOM.start.x,1.6,ROOM.start.z);let yaw=ROOM.start.yaw,pitch=ROOM.start.pitch;
+const pos=new THREE.Vector3(HOUSE.start.x,1.6,HOUSE.start.z);let yaw=HOUSE.start.yaw,pitch=HOUSE.start.pitch;
 const vel={x:0,z:0},keys={},joy={x:0,y:0,id:null,ox:0,oy:0},look={id:null,x:0,y:0};
 let down=null,bob=0,locked=false;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PR=.3;
 function blocked(x,z){
-  if(x<-RW+PR||x>RW-PR||z<-RD+PR||z>RD-PR)return true;
+  if(!roomAt(x,z))return true;
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
   for(const n of people){if(n.hidden||n.lie)continue; // people are solid, but you can always step away from them
     const d=Math.hypot(x-n.pos.x,z-n.pos.z);if(d<.5&&d<Math.hypot(pos.x-n.pos.x,pos.z-n.pos.z))return true;}
@@ -1113,7 +1191,7 @@ function tick(now){
 }
 scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=.45;});
 applySwitches();applyTime();dev.tvs.forEach(d=>drawTV(d,0));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick,ACT,colliders,pboxes};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick,ACT,colliders,pboxes,rooms,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

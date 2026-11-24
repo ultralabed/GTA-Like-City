@@ -17,12 +17,13 @@ const GOALS={                                                           // type 
 const inSpan=(sp,h)=>sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
   const type=GOALS[id].type,other=people.find(m=>m!==n),ow=other&&!other.hidden?other.want:null,O=ow?ACT[ow]:null;
+  let best=null;
   for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
     if(A.shared)return k;                                                // the door: any number of people
     if(k===ow)continue;
-    if(O&&O.owner===A.owner&&(A.lie||O.lie))continue;                    // someone lying on a sofa takes the whole sofa
-    return k;}
-  return null;
+    if(O&&O.owner===A.owner&&(A.solo||O.solo))continue;                  // someone lying on a sofa takes the whole sofa
+    if(!best||(A.pref||0)>(ACT[best].pref||0))best=k;}                   // a bed beats a sofa
+  return best;
 }
 function utility(n,id){
   const g=GOALS[id];
@@ -140,7 +141,7 @@ function updNPC(n,dt,t){
     if(A.chase){label=A.label;n.repath-=dt;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
-        const cl=Math.hypot(basket.p.x,basket.p.z)||1,kx=bx/bd*.4-basket.p.x/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-basket.p.z/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
+        const rc=roomAt(basket.p.x,basket.p.z)||rooms[0],cxr=basket.p.x-rc.cx,czr=basket.p.z-rc.cz,cl=Math.hypot(cxr,czr)||1,kx=bx/bd*.4-cxr/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-czr/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
         basket.v.x+=kx/kl*J/basket.m;basket.v.z+=kz/kl*J/basket.m;basket.v.y+=1.8;n.kickCd=2.5;n.path=[];n.repath=1.2;n.goal.kicks++;basket.kickBy=n.o.name;
         say(n.o.name+'踢了籃球：球被推 '+J.toFixed(1)+' 牛頓·秒，'+n.o.name+'的腳也被球往回推一樣多。');}
       else if(n.repath<=0){n.repath=.8;n.path=bd>.4?(findPath(n.pos.x,n.pos.z,basket.p.x,basket.p.z)||[]):[];}
@@ -193,7 +194,8 @@ function autoHome(){
   const wl=dark>.5&&awake;
   if(wl!==wantLamp){wantLamp=wl;if(S.lamp!==wl){S.lamp=wl;applySwitches();}}
   if(watching!==wantTv){wantTv=watching;if(S.tv!==watching){S.tv=watching;applySwitches();}}
-  const txt='28 樓 · '+(home.length?'在家：'+home.join('、'):'沒有人在家');
+  const here=roomAt(pos.x,pos.z);if(here&&here!==bakedRoom){envDirty=true;envTimer=0;}           // walked into another room: redo the reflections
+  const txt='你在'+(here?here.name:'門口')+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家');
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
   if(!$('minds').hidden)$('minds').textContent=people.map(n=>{const pr=progress(n);
     return n.o.name+' '+moodFace(n)+'　目標：'+GOALS[n.goal.id].label+(pr>=0?' '+Math.round(pr*100)+'%':'')+(n.resume?'（之後回去'+GOALS[n.resume.id].label+'）':'')+

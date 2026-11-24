@@ -33,7 +33,7 @@ const BALLS={                                            // name, radius (m), ma
   tennis:['網球',.033,.058,.74,.12,()=>std('tennis',{roughness:.95})],
   orb:['引力球',.14,30,.3,.02,()=>orbMat]
 };
-ROOM.balls.forEach(q=>{const B=BALLS[q.kind];addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z).kind=q.kind;});
+HOUSE.balls.forEach(q=>{const B=BALLS[q.kind];addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z).kind=q.kind;});
 const basket=bodies.find(b=>b.kind==='basket'),orb=bodies.find(b=>b.kind==='orb');
 const fwd=new THREE.Vector3();
 function kick(b){
@@ -88,10 +88,10 @@ function physStep(dt){
     const r=b.r;
     if(b.p.y<r)contact(b,0,1,0,r-b.p.y,0,0,0);
     if(b.p.y>RH-r)contact(b,0,-1,0,b.p.y-(RH-r),0,0,0);
-    if(b.p.x<-RW+r)contact(b,1,0,0,-RW+r-b.p.x,0,0,0);
-    if(b.p.x>RW-r)contact(b,-1,0,0,b.p.x-(RW-r),0,0,0);
-    if(b.p.z<-RD+r)contact(b,0,0,1,-RD+r-b.p.z,0,0,0);
-    if(b.p.z>RD-r)contact(b,0,0,-1,b.p.z-(RD-r),0,0,0);
+    if(b.p.x<HB.x0+r)contact(b,1,0,0,HB.x0+r-b.p.x,0,0,0);            // the walls are in pboxes; this is the last line of defence
+    if(b.p.x>HB.x1-r)contact(b,-1,0,0,b.p.x-(HB.x1-r),0,0,0);
+    if(b.p.z<HB.z0+r)contact(b,0,0,1,HB.z0+r-b.p.z,0,0,0);
+    if(b.p.z>HB.z1-r)contact(b,0,0,-1,b.p.z-(HB.z1-r),0,0,0);
     for(const q of pboxes){
       const cx=Math.max(q[0],Math.min(q[1],b.p.x)),cy=Math.max(q[2],Math.min(q[3],b.p.y)),cz=Math.max(q[4],Math.min(q[5],b.p.z));
       const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;

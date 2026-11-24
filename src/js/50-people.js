@@ -1,9 +1,9 @@
 /* ---------- people who live here ---------- */
-const NR=.2,GC=.1,GW=Math.round(2*RW/GC),GH=Math.round(2*RD/GC),grid=new Uint8Array(GW*GH);
-function nBlocked(x,z){if(x<-RW+NR||x>RW-NR||z<-RD+NR||z>RD-NR)return true;
+const NR=.2,GC=.1,GW=Math.round((HB.x1-HB.x0)/GC),GH=Math.round((HB.z1-HB.z0)/GC),grid=new Uint8Array(GW*GH);
+function nBlocked(x,z){if(!roomAt(x,z))return true;
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
-for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(-RW+(i+.5)*GC,-RD+(j+.5)*GC)?1:0;
-const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x+RW)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z+RD)/GC)));
+for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(HB.x0+(i+.5)*GC,HB.z0+(j+.5)*GC)?1:0;
+const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-HB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-HB.z0)/GC)));
 function nearestFree(i,j){if(!grid[j*GW+i])return j*GW+i;
   for(let r=1;r<14;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;
     const a=i+di,b=j+dj;if(a<0||b<0||a>=GW||b>=GH)continue;if(!grid[b*GW+a])return b*GW+a;}
@@ -21,8 +21,8 @@ function findPath(x0,z0,x1,z1){                         // A* over a 10 cm grid,
       const n=nj*GW+ni;if(grid[n]||closed[n])continue;if(di&&dj&&(grid[cj*GW+ni]||grid[nj*GW+ci]))continue;
       const ng=gs[cur]+(di&&dj?1.414:1);if(ng<gs[n]){gs[n]=ng;from[n]=cur;open.push(n);}}}
   if(ei!==si&&from[ei]<0)return null;
-  const pts=[nBlocked(x1,z1)?[-RW+(ex+.5)*GC,-RD+(ez+.5)*GC]:[x1,z1]];
-  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([-RW+(c%GW+.5)*GC,-RD+((c/GW|0)+.5)*GC]);pts.reverse();
+  const pts=[nBlocked(x1,z1)?[HB.x0+(ex+.5)*GC,HB.z0+(ez+.5)*GC]:[x1,z1]];
+  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([HB.x0+(c%GW+.5)*GC,HB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
   const out=[];let cx=x0,cz=z0,i=0;
   while(i<pts.length){let k=pts.length-1;while(k>i&&!lineFree(cx,cz,pts[k][0],pts[k][1]))k--;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
   return out;
@@ -60,4 +60,4 @@ function makePerson(o){
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
-const people=ROOM.people.map(makePerson);
+const people=HOUSE.people.map(makePerson);

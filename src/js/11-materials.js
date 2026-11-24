@@ -4,6 +4,7 @@ const plaster=noiseBump(256,2600,1,5,1.5), weave=weaveBump(7);
 const M={
   floor:new THREE.MeshStandardMaterial({map:woodMap,bumpMap:woodBump,bumpScale:.006,roughness:.3}),
   wall:new THREE.MeshStandardMaterial({color:0xe4dacb,bumpMap:plaster,bumpScale:.003,roughness:.92}),
+  sage:new THREE.MeshStandardMaterial({color:0x8c9a7e,bumpMap:plaster,bumpScale:.003,roughness:.9}),
   accent:new THREE.MeshStandardMaterial({color:0x1c4a50,bumpMap:plaster,bumpScale:.003,roughness:.88}),
   ceil:new THREE.MeshStandardMaterial({color:0xf1ece4,roughness:.95}),
   trim:new THREE.MeshStandardMaterial({color:0xf4efe6,roughness:.55}),

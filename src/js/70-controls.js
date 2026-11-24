@@ -1,11 +1,11 @@
 /* ---------- walking + looking ---------- */
-const pos=new THREE.Vector3(ROOM.start.x,1.6,ROOM.start.z);let yaw=ROOM.start.yaw,pitch=ROOM.start.pitch;
+const pos=new THREE.Vector3(HOUSE.start.x,1.6,HOUSE.start.z);let yaw=HOUSE.start.yaw,pitch=HOUSE.start.pitch;
 const vel={x:0,z:0},keys={},joy={x:0,y:0,id:null,ox:0,oy:0},look={id:null,x:0,y:0};
 let down=null,bob=0,locked=false;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PR=.3;
 function blocked(x,z){
-  if(x<-RW+PR||x>RW-PR||z<-RD+PR||z>RD-PR)return true;
+  if(!roomAt(x,z))return true;
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
   for(const n of people){if(n.hidden||n.lie)continue; // people are solid, but you can always step away from them
     const d=Math.hypot(x-n.pos.x,z-n.pos.z);if(d<.5&&d<Math.hypot(pos.x-n.pos.x,pos.z-n.pos.z))return true;}
