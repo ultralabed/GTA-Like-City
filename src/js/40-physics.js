@@ -4,7 +4,9 @@ const BIG_G=.025,PH=1/240,PLAYER_M=70;
 $('bGrav').onclick=()=>{gIdx=(gIdx+1)%3;$('bGrav').textContent='重力：'+GMODES[gIdx][1];
   say(['地球重力：每秒往下加快 9.8 公尺。','月球重力：只有地球的六分之一，球跳得又高又慢。','沒有重力：踢一下，球就一直飄。'][gIdx]);};
 let sayAt=0;
-function say(txt,soft){const now=performance.now();if(soft&&now-sayAt<400)return;sayAt=now;$('phys').textContent=txt;}
+let sayTimer=0;
+function say(txt,soft){const now=performance.now();if(soft&&now-sayAt<400)return;sayAt=now;           // a note that shows for a few seconds, then goes away
+  const el=$('phys');el.textContent=txt;el.hidden=false;clearTimeout(sayTimer);sayTimer=setTimeout(()=>{el.hidden=true;},7000);}
 function ballTex(kind){const c=cv(256,128),g=c.getContext('2d');
   if(kind==='basket'){g.fillStyle='#c8591c';g.fillRect(0,0,256,128);g.strokeStyle='#1a0f0a';g.lineWidth=3;
     g.beginPath();g.moveTo(0,64);g.lineTo(256,64);for(const x of[1,128,255]){g.moveTo(x,0);g.lineTo(x,128);}g.stroke();
@@ -67,15 +69,15 @@ function hitPerson(b,px,pz,rad,top,svx,svz,M,who){
 }
 function physStep(dt){
   const g=GMODES[gIdx][0];
-  for(const b of bodies){b.v.y-=g*dt;b.v.multiplyScalar(Math.exp(-b.drag*dt));}
+  for(const b of bodies){if(b.held)continue;b.v.y-=g*dt;b.v.multiplyScalar(Math.exp(-b.drag*dt));}
   if(G.orb)for(const orb of orbs)for(const b of bodies){if(b===orb)continue;            // attraction: F = G·m1·m2 / r², on both, opposite ways
     const dx=orb.p.x-b.p.x,dy=orb.p.y-b.p.y,dz=orb.p.z-b.p.z,min=orb.r+b.r,r2=Math.max(dx*dx+dy*dy+dz*dz,min*min),r=Math.sqrt(r2);
     const F=BIG_G*orb.m*b.m/r2,k=F*dt/r;
     b.v.x+=dx*k/b.m;b.v.y+=dy*k/b.m;b.v.z+=dz*k/b.m;orb.v.x-=dx*k/orb.m;orb.v.y-=dy*k/orb.m;orb.v.z-=dz*k/orb.m;}
-  for(const b of bodies){b.p.addScaledVector(b.v,dt);b.ground=false;}
+  for(const b of bodies){if(b.held)continue;b.p.addScaledVector(b.v,dt);b.ground=false;}
   for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){   // ball against ball
     const a=bodies[i],b=bodies[j],dx=b.p.x-a.p.x,dy=b.p.y-a.p.y,dz=b.p.z-a.p.z,min=a.r+b.r,d2=dx*dx+dy*dy+dz*dz;
-    if(d2>=min*min||d2<1e-10)continue;
+    if(d2>=min*min||d2<1e-10||a.held||b.held)continue;
     const d=Math.sqrt(d2),nx=dx/d,ny=dy/d,nz=dz/d,pen=min-d,im=1/a.m+1/b.m;
     a.p.x-=nx*pen/a.m/im;a.p.y-=ny*pen/a.m/im;a.p.z-=nz*pen/a.m/im;b.p.x+=nx*pen/b.m/im;b.p.y+=ny*pen/b.m/im;b.p.z+=nz*pen/b.m/im;
     const vn=(b.v.x-a.v.x)*nx+(b.v.y-a.v.y)*ny+(b.v.z-a.v.z)*nz;if(vn>=0)continue;
@@ -85,7 +87,7 @@ function physStep(dt){
     if(J/Math.min(a.m,b.m)>.8)say(a.name+' ⇄ '+b.name+'：兩顆球各被推 '+J.toFixed(2)+' 牛頓·秒，方向相反。輕的那顆跑比較快。',true);
   }
   for(const b of bodies){
-    const r=b.r;
+    if(b.held)continue;const r=b.r;
     if(b.p.y<r)contact(b,0,1,0,r-b.p.y,0,0,0);
     if(b.p.x<WB.x0+r)contact(b,1,0,0,WB.x0+r-b.p.x,0,0,0);            // the edge of the world
     if(b.p.x>WB.x1-r)contact(b,-1,0,0,b.p.x-(WB.x1-r),0,0,0);
@@ -105,7 +107,9 @@ function physStep(dt){
       const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;if(d2>=r*r||d2<1e-10)continue;
       const d=Math.sqrt(d2),J=contact(b,dx/d,dy/d,dz/d,r-d,c.dir*c.v,0,1200);
       if(J/b.m>1)say('車子 ⇄ '+b.name+'：兩邊各被推 '+J.toFixed(1)+' 牛頓·秒。車子有 1200 公斤，所以幾乎沒變慢。',true);}
-    const hp=hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
+    {const fx=Math.cos(drive.h),fz=-Math.sin(drive.h),vx=drive.on?fx*drive.v:0,vz=drive.on?fz*drive.v:0;     // your car, parked or moving
+      for(const k of[1.15,-1.15])hitPerson(b,drive.x+fx*k,drive.z+fz*k,.95,1.5,vx,vz,1200,'你的車');}
+    const hp=drive.on?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
     for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption
       if(hitPerson(b,n.pos.x,n.pos.z,n.lie?.45:.2,n.lie?.85:n.sit?1.2:n.o.h,n.vx,n.vz,0,n.o.name)&&spd>1.5)notify(n,'hit',b);}

@@ -27,14 +27,27 @@ body{background:var(--ink);color:var(--text);font-family:var(--body);overflow:hi
 h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(15px,2.4vw,22px);letter-spacing:.02em;
   text-shadow:0 2px 18px rgba(0,0,0,.7)}
 h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted);letter-spacing:.04em;margin-top:3px}
-.switches{display:flex;flex-wrap:wrap;gap:8px;pointer-events:auto}
-.switches button{font:600 13px/1 var(--body);color:var(--text);background:var(--glass);border:1px solid var(--line);
-  padding:10px 13px;border-radius:999px;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  display:flex;align-items:center;gap:7px}
-.switches button::before{content:"";width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25)}
-.switches button[aria-pressed="true"]::before{background:var(--neon);box-shadow:0 0 10px var(--neon)}
-.switches button:hover{border-color:var(--sun)}
-.switches button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:12px;pointer-events:auto;max-width:100%}
+.bar output{font:700 14px/1 var(--display);font-variant-numeric:tabular-nums;background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:8px 12px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.panel{pointer-events:auto;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;
+  width:min(100%,21rem);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.panel h2{margin:6px 0 0;font:600 11px/1 var(--body);letter-spacing:.08em;color:var(--muted)}
+.panel h2:first-child{margin-top:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row input{flex:1 1 7rem;min-width:0;accent-color:var(--sun)}
+.bar button,.panel button,.acts button{font:600 13px/1 var(--body);color:var(--text);background:var(--glass);border:1px solid var(--line);
+  padding:10px 13px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.bar button,.acts button{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.panel button{background:rgba(255,255,255,.07)}
+.panel button:not(.plain)::before{content:"";width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25)}
+.panel button[aria-pressed="true"]::before{background:var(--neon);box-shadow:0 0 10px var(--neon)}
+.bar button[aria-expanded="true"]{border-color:var(--sun)}
+.bar button:hover,.panel button:hover,.acts button:hover{border-color:var(--sun)}
+.bar button:focus-visible,.panel button:focus-visible,.panel input:focus-visible,.acts button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.acts{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
+.acts button{pointer-events:auto;padding:12px 16px;font-size:14px}
+.acts kbd{font:600 11px/1 var(--body);color:var(--sun);border:1px solid var(--line);border-radius:5px;padding:3px 5px}
 .hint{align-self:center;text-align:center;font-size:13px;line-height:1.5;color:var(--text);background:var(--glass);
   border:1px solid var(--line);border-radius:12px;padding:8px 14px;max-width:100%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .hint b{color:var(--sun);font-weight:600}
@@ -45,14 +58,6 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 #joy{position:absolute;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:1px solid var(--line);
   background:rgba(255,255,255,.06);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,154,77,.55)}
-.switches button.plain::before{display:none}
-.clock{display:flex;align-items:center;gap:10px;pointer-events:auto;background:var(--glass);border:1px solid var(--line);
-  border-radius:999px;padding:5px 6px 5px 14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);max-width:100%}
-.clock output{font:700 14px/1 var(--display);font-variant-numeric:tabular-nums;min-width:3.3em}
-.clock input{width:clamp(90px,24vw,200px);accent-color:var(--sun);min-width:0}
-.clock button{font:600 12px/1 var(--body);color:var(--text);background:rgba(255,255,255,.08);border:1px solid var(--line);
-  padding:8px 11px;border-radius:999px;cursor:pointer;white-space:nowrap}
-.clock button:focus-visible,.clock input:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 .minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
 .phys{font-size:12px;line-height:1.45;color:var(--muted);background:var(--glass);border:1px solid var(--line);border-radius:10px;
   padding:6px 10px;max-width:min(100%,30em);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -68,24 +73,26 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 <div id="tags"></div>
 <div class="hud">
   <div class="top">
-    <h1>夕陽街<small id="sub">海邊的一條小街</small></h1>
-    <div class="switches">
-      <button id="bLamp" type="button" aria-pressed="false">立燈</button>
-      <button id="bTv" type="button" aria-pressed="true">電視</button>
-      <button id="bNeon" type="button" aria-pressed="true">霓虹燈</button>
-      <button id="bOrb" type="button" aria-pressed="false">引力球</button>
-      <button id="bGrav" type="button" class="plain">重力：地球</button>
-      <button id="bMind" type="button" aria-pressed="false">想法</button>
-      <button id="bRain" type="button" class="plain">天氣：晴天</button>
+    <div class="bar">
+      <h1>夕陽街<small id="sub">海邊的一條小街</small></h1>
+      <output id="clk" for="time">17:24</output>
+      <button id="bSet" type="button" aria-expanded="false" aria-controls="panel">設定</button>
     </div>
-    <div class="clock">
-      <output id="clk" for="time">18:40</output>
-      <input id="time" type="range" min="0" max="23.99" step="0.01" value="18.67" aria-label="現在幾點">
-      <button id="bSpeed" type="button">時間：正常</button>
+    <div id="panel" class="panel" hidden>
+      <h2>時間和天氣</h2>
+      <div class="row"><input id="time" type="range" min="0" max="23.99" step="0.01" value="17.4" aria-label="現在幾點"><button id="bSpeed" type="button" class="plain">時間：正常</button></div>
+      <div class="row"><button id="bRain" type="button" class="plain">天氣：晴天</button></div>
+      <h2>最近這間房子</h2>
+      <div class="row"><button id="bLamp" type="button" aria-pressed="false">立燈</button><button id="bTv" type="button" aria-pressed="true">電視</button><button id="bNeon" type="button" aria-pressed="true">霓虹燈</button></div>
+      <h2>物理</h2>
+      <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
+      <h2>看更多</h2>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
-    <div id="phys" class="phys">物理：踢球、撞球，這裡會寫出誰推了誰。</div>
+    <div id="phys" class="phys" hidden></div>
     <div id="minds" class="phys minds" hidden></div>
   </div>
+  <div id="acts" class="acts"></div>
   <div class="hint" id="hint"></div>
 </div>
 <div id="err" hidden></div>

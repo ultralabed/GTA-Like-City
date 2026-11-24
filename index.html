@@ -35,14 +35,27 @@ body{background:var(--ink);color:var(--text);font-family:var(--body);overflow:hi
 h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(15px,2.4vw,22px);letter-spacing:.02em;
   text-shadow:0 2px 18px rgba(0,0,0,.7)}
 h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted);letter-spacing:.04em;margin-top:3px}
-.switches{display:flex;flex-wrap:wrap;gap:8px;pointer-events:auto}
-.switches button{font:600 13px/1 var(--body);color:var(--text);background:var(--glass);border:1px solid var(--line);
-  padding:10px 13px;border-radius:999px;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  display:flex;align-items:center;gap:7px}
-.switches button::before{content:"";width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25)}
-.switches button[aria-pressed="true"]::before{background:var(--neon);box-shadow:0 0 10px var(--neon)}
-.switches button:hover{border-color:var(--sun)}
-.switches button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:12px;pointer-events:auto;max-width:100%}
+.bar output{font:700 14px/1 var(--display);font-variant-numeric:tabular-nums;background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:8px 12px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.panel{pointer-events:auto;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;
+  width:min(100%,21rem);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.panel h2{margin:6px 0 0;font:600 11px/1 var(--body);letter-spacing:.08em;color:var(--muted)}
+.panel h2:first-child{margin-top:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row input{flex:1 1 7rem;min-width:0;accent-color:var(--sun)}
+.bar button,.panel button,.acts button{font:600 13px/1 var(--body);color:var(--text);background:var(--glass);border:1px solid var(--line);
+  padding:10px 13px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.bar button,.acts button{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.panel button{background:rgba(255,255,255,.07)}
+.panel button:not(.plain)::before{content:"";width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25)}
+.panel button[aria-pressed="true"]::before{background:var(--neon);box-shadow:0 0 10px var(--neon)}
+.bar button[aria-expanded="true"]{border-color:var(--sun)}
+.bar button:hover,.panel button:hover,.acts button:hover{border-color:var(--sun)}
+.bar button:focus-visible,.panel button:focus-visible,.panel input:focus-visible,.acts button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.acts{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
+.acts button{pointer-events:auto;padding:12px 16px;font-size:14px}
+.acts kbd{font:600 11px/1 var(--body);color:var(--sun);border:1px solid var(--line);border-radius:5px;padding:3px 5px}
 .hint{align-self:center;text-align:center;font-size:13px;line-height:1.5;color:var(--text);background:var(--glass);
   border:1px solid var(--line);border-radius:12px;padding:8px 14px;max-width:100%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .hint b{color:var(--sun);font-weight:600}
@@ -53,14 +66,6 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 #joy{position:absolute;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:1px solid var(--line);
   background:rgba(255,255,255,.06);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,154,77,.55)}
-.switches button.plain::before{display:none}
-.clock{display:flex;align-items:center;gap:10px;pointer-events:auto;background:var(--glass);border:1px solid var(--line);
-  border-radius:999px;padding:5px 6px 5px 14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);max-width:100%}
-.clock output{font:700 14px/1 var(--display);font-variant-numeric:tabular-nums;min-width:3.3em}
-.clock input{width:clamp(90px,24vw,200px);accent-color:var(--sun);min-width:0}
-.clock button{font:600 12px/1 var(--body);color:var(--text);background:rgba(255,255,255,.08);border:1px solid var(--line);
-  padding:8px 11px;border-radius:999px;cursor:pointer;white-space:nowrap}
-.clock button:focus-visible,.clock input:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 .minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
 .phys{font-size:12px;line-height:1.45;color:var(--muted);background:var(--glass);border:1px solid var(--line);border-radius:10px;
   padding:6px 10px;max-width:min(100%,30em);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -76,24 +81,26 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 <div id="tags"></div>
 <div class="hud">
   <div class="top">
-    <h1>夕陽街<small id="sub">海邊的一條小街</small></h1>
-    <div class="switches">
-      <button id="bLamp" type="button" aria-pressed="false">立燈</button>
-      <button id="bTv" type="button" aria-pressed="true">電視</button>
-      <button id="bNeon" type="button" aria-pressed="true">霓虹燈</button>
-      <button id="bOrb" type="button" aria-pressed="false">引力球</button>
-      <button id="bGrav" type="button" class="plain">重力：地球</button>
-      <button id="bMind" type="button" aria-pressed="false">想法</button>
-      <button id="bRain" type="button" class="plain">天氣：晴天</button>
+    <div class="bar">
+      <h1>夕陽街<small id="sub">海邊的一條小街</small></h1>
+      <output id="clk" for="time">17:24</output>
+      <button id="bSet" type="button" aria-expanded="false" aria-controls="panel">設定</button>
     </div>
-    <div class="clock">
-      <output id="clk" for="time">18:40</output>
-      <input id="time" type="range" min="0" max="23.99" step="0.01" value="18.67" aria-label="現在幾點">
-      <button id="bSpeed" type="button">時間：正常</button>
+    <div id="panel" class="panel" hidden>
+      <h2>時間和天氣</h2>
+      <div class="row"><input id="time" type="range" min="0" max="23.99" step="0.01" value="17.4" aria-label="現在幾點"><button id="bSpeed" type="button" class="plain">時間：正常</button></div>
+      <div class="row"><button id="bRain" type="button" class="plain">天氣：晴天</button></div>
+      <h2>最近這間房子</h2>
+      <div class="row"><button id="bLamp" type="button" aria-pressed="false">立燈</button><button id="bTv" type="button" aria-pressed="true">電視</button><button id="bNeon" type="button" aria-pressed="true">霓虹燈</button></div>
+      <h2>物理</h2>
+      <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
+      <h2>看更多</h2>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
-    <div id="phys" class="phys">物理：踢球、撞球，這裡會寫出誰推了誰。</div>
+    <div id="phys" class="phys" hidden></div>
     <div id="minds" class="phys minds" hidden></div>
   </div>
+  <div id="acts" class="acts"></div>
   <div class="hint" id="hint"></div>
 </div>
 <div id="err" hidden></div>
@@ -112,8 +119,8 @@ const $=id=>document.getElementById(id);
 const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
-  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼'
-  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　<b>Esc</b> 放開滑鼠';
+  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕：跳、撿、坐、開車'
+  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>點</b>門、球、人　<b>Esc</b> 放開滑鼠';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}
 
@@ -133,6 +140,10 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x05030a);
 const camera=new THREE.PerspectiveCamera(68,1,0.08,800);
 camera.rotation.order='YXZ';
+// the help line shows for a while, then gets out of the way; "操作說明" in the settings brings it back
+let hintTimer=0;function showHint(){$('hint').hidden=false;clearTimeout(hintTimer);hintTimer=setTimeout(()=>{$('hint').hidden=true;},14000);}
+showHint();$('bHelp').onclick=showHint;
+$('bSet').onclick=()=>{const p=$('panel');p.hidden=!p.hidden;$('bSet').setAttribute('aria-expanded',!p.hidden);};
 
 /* ---------- procedural textures ---------- */
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -321,7 +332,8 @@ const WORLD={
   clock:17.4,
   bounds:{x0:-24,x1:28,z0:-9,z1:26},                               // as far as anyone can walk
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
-  start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},                        // where you stand when the page opens
+  start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
+  car:{x:-20,z:2.4,h:-Math.PI/2},                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
   lots:[
     {no:1,tpl:'cottage',x:0,z:0,ext:0xe9dccb,accent:0x1c4a50,roof:0x3a3140,door:0xd9623f,balls:'all',people:[
       person('小美',1.64,0xe8b996,0x2a1a16,0xd9623f,0xe9dfcf,0xf4f0e8,true,[9,17],[22,8],.8,.4,{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}),
@@ -838,7 +850,9 @@ const BIG_G=.025,PH=1/240,PLAYER_M=70;
 $('bGrav').onclick=()=>{gIdx=(gIdx+1)%3;$('bGrav').textContent='重力：'+GMODES[gIdx][1];
   say(['地球重力：每秒往下加快 9.8 公尺。','月球重力：只有地球的六分之一，球跳得又高又慢。','沒有重力：踢一下，球就一直飄。'][gIdx]);};
 let sayAt=0;
-function say(txt,soft){const now=performance.now();if(soft&&now-sayAt<400)return;sayAt=now;$('phys').textContent=txt;}
+let sayTimer=0;
+function say(txt,soft){const now=performance.now();if(soft&&now-sayAt<400)return;sayAt=now;           // a note that shows for a few seconds, then goes away
+  const el=$('phys');el.textContent=txt;el.hidden=false;clearTimeout(sayTimer);sayTimer=setTimeout(()=>{el.hidden=true;},7000);}
 function ballTex(kind){const c=cv(256,128),g=c.getContext('2d');
   if(kind==='basket'){g.fillStyle='#c8591c';g.fillRect(0,0,256,128);g.strokeStyle='#1a0f0a';g.lineWidth=3;
     g.beginPath();g.moveTo(0,64);g.lineTo(256,64);for(const x of[1,128,255]){g.moveTo(x,0);g.lineTo(x,128);}g.stroke();
@@ -901,15 +915,15 @@ function hitPerson(b,px,pz,rad,top,svx,svz,M,who){
 }
 function physStep(dt){
   const g=GMODES[gIdx][0];
-  for(const b of bodies){b.v.y-=g*dt;b.v.multiplyScalar(Math.exp(-b.drag*dt));}
+  for(const b of bodies){if(b.held)continue;b.v.y-=g*dt;b.v.multiplyScalar(Math.exp(-b.drag*dt));}
   if(G.orb)for(const orb of orbs)for(const b of bodies){if(b===orb)continue;            // attraction: F = G·m1·m2 / r², on both, opposite ways
     const dx=orb.p.x-b.p.x,dy=orb.p.y-b.p.y,dz=orb.p.z-b.p.z,min=orb.r+b.r,r2=Math.max(dx*dx+dy*dy+dz*dz,min*min),r=Math.sqrt(r2);
     const F=BIG_G*orb.m*b.m/r2,k=F*dt/r;
     b.v.x+=dx*k/b.m;b.v.y+=dy*k/b.m;b.v.z+=dz*k/b.m;orb.v.x-=dx*k/orb.m;orb.v.y-=dy*k/orb.m;orb.v.z-=dz*k/orb.m;}
-  for(const b of bodies){b.p.addScaledVector(b.v,dt);b.ground=false;}
+  for(const b of bodies){if(b.held)continue;b.p.addScaledVector(b.v,dt);b.ground=false;}
   for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){   // ball against ball
     const a=bodies[i],b=bodies[j],dx=b.p.x-a.p.x,dy=b.p.y-a.p.y,dz=b.p.z-a.p.z,min=a.r+b.r,d2=dx*dx+dy*dy+dz*dz;
-    if(d2>=min*min||d2<1e-10)continue;
+    if(d2>=min*min||d2<1e-10||a.held||b.held)continue;
     const d=Math.sqrt(d2),nx=dx/d,ny=dy/d,nz=dz/d,pen=min-d,im=1/a.m+1/b.m;
     a.p.x-=nx*pen/a.m/im;a.p.y-=ny*pen/a.m/im;a.p.z-=nz*pen/a.m/im;b.p.x+=nx*pen/b.m/im;b.p.y+=ny*pen/b.m/im;b.p.z+=nz*pen/b.m/im;
     const vn=(b.v.x-a.v.x)*nx+(b.v.y-a.v.y)*ny+(b.v.z-a.v.z)*nz;if(vn>=0)continue;
@@ -919,7 +933,7 @@ function physStep(dt){
     if(J/Math.min(a.m,b.m)>.8)say(a.name+' ⇄ '+b.name+'：兩顆球各被推 '+J.toFixed(2)+' 牛頓·秒，方向相反。輕的那顆跑比較快。',true);
   }
   for(const b of bodies){
-    const r=b.r;
+    if(b.held)continue;const r=b.r;
     if(b.p.y<r)contact(b,0,1,0,r-b.p.y,0,0,0);
     if(b.p.x<WB.x0+r)contact(b,1,0,0,WB.x0+r-b.p.x,0,0,0);            // the edge of the world
     if(b.p.x>WB.x1-r)contact(b,-1,0,0,b.p.x-(WB.x1-r),0,0,0);
@@ -939,7 +953,9 @@ function physStep(dt){
       const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;if(d2>=r*r||d2<1e-10)continue;
       const d=Math.sqrt(d2),J=contact(b,dx/d,dy/d,dz/d,r-d,c.dir*c.v,0,1200);
       if(J/b.m>1)say('車子 ⇄ '+b.name+'：兩邊各被推 '+J.toFixed(1)+' 牛頓·秒。車子有 1200 公斤，所以幾乎沒變慢。',true);}
-    const hp=hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
+    {const fx=Math.cos(drive.h),fz=-Math.sin(drive.h),vx=drive.on?fx*drive.v:0,vz=drive.on?fz*drive.v:0;     // your car, parked or moving
+      for(const k of[1.15,-1.15])hitPerson(b,drive.x+fx*k,drive.z+fz*k,.95,1.5,vx,vz,1200,'你的車');}
+    const hp=drive.on?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
     for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption
       if(hitPerson(b,n.pos.x,n.pos.z,n.lie?.45:.2,n.lie?.85:n.sit?1.2:n.o.h,n.vx,n.vz,0,n.o.name)&&spd>1.5)notify(n,'hit',b);}
@@ -959,24 +975,25 @@ function syncBalls(dt){for(const b of bodies){
 const ST=WORLD.street,ZEBRA=[1.9-3.3,1.9+3.3],CAR_SPEED=7;
 const onRoad=z=>z>ST.z0&&z<ST.z1;
 const cars=[];
-(function(){
-  const cols=[0xc4553b,0x1f6a6e,0xe0a45c,0xe9e2d6,0x3b4a7a,0x2a2c32];
-  const glassM=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:.15,metalness:.6}),tyre=new THREE.MeshStandardMaterial({color:0x111114,roughness:.9});
-  const beamTex=new THREE.CanvasTexture(glowC);
-  for(let i=0;i<4;i++){
-    const g=new THREE.Group(),lane=i%2,dir=lane?1:-1;scene.add(g);cur=g;
-    const paint=new THREE.MeshStandardMaterial({color:cols[i%cols.length],roughness:.35,metalness:.4});
-    box(4.2,.62,1.78,paint,0,.66,0,{r:.12});box(2.3,.56,1.6,glassM,-.15,1.22,0,{r:.14});box(2.1,.05,1.5,paint,-.15,1.5,0,{r:.02});
-    const wheels=[[-1.35,-.82],[-1.35,.82],[1.35,-.82],[1.35,.82]].map(p=>{const w=cyl(.33,.33,.22,tyre,p[0],.33,p[1],16);w.rotation.x=Math.PI/2;return w;});
-    const headMat=new THREE.MeshBasicMaterial({color:0x222222}),tailMat=new THREE.MeshBasicMaterial({color:0x330000});
-    [-.6,.6].forEach(z=>{box(.06,.14,.34,headMat,2.1,.72,z).castShadow=false;box(.06,.12,.34,tailMat,-2.1,.74,z).castShadow=false;});
-    const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:beamTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
-    beam.rotation.x=-Math.PI/2;beam.position.set(5.6,.02,0);g.add(beam);                     // pool of light on the road at night
-    cur=scene;g.rotation.y=dir>0?0:Math.PI;g.visible=false;
-    const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
-    cars.push({g,dir,z:lane?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,wheels,headMat,tailMat,beam,tag,box:[0,0,0,0]});
-  }
-})();
+const carGlass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:.15,metalness:.6}),carTyre=new THREE.MeshStandardMaterial({color:0x111114,roughness:.9});
+function carMesh(col){                                                   // a car facing +x, built around its own middle
+  const g=new THREE.Group();scene.add(g);cur=g;
+  const paint=new THREE.MeshStandardMaterial({color:col,roughness:.35,metalness:.4});
+  box(4.2,.62,1.78,paint,0,.66,0,{r:.12});box(2.3,.56,1.6,carGlass,-.15,1.22,0,{r:.14});box(2.1,.05,1.5,paint,-.15,1.5,0,{r:.02});
+  const wheels=[[-1.35,-.82],[-1.35,.82],[1.35,-.82],[1.35,.82]].map(p=>{const w=cyl(.33,.33,.22,carTyre,p[0],.33,p[1],16);w.rotation.x=Math.PI/2;return w;});
+  const headMat=new THREE.MeshBasicMaterial({color:0x222222}),tailMat=new THREE.MeshBasicMaterial({color:0x330000});
+  [-.6,.6].forEach(z=>{box(.06,.14,.34,headMat,2.1,.72,z).castShadow=false;box(.06,.12,.34,tailMat,-2.1,.74,z).castShadow=false;});
+  const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
+  beam.rotation.x=-Math.PI/2;beam.position.set(5.6,.02,0);g.add(beam);                       // pool of light on the road at night
+  cur=scene;return{g,wheels,headMat,tailMat,beam};
+}
+function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
+  c.headMat.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);c.tailMat.color.setRGB(.35+k*3+(braking?3:0),.02,.02);c.beam.material.opacity=k*.55;}
+[0xc4553b,0x1f6a6e,0xe9e2d6,0x3b4a7a].forEach((col,i)=>{
+  const lane=i%2,dir=lane?1:-1,m=carMesh(col);m.g.rotation.y=dir>0?0:Math.PI;m.g.visible=false;
+  const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
+  cars.push(Object.assign(m,{dir,z:lane?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0]}));
+});
 // should this walker hold back at the kerb? yes if a moving car will get here within a few seconds
 function carDanger(n,q){
   if(onRoad(n.pos.z)||!(onRoad(q[1])||(q[1]-ST.z0)*(n.pos.z-ST.z0)<0))return false;       // already crossing, or not heading for the road
@@ -993,7 +1010,7 @@ function updateCars(dt){
       continue;}
     const front=c.x+c.dir*2.1;let gap=1e9;
     const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
-    see(pos.x,pos.z);
+    see(pos.x-(drive.on?c.dir*2.4:0),pos.z);                                   // you, or the back of the car you are driving
     for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);
       if(n.atCurb&&n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;if(d>-.6&&d<gap)gap=d;}}   // someone waiting at the zebra: stop before it
     for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
@@ -1004,7 +1021,7 @@ function updateCars(dt){
     if(c.x*c.dir>85){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
     c.g.position.set(c.x,0,c.z);for(const w of c.wheels)w.rotation.z-=c.v*dt/.33;
     c.box[0]=c.x-2.15;c.box[1]=c.x+2.15;c.box[2]=c.z-.92;c.box[3]=c.z+.92;
-    const k=Math.max(0,Math.min(1,(dark-.2)/.4));c.headMat.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);c.tailMat.color.setRGB(.35+k*3+(want<c.v-.5?3:0),.02,.02);c.beam.material.opacity=k*.55;
+    carLights(c,want<c.v-.5);
     c.tag.hidden=c.honk<=0;
     if(c.honk>0){cv3.set(c.x,2,c.z).project(camera);if(cv3.z<1){c.tag.style.left=((cv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-cv3.y)/2*canvas.clientHeight)+'px';}else c.tag.hidden=true;}
   }
@@ -1037,6 +1054,110 @@ function updateWeather(dt){
     rPos[k]=x;rPos[k+1]=y;rPos[k+2]=z;rPos[k+3]=x+.03;rPos[k+4]=y+.45;rPos[k+5]=z;}
   rGeo.attributes.position.needsUpdate=true;
 }
+
+/* ---------- things you can do: jump, carry and throw, sit, drive ---------- */
+// The buttons at the bottom right change with what is possible right now, so you never have to remember a key.
+let jumpY=0,jumpV=0,held=null,seat=null;
+const drive={on:false,x:WORLD.car.x,z:WORLD.car.z,h:WORLD.car.h,v:0,bumped:0};
+const pcar=carMesh(0xf2c23d);                                               // your car: the yellow one
+(function(){cur=scene;flat(2.8,5.6,M.concrete,drive.x,-.012,drive.z,1.4);pcar.g.position.set(drive.x,0,drive.z);pcar.g.rotation.y=drive.h;})();
+const camDir=new THREE.Vector3(),camGoal=new THREE.Vector3();
+
+// --- jumping ---
+function jump(){if(jumpY===0&&!drive.on&&!seat)jumpV=4.2;}
+// --- carrying and throwing ---
+function nearBall(){let best=null,bd=1.7;for(const b of bodies){if(b.held)continue;const d=Math.hypot(b.p.x-pos.x,b.p.z-pos.z);if(d<bd&&b.p.y<2){bd=d;best=b;}}return best;}
+function pickUp(){const b=nearBall();if(!b)return;
+  if(b.m>8){say(b.name+'有 '+b.m+' 公斤，太重了，搬不動。');return;}
+  held=b;b.held=true;say('你撿起了'+b.name+'（'+b.m+' 公斤）。點一下畫面丟出去，或按「放下」。');}
+function putDown(){if(!held)return;held.held=false;held.v.set(vel.x,0,vel.z);held=null;}
+function throwHeld(){if(!held)return;const b=held;camera.getWorldDirection(camDir);camDir.y+=.18;camDir.normalize();
+  const J=Math.min(6,b.m*12);                                             // the same push for every ball: light ones fly, heavy ones barely move
+  b.held=false;held=null;b.v.set(vel.x,0,vel.z).addScaledVector(camDir,J/b.m);vel.x-=camDir.x*J/PLAYER_M;vel.z-=camDir.z*J/PLAYER_M;
+  b.kickBy='你';b.kickAt=performance.now()/1000;
+  say('你把'+b.name+'丟出去：球被推 '+J.toFixed(1)+' 牛頓·秒，速度每秒 '+(J/b.m).toFixed(1)+' 公尺；你也被往後推一樣多。');}
+function carryHeld(){if(!held)return;camera.getWorldDirection(camDir);
+  held.p.set(camera.position.x+camDir.x*.55,camera.position.y-.32+camDir.y*.4,camera.position.z+camDir.z*.55);held.v.set(vel.x,0,vel.z);held.mesh.position.copy(held.p);}
+// --- sitting ---
+function nearSeat(){let best=null,bd=1.5;
+  for(const k in ACT){const A=ACT[k];if(A.pose!=='sit'||!A.an)continue;if(people.some(n=>n.want===k))continue;
+    const d=Math.min(Math.hypot(A.ap[0]-pos.x,A.ap[1]-pos.z),Math.hypot(A.an[0]-pos.x,A.an[2]-pos.z));if(d<bd){bd=d;best=k;}}
+  return best;}
+function sitDown(){const k=nearSeat();if(!k)return;seat={k,A:ACT[k]};vel.x=vel.z=0;yaw=seat.A.yaw+Math.PI;pitch=-.05;}   // face the way the seat faces
+function standUp(){if(!seat)return;pos.x=seat.A.ap[0];pos.z=seat.A.ap[1];seat=null;}
+// --- driving ---
+// the car is two circles, front and back, for bumping into things
+function carHit(x,z,h){
+  const fx=Math.cos(h),fz=-Math.sin(h),R=.95;
+  for(const k of[1.15,-1.15]){const cx=x+fx*k,cz=z+fz*k;
+    if(!inWorld(cx,cz,R))return true;
+    for(const c of colliders)if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;
+    for(const d of doors){const c=doorArea(d);if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;}
+    for(const c of cars)if(c.on&&cx>c.box[0]-R&&cx<c.box[1]+R&&cz>c.box[2]-R&&cz<c.box[3]+R)return true;
+    for(const n of people)if(!n.hidden&&Math.hypot(n.pos.x-cx,n.pos.z-cz)<R+.3)return n;}
+  return false;
+}
+const nearCar=()=>!drive.on&&Math.hypot(drive.x-pos.x,drive.z-pos.z)<3;
+function getIn(){if(!nearCar())return;putDown();standUp();drive.on=true;drive.v=0;vel.x=vel.z=0;jumpY=jumpV=0;
+  say('你上車了。W 或往前推是油門，S 是煞車和倒車，A D 是方向盤。');}
+function getOut(){if(!drive.on||Math.abs(drive.v)>1.5){if(drive.on)say('先停車再下車。');return;}
+  const fx=Math.cos(drive.h),fz=-Math.sin(drive.h);
+  for(const side of[1,-1]){const x=drive.x+fz*1.75*side,z=drive.z-fx*1.75*side;                 // try the left side, then the right
+    if(!blocked(x,z)){drive.on=false;drive.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;return;}}
+  say('兩邊都被擋住了，往前開一點再下車。');}
+function driveStep(dt,f,s){
+  const a=Math.max(-1,Math.min(1,f)),st=-Math.max(-1,Math.min(1,s));
+  drive.v+=a*(a*drive.v<0?14:a>0?5.5:3.5)*dt;drive.v*=Math.exp(-.5*dt);drive.v=Math.max(-4,Math.min(13,drive.v));
+  if(Math.abs(a)<.05&&Math.abs(drive.v)<.2)drive.v=0;
+  const nh=drive.h+st*Math.max(-1,Math.min(1,drive.v/4))*1.5*dt,nx=drive.x+Math.cos(nh)*drive.v*dt,nz=drive.z-Math.sin(nh)*drive.v*dt;
+  const hit=drive.v?carHit(nx,nz,nh):false;drive.bumped-=dt;
+  if(!hit){drive.x=nx;drive.z=nz;drive.h=nh;}
+  else{if(hit!==true){notify(hit,'car');drive.v=0;}                                              // a person: stop dead, and they will tell you what they think
+    else{if(Math.abs(drive.v)>2.5&&drive.bumped<=0){drive.bumped=1;say('碰！車子撞到東西，東西也用一樣大的力把車子推回來，所以車子彈了一下。');}drive.v*=-.2;}}
+  pos.x=drive.x;pos.z=drive.z;
+  pcar.g.position.set(drive.x,0,drive.z);pcar.g.rotation.y=drive.h;for(const w of pcar.wheels)w.rotation.z-=drive.v*dt/.33;
+  // the camera follows behind and above
+  const fx=Math.cos(drive.h),fz=-Math.sin(drive.h);
+  camGoal.set(drive.x-fx*6.4,3.2,drive.z-fz*6.4);camera.position.lerp(camGoal,1-Math.exp(-dt*5));
+  camera.lookAt(drive.x+fx*2.5,1.1,drive.z+fz*2.5);
+  yaw=Math.atan2(-fx,-fz);
+}
+// --- one step of you. Returns true when it has already placed the camera (driving or sitting) ---
+function playerStep(dt,f,s){
+  const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
+  if(jumpY>0||jumpV>0){jumpV-=g*dt;jumpY+=jumpV*dt;const top=roomAt(pos.x,pos.z)?RH-1.78:7;
+    if(jumpY>top){jumpY=top;jumpV=Math.min(0,jumpV);}if(jumpY<=0){jumpY=0;jumpV=0;}}
+  carLights(pcar,drive.on&&f<-.1);
+  if(drive.on){driveStep(dt,f,s);return true;}
+  if(seat){if(Math.abs(f)+Math.abs(s)>.4){standUp();return false;}
+    const A=seat.A;pos.x=A.an[0];pos.z=A.an[2];camera.position.set(A.an[0],A.an[1]+.62,A.an[2]);camera.rotation.set(pitch,yaw,0);return true;}
+  return false;
+}
+// --- the action buttons ---
+const KEY={jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',car:'F'};
+const ACTS={jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['上車',getIn],out:['下車',getOut]};
+let actKey='';
+function updateActs(){
+  const list=[];
+  if(drive.on)list.push('out');
+  else{if(nearCar())list.push('in');
+    if(seat)list.push('stand');else if(nearSeat())list.push('sit');
+    if(held)list.push('throw','drop');else{const b=nearBall();if(b)list.push('pick');}
+    if(!seat)list.push('jump');}
+  const key=list.join(',')+(held?held.name:'')+((!held&&list.includes('pick'))?nearBall().name:'');
+  if(key===actKey)return;actKey=key;
+  const el=$('acts');el.textContent='';
+  for(const id of list){const b=document.createElement('button');b.type='button';
+    b.textContent=ACTS[id][0]+(id==='pick'?nearBall().name:id==='throw'||id==='drop'?held.name:'');
+    if(!isTouch){const k=document.createElement('kbd');k.textContent=KEY[id==='in'||id==='out'?'car':id];b.appendChild(k);}
+    b.onclick=()=>{ACTS[id][1]();actKey='';updateActs();canvas.focus({preventScroll:true});};el.appendChild(b);}
+}
+addEventListener('keydown',e=>{if(e.repeat)return;
+  if(e.code==='Space')jump();
+  else if(e.code==='KeyE'){if(held)putDown();else if(nearBall())pickUp();}
+  else if(e.code==='KeyF'){if(drive.on)getOut();else getIn();}
+  else if(e.code==='KeyQ'){if(seat)standUp();else sitDown();}
+});
 
 /* ---------- people who live here ---------- */
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
@@ -1144,7 +1265,7 @@ function freeAct(n,id){                                                 // find 
   const type=GOALS[id].type;let best=null,bs=-1e9;
   for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
     if(A.house!=null&&A.house!==n.home)continue;                         // other people's houses are off limits
-    if(!A.shared){let taken=false;
+    if(!A.shared){let taken=!!seat&&seat.k===k;                           // you might be sitting there
       for(const m of people){if(m===n||!m.want)continue;const O=ACT[m.want];
         if(O.shared)continue;
         if(m.want===k||(O.owner===A.owner&&(A.solo||O.solo))){taken=true;break;}}   // someone lying on a sofa takes the whole sofa
@@ -1221,6 +1342,8 @@ function notify(n,type,b){
     else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
     else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
+  else if(type==='car'){n.cars=(now-(n.carAt||-99)<60?n.cars||0:0)+1;n.carAt=now;n.mood-=.1;      // nearly run over: a fright the first times, then real anger
+    react(n,n.cars<3?'哇！小心開車！':'你到底會不會開車！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
   else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
@@ -1408,13 +1531,15 @@ function blocked(x,z){
   for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
     if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
+  if(!drive.on){const fx=Math.cos(drive.h),fz=-Math.sin(drive.h);                          // your parked car is solid
+    for(const k of[1.15,-1.15]){const cx=drive.x+fx*k,cz=drive.z+fz*k,R=.95+PR;if(Math.hypot(x-cx,z-cz)<R&&Math.hypot(pos.x-cx,pos.z-cz)>=Math.hypot(x-cx,z-cz))return true;}}
   for(const c of cars){if(!c.on)continue;const q=c.box,hit=(a,b)=>a>q[0]-PR&&a<q[1]+PR&&b>q[2]-PR&&b<q[3]+PR;if(hit(x,z)&&!hit(pos.x,pos.z))return true;}   // cars are solid too
   for(const n of people){if(n.hidden||n.lie)continue; // people are solid, but you can always step away from them
     const d=Math.hypot(x-n.pos.x,z-n.pos.z);if(d<.5&&d<Math.hypot(pos.x-n.pos.x,pos.z-n.pos.z))return true;}
   return false;
 }
 addEventListener('keydown',e=>{keys[e.code]=true;if(e.code.startsWith('Arrow')||e.code==='Space')e.preventDefault();
-  if(e.code==='KeyE')tryInteract(0,0);});
+});
 addEventListener('keyup',e=>{keys[e.code]=false;});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===canvas;});
@@ -1447,7 +1572,8 @@ function up(e){
   if(down&&down.id===e.pointerId&&e.type==='pointerup'){
     const tap=performance.now()-down.t<300&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<8;
     if(tap){
-      if(locked)tryInteract(0,0);
+      if(held)throwHeld();
+      else if(locked)tryInteract(0,0);
       else{const p=toNdc(e);
         if(!tryInteract(p.x,p.y)&&e.pointerType!=='touch'&&canvas.requestPointerLock){
           try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(_){}}}
@@ -1488,12 +1614,14 @@ function tick(now){
   if(keys.ArrowLeft)yaw+=1.9*dt;if(keys.ArrowRight)yaw-=1.9*dt;
   const sp=(keys.ShiftLeft||keys.ShiftRight)?3.3:1.9,sn=Math.sin(yaw),cs=Math.cos(yaw);
   let tx=(-sn*f+cs*s),tz=(-cs*f-sn*s);const tl=Math.hypot(tx,tz);if(tl>1){tx/=tl;tz/=tl;}
+  if(!playerStep(dt,f,s)){
   const e=1-Math.exp(-dt*10);vel.x+=(tx*sp-vel.x)*e;vel.z+=(tz*sp-vel.z)*e;
   const nx=pos.x+vel.x*dt;if(!blocked(nx,pos.z))pos.x=nx;else vel.x=0;
   const nz=pos.z+vel.z*dt;if(!blocked(pos.x,nz))pos.z=nz;else vel.z=0;
   const v=Math.hypot(vel.x,vel.z);bob+=v*dt*3.6;
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
-  camera.rotation.set(pitch,yaw,0);camera.updateMatrixWorld();
+  camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY;}
+  camera.updateMatrixWorld();carryHeld();if(frame%8===0)updateActs();
   // the people, then the physics in small fixed steps
   for(const n of people)updNPC(n,dt,t);
   updateDoors(dt);updateCars(dt);updateWeather(dt);
@@ -1520,7 +1648,7 @@ scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.env
 [M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
 M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,drive,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
