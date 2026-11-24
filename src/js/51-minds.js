@@ -27,7 +27,8 @@ function freeAct(n,id){                                                 // find 
         if(O.shared)continue;
         if(m.want===k||(O.owner===A.owner&&(A.solo||O.solo))){taken=true;break;}}   // someone lying on a sofa takes the whole sofa
       if(taken)continue;}
-    const s=(A.pref||0)*100-Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);  // a bed beats a sofa; otherwise the nearest one
+    const dist=Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);
+    const s=(A.pref||0)*100+(n.visitor&&type==='exit'?dist:-dist);        // a bed beats a sofa; otherwise the nearest one. Visitors leave by the far end, so they walk the whole street
     if(s>bs){bs=s;best=k;}}
   return best;
 }
@@ -38,19 +39,22 @@ function utility(n,id){
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside)u*=dark>.6?.2:.85;                                        // few people go out after dark
+  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
 }
-function setGoal(n,id){n.goal={id,elapsed:0,kicks:0};n.want=freeAct(n,id)||Object.keys(ACT).find(k=>ACT[k].type===GOALS[id].type);}
+function setGoal(n,id){let w=freeAct(n,id);
+  if(!w){id=n.visitor?'work':'window';w=freeAct(n,id)||Object.keys(ACT).find(k=>ACT[k].type===GOALS[id].type&&(ACT[k].house==null||ACT[k].house===n.home));}   // nowhere to do it: fall back to something that always exists
+  n.goal={id,elapsed:0,kicks:0};n.want=w;}
 function choose(n){
   if(n.resume){const r=n.resume;n.resume=null;                          // go back to what you were doing before
     if(utility(n,r.id)>0){n.goal=r;n.want=freeAct(n,r.id);return;}}
   let best='window',bu=-1;for(const id in GOALS){const u=utility(n,id);if(u>bu){bu=u;best=id;}}
-  if(bu<0){best=freeAct(n,'window')?'window':'stretch';}
+  if(bu<0){best=n.visitor?'work':freeAct(n,'window')?'window':'stretch';}
   setGoal(n,best);
 }
-function endGoal(n,ok){if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);}
+function endGoal(n,ok){if(n.visitor&&n.goal.id==='work'){n.stay=rnd(1,2.2);for(const k in n.need)n.need[k]=rnd(.25,.6);n.need.energy=1;}   // a visitor arriving: fresh, with things they feel like doing
+  if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);}
 function brain(n,dt){
   const dh=dt*SPEEDS[speedIdx][0],g=n.goal,G=GOALS[g.id],atWork=(g.id==='work'&&n.hidden)||n.lie;   // needs run down slower at work and asleep
   for(const k in DECAY)n.need[k]=Math.max(0,n.need[k]-DECAY[k]*dh*(atWork&&k!=='energy'?.35:1));
@@ -60,6 +64,8 @@ function brain(n,dt){
   if(doing&&G.need){g.elapsed+=dh;n.need[G.need]=Math.min(1,n.need[G.need]+G.gain*dh);
     if(G.also)n.need[G.also]=Math.min(1,n.need[G.also]+G.gain*.5*dh);}
   if(n.react)return;                                                    // finish reacting before deciding anything
+  if(n.visitor&&g.id!=='work'){n.stay-=dh;                                // visitors go home after a while, or when night falls, or when it rains
+    if(n.stay<=0||dark>.75||rainOn){n.o.shift=[(clock+23.9)%24,(clock+rnd(.8,2.5)+dark*6)%24];n.resume=null;setGoal(n,'work');return;}}
   if(g.id!=='work'&&inSpan(n.o.shift,clock)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
   if(g.id!=='sleep'&&g.id!=='work'&&n.need.energy<.06&&utility(n,'sleep')>0){setGoal(n,'sleep');return;}   // so does being worn out
   const done=g.id==='work'?!inSpan(n.o.shift,clock):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
@@ -89,10 +95,12 @@ function notify(n,type,b){
     if(g.id==='ball')return;                              // playing ball already: getting bumped is part of the game
     if(!(b.kickBy==='你'&&now-b.kickAt<4)){react(n,'哇！',1,'startle');return;}       // nobody to blame
     n.hits=(now-n.hitAt<60?n.hits:0)+1;n.hitAt=now;
-    if(n.o.playful>.6&&n.mood>.4&&g.id!=='work')react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
+    if(n.o.playful>.6&&n.mood>.4&&g.id!=='work'&&freeAct(n,'ball'))react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
     else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
     else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
+  else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
+    react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
   else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
     n.tvOffs=(now-n.tvOffAt<90?n.tvOffs:0)+1;n.tvOffAt=now;
     if(n.tvOffs<2)react(n,'欸，我在看耶',1.8,'glare',()=>{const S=houses[n.home].S;if(!S.tv){S.tv=true;applySwitches();}});          // turns it back on
@@ -103,7 +111,7 @@ const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
 function sched(n){return n.want;}
 function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
-people.forEach((n,i)=>{const H=houses[n.home];n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);       // start from home so 'nearest spot' means something
+people.forEach((n,i)=>{const H=houses[n.home];if(H)n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);else n.pos.set(i%2?WB.x1:WB.x0,0,i%3?5:14);       // start from home so 'nearest spot' means something
   setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
@@ -144,7 +152,7 @@ function updNPC(n,dt,t){
     n.pos.x+=(ap[0]-n.pos.x)*k4;n.pos.z+=(ap[1]-n.pos.z)*k4;label='';
     if(Math.hypot(ap[0]-n.pos.x,ap[1]-n.pos.z)<.06&&Math.abs(n.y-n.stand)<.05){n.act=want;begin(n);}
   }else if(n.phase==='go'){
-    label='要去'+A.label;
+    label='要去'+A.label;n.atCurb=false;
     if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
@@ -158,9 +166,11 @@ function updNPC(n,dt,t){
       else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
         if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
       else{if(dP>.9){n.wait=0;n.said=false;}
-        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),stp=1.15*dt;
-        if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
-        name='walk';n.ph+=dt*7.2;}
+        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=rainOn&&!roomAt(n.pos.x,n.pos.z)?1.7:1,stp=1.15*hurry*dt;
+        n.atCurb=carDanger(n,q);
+        if(n.atCurb){label='等車子過';tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
+        else{if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
+          name='walk';n.ph+=dt*7.2*hurry;}}
     }else if(!A.chase){n.phase='in';n.settle=0;}
   }else{                                                  // settle in, then stay
     const q=A.an||[A.ap[0],n.stand,A.ap[1]];

@@ -100,6 +100,11 @@ function physStep(dt){
       else{const o=[b.p.x-q[0],q[1]-b.p.x,b.p.y-q[2],q[3]-b.p.y,b.p.z-q[4],q[5]-b.p.z];let m=0;for(let i=1;i<6;i++)if(o[i]<o[m])m=i;
         contact(b,m===0?-1:m===1?1:0,m===2?-1:m===3?1:0,m===4?-1:m===5?1:0,o[m]+r,0,0,0);}
     }
+    for(const c of cars){if(!c.on||b.p.y-r>1.55)continue;                  // a car is a big moving box: it knocks balls away, and the ball pushes back on the car just as hard
+      const q=c.box,cx=Math.max(q[0],Math.min(q[1],b.p.x)),cy=Math.max(.2,Math.min(1.55,b.p.y)),cz=Math.max(q[2],Math.min(q[3],b.p.z));
+      const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;if(d2>=r*r||d2<1e-10)continue;
+      const d=Math.sqrt(d2),J=contact(b,dx/d,dy/d,dz/d,r-d,c.dir*c.v,0,1200);
+      if(J/b.m>1)say('車子 ⇄ '+b.name+'：兩邊各被推 '+J.toFixed(1)+' 牛頓·秒。車子有 1200 公斤，所以幾乎沒變慢。',true);}
     const hp=hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
     for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption

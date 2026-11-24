@@ -76,6 +76,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
       <button id="bOrb" type="button" aria-pressed="false">引力球</button>
       <button id="bGrav" type="button" class="plain">重力：地球</button>
       <button id="bMind" type="button" aria-pressed="false">想法</button>
+      <button id="bRain" type="button" class="plain">天氣：晴天</button>
     </div>
     <div class="clock">
       <output id="clk" for="time">18:40</output>
@@ -327,6 +328,12 @@ const WORLD={
       person('莉莉',1.66,0xf2d0b4,0x7a4a22,0x7fb8a6,0xf0e8dc,0xd9623f,true,[13,21],[0,9],.7,.5,{energy:1,fun:1.1,fit:.9,calm:1,care:1.1})]},
     {no:4,tpl:'cottage',x:10,z:19,flip:true,ext:0xe6dfc8,accent:0x5a4a2a,roof:0x3d3630,door:0x7a3b4a,balls:'few',people:[
       person('阿明',1.74,0xcf9a72,0x241a14,0x3b4a7a,0x6a5a48,0x2a2420,false,[10,19],[23,8],.45,.7,{energy:1,fun:1.1,fit:1,calm:.9,care:.9})]}
+  ],
+  // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
+  visitors:[
+    person('阿寬',1.8,0xb98a62,0x101010,0xf25c3d,0x1c1c22,0xf4f4f4,false,null,[23,6],.5,.8,{energy:1,fun:1,fit:1.6,calm:.8,care:.5}),
+    person('婷婷',1.62,0xf0cfb2,0x5a3418,0x9ad0c2,0x34405a,0xe8e0d0,true,null,[23,6],.75,.5,{energy:1,fun:1,fit:.9,calm:1.4,care:.5}),
+    person('老王',1.7,0xd2a078,0x8a8a8a,0x5a4a6a,0x2a2a2a,0x1a1a1a,false,null,[23,6],.9,.2,{energy:1,fun:1,fit:.8,calm:1.5,care:.5})
   ],
   outdoor:[
     // trees
@@ -798,7 +805,9 @@ function applyTime(){
   const duskW=ss(-.3,-.02,se),dayW=ss(.12,.5,se);dark=1-duskW;
   blend(skyU.cTop.value,SKY.top,duskW,dayW);blend(skyU.cMid.value,SKY.mid,duskW,dayW);blend(skyU.cHor.value,SKY.hor,duskW,dayW);skyU.stars.value=ss(.6,1,dark)*1.3;
   blend(ringMat.color,SKY.city,duskW,dayW);ringGlow.opacity=.25+.75*dark-.25*dayW;blend(M.water.color,SKY.sea,duskW,dayW);
-  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8);
+  if(rain>.01){const gk=1-.55*rain;for(const u of[skyU.cTop,skyU.cMid,skyU.cHor]){const c=u.value,m=(c.r+c.g+c.b)/3;c.r=(c.r+(m-c.r)*.6*rain)*gk;c.g=(c.g+(m-c.g)*.6*rain)*gk;c.b=(c.b+(m-c.b)*.6*rain)*gk;}
+    sun.intensity*=1-.75*rain;skyU.stars.value*=1-rain;}                  // rain clouds: greyer, darker, no stars
+  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8);scene.fog.density=.0045+.012*rain;
   skyMesh.position.set(pos.x,0,pos.z);ring.position.set(pos.x,0,pos.z);
   hemi.color.copy(cNight).lerp(cDusk,duskW).lerp(cDay,dayW);hemi.intensity=.02+.08*duskW+.1*dayW;
   exposureTarget=(1.15-.15*duskW)*(roomAt(pos.x,pos.z)?1:1-.22*dayW);    // outdoors in daylight is bright: squint a little
@@ -917,6 +926,11 @@ function physStep(dt){
       else{const o=[b.p.x-q[0],q[1]-b.p.x,b.p.y-q[2],q[3]-b.p.y,b.p.z-q[4],q[5]-b.p.z];let m=0;for(let i=1;i<6;i++)if(o[i]<o[m])m=i;
         contact(b,m===0?-1:m===1?1:0,m===2?-1:m===3?1:0,m===4?-1:m===5?1:0,o[m]+r,0,0,0);}
     }
+    for(const c of cars){if(!c.on||b.p.y-r>1.55)continue;                  // a car is a big moving box: it knocks balls away, and the ball pushes back on the car just as hard
+      const q=c.box,cx=Math.max(q[0],Math.min(q[1],b.p.x)),cy=Math.max(.2,Math.min(1.55,b.p.y)),cz=Math.max(q[2],Math.min(q[3],b.p.z));
+      const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;if(d2>=r*r||d2<1e-10)continue;
+      const d=Math.sqrt(d2),J=contact(b,dx/d,dy/d,dz/d,r-d,c.dir*c.v,0,1200);
+      if(J/b.m>1)say('車子 ⇄ '+b.name+'：兩邊各被推 '+J.toFixed(1)+' 牛頓·秒。車子有 1200 公斤，所以幾乎沒變慢。',true);}
     const hp=hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
     for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption
@@ -930,6 +944,91 @@ function syncBalls(dt){for(const b of bodies){
   if(b.ground&&sp>.01){b.ax.set(b.v.z/sp,0,-b.v.x/sp);b.w=sp/b.r;}else b.w*=Math.exp(-.3*dt);
   if(b.w>.01){qSpin.setFromAxisAngle(b.ax,b.w*dt);b.mesh.quaternion.premultiply(qSpin);}
   b.mesh.position.copy(b.p);}}
+
+/* ---------- cars ---------- */
+// Cars drive along the road, one lane each way. Drivers are careful: they slow down and stop for anyone on the road ahead,
+// and they stop at the zebra crossing when someone is waiting there. If you stand in the way they wait, then honk.
+const ST=WORLD.street,ZEBRA=[1.9-3.3,1.9+3.3],CAR_SPEED=7;
+const onRoad=z=>z>ST.z0&&z<ST.z1;
+const cars=[];
+(function(){
+  const cols=[0xc4553b,0x1f6a6e,0xe0a45c,0xe9e2d6,0x3b4a7a,0x2a2c32];
+  const glassM=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:.15,metalness:.6}),tyre=new THREE.MeshStandardMaterial({color:0x111114,roughness:.9});
+  const beamTex=new THREE.CanvasTexture(glowC);
+  for(let i=0;i<4;i++){
+    const g=new THREE.Group(),lane=i%2,dir=lane?1:-1;scene.add(g);cur=g;
+    const paint=new THREE.MeshStandardMaterial({color:cols[i%cols.length],roughness:.35,metalness:.4});
+    box(4.2,.62,1.78,paint,0,.66,0,{r:.12});box(2.3,.56,1.6,glassM,-.15,1.22,0,{r:.14});box(2.1,.05,1.5,paint,-.15,1.5,0,{r:.02});
+    const wheels=[[-1.35,-.82],[-1.35,.82],[1.35,-.82],[1.35,.82]].map(p=>{const w=cyl(.33,.33,.22,tyre,p[0],.33,p[1],16);w.rotation.x=Math.PI/2;return w;});
+    const headMat=new THREE.MeshBasicMaterial({color:0x222222}),tailMat=new THREE.MeshBasicMaterial({color:0x330000});
+    [-.6,.6].forEach(z=>{box(.06,.14,.34,headMat,2.1,.72,z).castShadow=false;box(.06,.12,.34,tailMat,-2.1,.74,z).castShadow=false;});
+    const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:beamTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
+    beam.rotation.x=-Math.PI/2;beam.position.set(5.6,.02,0);g.add(beam);                     // pool of light on the road at night
+    cur=scene;g.rotation.y=dir>0?0:Math.PI;g.visible=false;
+    const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
+    cars.push({g,dir,z:lane?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,wheels,headMat,tailMat,beam,tag,box:[0,0,0,0]});
+  }
+})();
+// should this walker hold back at the kerb? yes if a moving car will get here within a few seconds
+function carDanger(n,q){
+  if(onRoad(n.pos.z)||!(onRoad(q[1])||(q[1]-ST.z0)*(n.pos.z-ST.z0)<0))return false;       // already crossing, or not heading for the road
+  if(Math.min(Math.abs(n.pos.z-ST.z0),Math.abs(n.pos.z-ST.z1))>.4)return false;           // not at the kerb yet
+  for(const c of cars){if(!c.on||c.v<1)continue;const ahead=(n.pos.x-c.x)*c.dir;if(ahead>-2.5&&ahead<c.v*4+4)return true;}
+  return false;
+}
+const cv3=new THREE.Vector3();
+function updateCars(dt){
+  for(const c of cars){
+    if(!c.on){c.t-=dt;
+      if(c.t<=0){const sx=-c.dir*85;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<14)){c.t=2;continue;}
+        c.on=true;c.x=sx;c.v=CAR_SPEED;c.g.visible=true;}
+      continue;}
+    const front=c.x+c.dir*2.1;let gap=1e9;
+    const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
+    see(pos.x,pos.z);
+    for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);
+      if(n.atCurb&&n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;if(d>-.6&&d<gap)gap=d;}}   // someone waiting at the zebra: stop before it
+    for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
+    const want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
+    c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;
+    if(c.v<.2&&gap<4){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
+    c.honk-=dt;
+    if(c.x*c.dir>85){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
+    c.g.position.set(c.x,0,c.z);for(const w of c.wheels)w.rotation.z-=c.v*dt/.33;
+    c.box[0]=c.x-2.15;c.box[1]=c.x+2.15;c.box[2]=c.z-.92;c.box[3]=c.z+.92;
+    const k=Math.max(0,Math.min(1,(dark-.2)/.4));c.headMat.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);c.tailMat.color.setRGB(.35+k*3+(want<c.v-.5?3:0),.02,.02);c.beam.material.opacity=k*.55;
+    c.tag.hidden=c.honk<=0;
+    if(c.honk>0){cv3.set(c.x,2,c.z).project(camera);if(cv3.z<1){c.tag.style.left=((cv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-cv3.y)/2*canvas.clientHeight)+'px';}else c.tag.hidden=true;}
+  }
+}
+
+/* ---------- weather ---------- */
+// Rain comes and goes by itself, or you press the button. When it starts, people outside get a fright,
+// give up whatever they were doing out there, and hurry home.
+let rainOn=false,rain=0,rainT=rnd(150,300);
+const RN=900,rPos=new Float32Array(RN*6);                                   // each drop is a short streak: two points
+for(let i=0;i<RN;i++){const x=rnd(-16,16),y=rnd(0,12),z=rnd(-16,16);rPos.set([x,y,z,x+.03,y+.45,z],i*6);}
+const rGeo=new THREE.BufferGeometry();rGeo.setAttribute('position',new THREE.BufferAttribute(rPos,3));
+const rainPts=new THREE.LineSegments(rGeo,new THREE.LineBasicMaterial({color:0xbfd4e6,transparent:true,opacity:.4,depthWrite:false,fog:false}));
+rainPts.frustumCulled=false;rainPts.visible=false;scene.add(rainPts);
+function setRain(on){
+  if(on===rainOn)return;rainOn=on;rainT=rnd(120,260);
+  $('bRain').textContent='天氣：'+(on?'下雨':'晴天');
+  say(on?'下雨了：在外面的人會嚇一跳，放下手邊的事，跑回家。':'雨停了。');
+  if(on)for(const n of people)if(!n.hidden&&!roomAt(n.pos.x,n.pos.z))notify(n,'rain');
+}
+$('bRain').onclick=()=>setRain(!rainOn);
+function updateWeather(dt){
+  rainT-=dt;if(rainT<=0)setRain(!rainOn&&Math.random()<.6?true:false);
+  rain+=((rainOn?1:0)-rain)*(1-Math.exp(-dt*.8));
+  M.asphalt.roughness=.85-.5*rain;M.concrete.roughness=.9-.4*rain;               // wet ground shines
+  rainPts.visible=rain>.03;if(!rainPts.visible)return;
+  rainPts.material.opacity=.4*rain;rainPts.position.set(pos.x,0,pos.z);
+  for(let i=0;i<RN;i++){const k=i*6;let x=rPos[k],y=rPos[k+1]-15*dt,z=rPos[k+2];
+    if(y<0||(y<RH+.3&&roomAt(pos.x+x,pos.z+z))){x=rnd(-16,16);y=rnd(8,12);z=rnd(-16,16);}   // roofs keep the rain out
+    rPos[k]=x;rPos[k+1]=y;rPos[k+2]=z;rPos[k+3]=x+.03;rPos[k+4]=y+.45;rPos[k+5]=z;}
+  rGeo.attributes.position.needsUpdate=true;
+}
 
 /* ---------- people who live here ---------- */
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
@@ -1009,7 +1108,9 @@ function makePerson(o){
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
-const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home=H.id;return n;}));
+const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home=H.id;return n;}))
+  .concat(WORLD.visitors.map((o,i)=>{const n=makePerson(o);n.home=-1;n.visitor=true;n.stay=0;
+    n.o.shift=[(clock+23)%24,(clock+.15+i*.45)%24];return n;}));              // for a visitor, 'shift' is the time spent away from this street
 
 /* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
 // Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
@@ -1040,7 +1141,8 @@ function freeAct(n,id){                                                 // find 
         if(O.shared)continue;
         if(m.want===k||(O.owner===A.owner&&(A.solo||O.solo))){taken=true;break;}}   // someone lying on a sofa takes the whole sofa
       if(taken)continue;}
-    const s=(A.pref||0)*100-Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);  // a bed beats a sofa; otherwise the nearest one
+    const dist=Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);
+    const s=(A.pref||0)*100+(n.visitor&&type==='exit'?dist:-dist);        // a bed beats a sofa; otherwise the nearest one. Visitors leave by the far end, so they walk the whole street
     if(s>bs){bs=s;best=k;}}
   return best;
 }
@@ -1051,19 +1153,22 @@ function utility(n,id){
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside)u*=dark>.6?.2:.85;                                        // few people go out after dark
+  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
 }
-function setGoal(n,id){n.goal={id,elapsed:0,kicks:0};n.want=freeAct(n,id)||Object.keys(ACT).find(k=>ACT[k].type===GOALS[id].type);}
+function setGoal(n,id){let w=freeAct(n,id);
+  if(!w){id=n.visitor?'work':'window';w=freeAct(n,id)||Object.keys(ACT).find(k=>ACT[k].type===GOALS[id].type&&(ACT[k].house==null||ACT[k].house===n.home));}   // nowhere to do it: fall back to something that always exists
+  n.goal={id,elapsed:0,kicks:0};n.want=w;}
 function choose(n){
   if(n.resume){const r=n.resume;n.resume=null;                          // go back to what you were doing before
     if(utility(n,r.id)>0){n.goal=r;n.want=freeAct(n,r.id);return;}}
   let best='window',bu=-1;for(const id in GOALS){const u=utility(n,id);if(u>bu){bu=u;best=id;}}
-  if(bu<0){best=freeAct(n,'window')?'window':'stretch';}
+  if(bu<0){best=n.visitor?'work':freeAct(n,'window')?'window':'stretch';}
   setGoal(n,best);
 }
-function endGoal(n,ok){if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);}
+function endGoal(n,ok){if(n.visitor&&n.goal.id==='work'){n.stay=rnd(1,2.2);for(const k in n.need)n.need[k]=rnd(.25,.6);n.need.energy=1;}   // a visitor arriving: fresh, with things they feel like doing
+  if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);}
 function brain(n,dt){
   const dh=dt*SPEEDS[speedIdx][0],g=n.goal,G=GOALS[g.id],atWork=(g.id==='work'&&n.hidden)||n.lie;   // needs run down slower at work and asleep
   for(const k in DECAY)n.need[k]=Math.max(0,n.need[k]-DECAY[k]*dh*(atWork&&k!=='energy'?.35:1));
@@ -1073,6 +1178,8 @@ function brain(n,dt){
   if(doing&&G.need){g.elapsed+=dh;n.need[G.need]=Math.min(1,n.need[G.need]+G.gain*dh);
     if(G.also)n.need[G.also]=Math.min(1,n.need[G.also]+G.gain*.5*dh);}
   if(n.react)return;                                                    // finish reacting before deciding anything
+  if(n.visitor&&g.id!=='work'){n.stay-=dh;                                // visitors go home after a while, or when night falls, or when it rains
+    if(n.stay<=0||dark>.75||rainOn){n.o.shift=[(clock+23.9)%24,(clock+rnd(.8,2.5)+dark*6)%24];n.resume=null;setGoal(n,'work');return;}}
   if(g.id!=='work'&&inSpan(n.o.shift,clock)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
   if(g.id!=='sleep'&&g.id!=='work'&&n.need.energy<.06&&utility(n,'sleep')>0){setGoal(n,'sleep');return;}   // so does being worn out
   const done=g.id==='work'?!inSpan(n.o.shift,clock):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
@@ -1102,10 +1209,12 @@ function notify(n,type,b){
     if(g.id==='ball')return;                              // playing ball already: getting bumped is part of the game
     if(!(b.kickBy==='你'&&now-b.kickAt<4)){react(n,'哇！',1,'startle');return;}       // nobody to blame
     n.hits=(now-n.hitAt<60?n.hits:0)+1;n.hitAt=now;
-    if(n.o.playful>.6&&n.mood>.4&&g.id!=='work')react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
+    if(n.o.playful>.6&&n.mood>.4&&g.id!=='work'&&freeAct(n,'ball'))react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
     else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
     else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
+  else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
+    react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
   else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
     n.tvOffs=(now-n.tvOffAt<90?n.tvOffs:0)+1;n.tvOffAt=now;
     if(n.tvOffs<2)react(n,'欸，我在看耶',1.8,'glare',()=>{const S=houses[n.home].S;if(!S.tv){S.tv=true;applySwitches();}});          // turns it back on
@@ -1116,7 +1225,7 @@ const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
 function sched(n){return n.want;}
 function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
-people.forEach((n,i)=>{const H=houses[n.home];n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);       // start from home so 'nearest spot' means something
+people.forEach((n,i)=>{const H=houses[n.home];if(H)n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);else n.pos.set(i%2?WB.x1:WB.x0,0,i%3?5:14);       // start from home so 'nearest spot' means something
   setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
@@ -1157,7 +1266,7 @@ function updNPC(n,dt,t){
     n.pos.x+=(ap[0]-n.pos.x)*k4;n.pos.z+=(ap[1]-n.pos.z)*k4;label='';
     if(Math.hypot(ap[0]-n.pos.x,ap[1]-n.pos.z)<.06&&Math.abs(n.y-n.stand)<.05){n.act=want;begin(n);}
   }else if(n.phase==='go'){
-    label='要去'+A.label;
+    label='要去'+A.label;n.atCurb=false;
     if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
@@ -1171,9 +1280,11 @@ function updNPC(n,dt,t){
       else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
         if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
       else{if(dP>.9){n.wait=0;n.said=false;}
-        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),stp=1.15*dt;
-        if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
-        name='walk';n.ph+=dt*7.2;}
+        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=rainOn&&!roomAt(n.pos.x,n.pos.z)?1.7:1,stp=1.15*hurry*dt;
+        n.atCurb=carDanger(n,q);
+        if(n.atCurb){label='等車子過';tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
+        else{if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
+          name='walk';n.ph+=dt*7.2*hurry;}}
     }else if(!A.chase){n.phase='in';n.settle=0;}
   }else{                                                  // settle in, then stay
     const q=A.an||[A.ap[0],n.stand,A.ap[1]];
@@ -1289,6 +1400,7 @@ function blocked(x,z){
   for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
     if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
+  for(const c of cars){if(!c.on)continue;const q=c.box,hit=(a,b)=>a>q[0]-PR&&a<q[1]+PR&&b>q[2]-PR&&b<q[3]+PR;if(hit(x,z)&&!hit(pos.x,pos.z))return true;}   // cars are solid too
   for(const n of people){if(n.hidden||n.lie)continue; // people are solid, but you can always step away from them
     const d=Math.hypot(x-n.pos.x,z-n.pos.z);if(d<.5&&d<Math.hypot(pos.x-n.pos.x,pos.z-n.pos.z))return true;}
   return false;
@@ -1376,7 +1488,7 @@ function tick(now){
   camera.rotation.set(pitch,yaw,0);camera.updateMatrixWorld();
   // the people, then the physics in small fixed steps
   for(const n of people)updNPC(n,dt,t);
-  updateDoors(dt);
+  updateDoors(dt);updateCars(dt);updateWeather(dt);
   autoT+=dt;if(autoT>.5){autoT=0;autoHome();}
   acc+=dt;let steps=0;while(acc>=PH&&steps<14){physStep(PH);acc-=PH;steps++;}if(steps===14)acc=0;
   syncBalls(dt);
@@ -1400,7 +1512,7 @@ scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.env
 [M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
 M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

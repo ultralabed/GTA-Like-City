@@ -48,7 +48,9 @@ function applyTime(){
   const duskW=ss(-.3,-.02,se),dayW=ss(.12,.5,se);dark=1-duskW;
   blend(skyU.cTop.value,SKY.top,duskW,dayW);blend(skyU.cMid.value,SKY.mid,duskW,dayW);blend(skyU.cHor.value,SKY.hor,duskW,dayW);skyU.stars.value=ss(.6,1,dark)*1.3;
   blend(ringMat.color,SKY.city,duskW,dayW);ringGlow.opacity=.25+.75*dark-.25*dayW;blend(M.water.color,SKY.sea,duskW,dayW);
-  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8);
+  if(rain>.01){const gk=1-.55*rain;for(const u of[skyU.cTop,skyU.cMid,skyU.cHor]){const c=u.value,m=(c.r+c.g+c.b)/3;c.r=(c.r+(m-c.r)*.6*rain)*gk;c.g=(c.g+(m-c.g)*.6*rain)*gk;c.b=(c.b+(m-c.b)*.6*rain)*gk;}
+    sun.intensity*=1-.75*rain;skyU.stars.value*=1-rain;}                  // rain clouds: greyer, darker, no stars
+  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8);scene.fog.density=.0045+.012*rain;
   skyMesh.position.set(pos.x,0,pos.z);ring.position.set(pos.x,0,pos.z);
   hemi.color.copy(cNight).lerp(cDusk,duskW).lerp(cDay,dayW);hemi.intensity=.02+.08*duskW+.1*dayW;
   exposureTarget=(1.15-.15*duskW)*(roomAt(pos.x,pos.z)?1:1-.22*dayW);    // outdoors in daylight is bright: squint a little
