@@ -61,6 +61,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 .clock button{font:600 12px/1 var(--body);color:var(--text);background:rgba(255,255,255,.08);border:1px solid var(--line);
   padding:8px 11px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .clock button:focus-visible,.clock input:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+.minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
 .phys{font-size:12px;line-height:1.45;color:var(--muted);background:var(--glass);border:1px solid var(--line);border-radius:10px;
   padding:6px 10px;max-width:min(100%,30em);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .tag{position:absolute;transform:translate(-50%,-100%);font-size:12px;font-weight:600;white-space:nowrap;pointer-events:none;
@@ -82,6 +83,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
       <button id="bNeon" type="button" aria-pressed="true">霓虹燈</button>
       <button id="bOrb" type="button" aria-pressed="false">引力球</button>
       <button id="bGrav" type="button" class="plain">重力：地球</button>
+      <button id="bMind" type="button" aria-pressed="false">想法</button>
     </div>
     <div class="clock">
       <output id="clk" for="time">18:40</output>
@@ -89,6 +91,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
       <button id="bSpeed" type="button">時間：正常</button>
     </div>
     <div id="phys" class="phys">物理：踢球、撞球，這裡會寫出誰推了誰。</div>
+    <div id="minds" class="phys minds" hidden></div>
   </div>
   <div class="hint" id="hint"></div>
 </div>
@@ -411,8 +414,10 @@ scene.add(dust);
 const S={lamp:false,tv:true,neon:true,orb:false};
 let exposure=1,exposureTarget=1,envDirty=true,envTimer=0,dark=0;
 const dyn=new THREE.Group();scene.add(dyn);            // everything that moves: people and balls
-shade.userData={label:'立燈',act:()=>{S.lamp=!S.lamp;applySwitches();}};interact.push(shade);
-tv.userData={label:'電視',act:()=>{S.tv=!S.tv;applySwitches();}};interact.push(tv);
+function userLamp(){S.lamp=!S.lamp;applySwitches();if(!S.lamp)people.forEach(n=>notify(n,'lampOff'));}
+function userTv(){S.tv=!S.tv;applySwitches();if(!S.tv)people.forEach(n=>notify(n,'tvOff'));}
+shade.userData={label:'立燈',act:userLamp};interact.push(shade);
+tv.userData={label:'電視',act:userTv};interact.push(tv);
 function applySwitches(){
   lampL.intensity=S.lamp?.5:0;shadeMat.emissiveIntensity=S.lamp?1.6:0;bulb.material.color.setScalar(S.lamp?4:0);
   tvMat.color.setScalar(S.tv?1.5:.02);
@@ -422,8 +427,9 @@ function applySwitches(){
   $('bNeon').setAttribute('aria-pressed',S.neon);$('bOrb').setAttribute('aria-pressed',S.orb);
   envDirty=true;envTimer=0;
 }
-$('bLamp').onclick=()=>{S.lamp=!S.lamp;applySwitches();};
-$('bTv').onclick=()=>{S.tv=!S.tv;applySwitches();};
+$('bLamp').onclick=userLamp;
+$('bTv').onclick=userTv;
+$('bMind').onclick=()=>{const m=$('minds');m.hidden=!m.hidden;$('bMind').setAttribute('aria-pressed',!m.hidden);};
 $('bNeon').onclick=()=>{S.neon=!S.neon;applySwitches();};
 $('bOrb').onclick=()=>{S.orb=!S.orb;applySwitches();
   say(S.orb?'引力球開了：它把別的球吸過來，別的球也用一樣大的力把它拉回去。':'引力球關了。');};
@@ -502,6 +508,7 @@ function kick(b){
   fwd.y+=.35;fwd.normalize();
   const J=Math.min(4,b.m*9);                              // the push, in newton-seconds
   b.v.addScaledVector(fwd,J/b.m);vel.x-=fwd.x*J/PLAYER_M;vel.z-=fwd.z*J/PLAYER_M;   // same push, opposite way, on you
+  b.kickBy='你';b.kickAt=performance.now()/1000;
   say('你踢了'+b.name+'：球被往前推 '+J.toFixed(1)+' 牛頓·秒，你也被往後推一樣多。你比較重，所以幾乎沒動。');
 }
 // push a ball out of something it touches, bounce it, and return how hard the push was
@@ -561,7 +568,8 @@ function physStep(dt){
     }
     const hp=hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
-    for(const n of people)if(!n.hidden&&!n.lie)hitPerson(b,n.pos.x,n.pos.z,.2,n.sit?1.2:n.o.h,n.vx,n.vz,0,n.o.name);
+    for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption
+      if(hitPerson(b,n.pos.x,n.pos.z,n.lie?.45:.2,n.lie?.85:n.sit?1.2:n.o.h,n.vx,n.vz,0,n.o.name)&&spd>1.5)notify(n,'hit',b);}
     if(b.ground){const k=Math.exp(-.7*dt);b.v.x*=k;b.v.z*=k;}              // rolling slows down
   }
 }
@@ -643,22 +651,119 @@ function makePerson(o){
   const hit=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,1.75,8),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=-.02;body.add(hit);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
   const n={o,root,J,head,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
-    hidden:false,lie:false,sit:false,ph:0,wait:0,wave:0,kickCd:0,repath:0,settle:9,cur:{},tagText:''};
+    hidden:false,lie:false,sit:false,ph:0,wait:0,kickCd:0,repath:0,settle:9,cur:{},tagText:'',
+    need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
+    poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
   JK.forEach(k=>n.cur[k]=0);
-  hit.userData={npc:n,tip:'點一下：跟'+o.name+'打招呼',act:()=>{n.wave=2.6;}};interact.push(hit);
+  hit.userData={npc:n,tip:'點一下：跟'+o.name+'打招呼',act:()=>notify(n,'greet')};interact.push(hit);
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
 const people=[
   makePerson({name:'小美',h:1.64,skin:0xe8b996,hair:0x2a1a16,top:0xd9623f,bottom:0xe9dfcf,shoe:0xf4f0e8,long:true,
-    plan:[[0,'sleep'],[7,'stretch'],[8,'window1'],[9,'out'],[17,'plant'],[18,'tv1'],[20,'dance1'],[21,'read'],[23,'sleep']]}),
+    shift:[9,17],bed:[22,8],patience:.8,playful:.4,w:{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}}),
   makePerson({name:'阿傑',h:1.78,skin:0xc98f68,hair:0x15110f,top:0x1f6a6e,bottom:0x27304a,shoe:0x202024,shorts:false,
-    plan:[[0,'out'],[6,'window2'],[7.5,'read'],[9,'sleep'],[15,'stretch'],[16,'ball'],[18,'tv2'],[20,'dance2'],[21,'window2'],[22,'out']]})
+    shift:[22,6],bed:[8,16],patience:.35,playful:.9,w:{energy:1,fun:1.2,fit:1.2,calm:.7,care:.6}})
 ];
-function sched(n){let a=n.o.plan[0][1];for(const p of n.o.plan)if(clock>=p[0])a=p[1];return a;}
+
+/* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
+// Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
+// walk to it, and stay until the goal is finished. Nobody follows a timetable except for going to work.
+const NEED_ZH={energy:'體力',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
+const DECAY={energy:.05,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
+const GOALS={                                                           // gain is per game hour, dur is game hours
+  work:{label:'上班',acts:['out']},
+  sleep:{label:'睡覺',acts:['sleep'],need:'energy',gain:.13},
+  tv:{label:'看電視',acts:['tv1','tv2'],need:'fun',gain:.45,dur:1.6},
+  dance:{label:'跳舞',acts:['dance1','dance2'],need:'fun',gain:.8,dur:.6,also:'fit'},
+  ball:{label:'踢籃球',acts:['ball'],need:'fit',gain:.7,dur:.8,kicks:3},
+  stretch:{label:'伸展',acts:['stretch'],need:'fit',gain:1.1,dur:.4},
+  read:{label:'看書',acts:['read'],need:'calm',gain:.6,dur:1.2},
+  window:{label:'看海',acts:['window1','window2'],need:'calm',gain:.7,dur:.6},
+  plant:{label:'照顧盆栽',acts:['plant'],need:'care',gain:3.5,dur:.25}
+};
+const inSpan=(sp,h)=>sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]);
+function freeAct(n,id){                                                 // a spot nobody else is using
+  const other=people.find(m=>m!==n),ow=other&&!other.hidden?other.want:null;   // people may not exist yet on the first call
+  if(id==='sleep'&&ow&&(ow==='sleep'||ow==='tv1'||ow==='tv2'))return null;     // one sofa
+  if(id==='tv'&&ow==='sleep')return null;
+  for(const a of GOALS[id].acts)if(a!==ow||a==='out')return a;
+  return null;
+}
+function utility(n,id){
+  const g=GOALS[id];
+  if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
+  if(n.cool[id]>0||!freeAct(n,id))return -1;
+  const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
+  if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
+  else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
+  const other=people.find(m=>m!==n);
+  if(other&&!other.hidden&&other.goal&&other.goal.id===id&&(id==='tv'||id==='dance'))u+=.15;   // more fun together
+  return u+rnd(0,.08);
+}
+function setGoal(n,id){n.goal={id,elapsed:0,kicks:0};n.want=freeAct(n,id)||GOALS[id].acts[0];}
+function choose(n){
+  if(n.resume){const r=n.resume;n.resume=null;                          // go back to what you were doing before
+    if(utility(n,r.id)>0){n.goal=r;n.want=freeAct(n,r.id);return;}}
+  let best='window',bu=-1;for(const id in GOALS){const u=utility(n,id);if(u>bu){bu=u;best=id;}}
+  if(bu<0){best=freeAct(n,'window')?'window':'stretch';}
+  setGoal(n,best);
+}
+function endGoal(n,ok){if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);}
+function brain(n,dt){
+  const dh=dt*SPEEDS[speedIdx][0],g=n.goal,G=GOALS[g.id],atWork=(g.id==='work'&&n.hidden)||n.lie;   // needs run down slower at work and asleep
+  for(const k in DECAY)n.need[k]=Math.max(0,n.need[k]-DECAY[k]*dh*(atWork&&k!=='energy'?.35:1));
+  for(const k in n.cool)n.cool[k]-=dh;
+  n.mood+=(.75-n.mood)*dt*.01;
+  const doing=n.act===n.want&&(n.phase==='at'||(ACT[n.act].chase&&n.phase==='go'));
+  if(doing&&G.need){g.elapsed+=dh;n.need[G.need]=Math.min(1,n.need[G.need]+G.gain*dh);
+    if(G.also)n.need[G.also]=Math.min(1,n.need[G.also]+G.gain*.5*dh);}
+  if(n.react)return;                                                    // finish reacting before deciding anything
+  if(g.id!=='work'&&inSpan(n.o.shift,clock)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
+  if(g.id!=='sleep'&&g.id!=='work'&&n.need.energy<.06&&utility(n,'sleep')>0){setGoal(n,'sleep');return;}   // so does being worn out
+  const done=g.id==='work'?!inSpan(n.o.shift,clock):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
+  if(done)endGoal(n,true);
+}
+function progress(n){const g=n.goal,G=GOALS[g.id];
+  return g.id==='work'?-1:g.id==='sleep'?n.need.energy:Math.max(g.elapsed/G.dur,G.kicks?g.kicks/G.kicks:0);}
+// interruptions. The reaction depends on what happened, who they are, their mood, and how many times it has happened.
+function react(n,say,t,pose,after){n.react={say,t,pose,after};}
+function notify(n,type,b){
+  if(n.hidden||!n.goal)return;
+  const now=performance.now()/1000,g=n.goal;
+  if(type!=='greet'&&(n.react||now<n.calmAt))return;
+  n.calmAt=now+1.2;
+  if(n.lie){                                              // asleep: ignore, then grumble, then give up on sleeping
+    if(type!=='greet'&&type!=='hit')return;
+    n.poked=(now-n.pokeAt<40?n.poked:0)+1;n.pokeAt=now;
+    if(n.poked===1)react(n,'💤 …嗯？',1.6);
+    else if(n.poked===2){n.mood-=.15;n.need.energy=Math.max(0,n.need.energy-.03);react(n,'讓我睡啦…',2);}
+    else{n.mood-=.25;n.poked=0;react(n,'睡不著了！',1.6,null,()=>{n.cool.sleep=1;endGoal(n,false);});}
+    return;
+  }
+  if(type==='greet'){
+    if(n.mood>.35){n.mood=Math.min(1,n.mood+.04);react(n,n.phase==='at'?'嗨！我在'+GOALS[g.id].label:'嗨！',2.4,'wave');}
+    else react(n,'…現在不想講話',2,'glare');
+  }else if(type==='hit'){
+    if(g.id==='ball')return;                              // playing ball already: getting bumped is part of the game
+    if(!(b.kickBy==='你'&&now-b.kickAt<4)){react(n,'哇！',1,'startle');return;}       // nobody to blame
+    n.hits=(now-n.hitAt<60?n.hits:0)+1;n.hitAt=now;
+    if(n.o.playful>.6&&n.mood>.4&&g.id!=='work')react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
+    else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
+    else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
+  }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
+  else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
+    n.tvOffs=(now-n.tvOffAt<90?n.tvOffs:0)+1;n.tvOffAt=now;
+    if(n.tvOffs<2)react(n,'欸，我在看耶',1.8,'glare',()=>{if(!S.tv){S.tv=true;applySwitches();}});          // turns it back on
+    else{n.mood-=.2;react(n,'好吧，不看了…',1.8,null,()=>{n.cool.tv=1;endGoal(n,false);});}                 // gives up, finds something else
+  }else if(type==='lampOff'&&dark>.5)react(n,'好暗！',1.5,'startle',()=>{if(!S.lamp){S.lamp=true;applySwitches();}});
+}
+const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
+function sched(n){return n.want;}
 function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
-people.forEach(n=>{n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
+people.forEach((n,i)=>{setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');if(n.goal.id==='tv')n.want=i?'tv2':'tv1';
+  n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
   else{const q=A.an||[A.ap[0],n.stand,A.ap[1]];n.pos.set(q[0],0,q[2]);n.y=q[1];n.yaw=A.yaw||0;n.phase='at';
     if(A.hide){n.hidden=true;n.root.visible=false;}}
@@ -679,6 +784,7 @@ function pose(P,name,n,t){
 const qT=new THREE.Quaternion(),P={},hv=new THREE.Vector3();
 const angDiff=(a,b)=>{let d=(a-b)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return d;};
 function updNPC(n,dt,t){
+  brain(n,dt);
   const want=sched(n);
   if(want!==n.act){
     if(n.hidden){n.hidden=false;n.root.visible=true;n.act=want;begin(n);}
@@ -690,6 +796,7 @@ function updNPC(n,dt,t){
   let name='idle',ty=n.stand,lie=false,tyaw=n.yaw,label=A.label;
   const dpx=pos.x-n.pos.x,dpz=pos.z-n.pos.z,dP=Math.hypot(dpx,dpz);
   n.kickCd-=dt;
+  const R=n.react;if(R){R.t-=dt;if(R.t<=0){n.react=null;if(R.after)R.after();}}
   if(n.phase==='exit'){                                   // get up and step clear of the furniture
     const F=n.from,ap=F.ap||[n.pos.x,n.pos.z];
     n.pos.x+=(ap[0]-n.pos.x)*k4;n.pos.z+=(ap[1]-n.pos.z)*k4;label='';
@@ -700,13 +807,15 @@ function updNPC(n,dt,t){
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
         const cl=Math.hypot(basket.p.x,basket.p.z)||1,kx=bx/bd*.4-basket.p.x/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-basket.p.z/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
-        basket.v.x+=kx/kl*J/basket.m;basket.v.z+=kz/kl*J/basket.m;basket.v.y+=1.8;n.kickCd=2.5;n.path=[];n.repath=1.2;
+        basket.v.x+=kx/kl*J/basket.m;basket.v.z+=kz/kl*J/basket.m;basket.v.y+=1.8;n.kickCd=2.5;n.path=[];n.repath=1.2;n.goal.kicks++;basket.kickBy=n.o.name;
         say(n.o.name+'踢了籃球：球被推 '+J.toFixed(1)+' 牛頓·秒，'+n.o.name+'的腳也被球往回推一樣多。');}
       else if(n.repath<=0){n.repath=.8;n.path=bd>.4?(findPath(n.pos.x,n.pos.z,basket.p.x,basket.p.z)||[]):[];}
     }
     if(n.path.length){
-      if(dP<.65&&n.wait<2){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);}             // you are in the way: stop and look at you
-      else{if(dP>.9)n.wait=0;
+      if(R){tyaw=Math.atan2(dpx,dpz);}                                        // reacting: stand still and face you
+      else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
+        if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
+      else{if(dP>.9){n.wait=0;n.said=false;}
         const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),stp=1.15*dt;
         if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
         name='walk';n.ph+=dt*7.2;}
@@ -722,8 +831,10 @@ function updNPC(n,dt,t){
   n.y+=(ty-n.y)*(1-Math.exp(-dt*6));
   pose(P,name,n,t);
   if(!lie){
-    if(dP<2.3&&name!=='dance')P.ny=Math.max(-1.1,Math.min(1.1,angDiff(Math.atan2(dpx,dpz),n.yaw)));
-    if(n.wave>0){n.wave-=dt;P.arx=-2.7;P.arz=-.25+Math.sin(t*11)*.35;P.erx=-.35;label='嗨！';}
+    if(R||(dP<2.3&&name!=='dance'))P.ny=Math.max(-1.1,Math.min(1.1,angDiff(Math.atan2(dpx,dpz),n.yaw)));
+    if(R){if(R.pose==='wave'){P.arx=-2.7;P.arz=-.25+Math.sin(t*11)*.35;P.erx=-.35;}
+      else if(R.pose==='startle'){P.alx=P.arx=-1.9;P.alz=.9;P.arz=-.9;P.elx=P.erx=-1.2;P.yo+=.03;P.sx=-.1;}
+      else if(R.pose==='glare'){P.alz=.5;P.arz=-.5;P.elx=P.erx=-1.3;P.sx=.06;}}
   }
   const kp=1-Math.exp(-dt*(name==='walk'?20:9));JK.forEach(k=>n.cur[k]+=(P[k]-n.cur[k])*kp);
   const c=n.cur,J=n.J;
@@ -737,7 +848,8 @@ function updNPC(n,dt,t){
   n.head.getWorldPosition(hv);hv.y+=.3;hv.project(camera);
   const show=hv.z<1&&Math.abs(hv.x)<1.1&&Math.abs(hv.y)<1.1;n.tag.hidden=!show;
   if(show){n.tag.style.left=((hv.x+1)/2*canvas.clientWidth)+'px';n.tag.style.top=((1-hv.y)/2*canvas.clientHeight)+'px';
-    const txt=n.o.name+(label?' · '+label:'');if(txt!==n.tagText){n.tagText=txt;n.tag.textContent=txt;}}
+    if(R)label=R.say;else if(n.phase==='at'&&n.act===n.want){const pr=progress(n);if(pr>=0)label+=' '+Math.min(99,Math.round(pr*100))+'%';}
+    const txt=n.o.name+' '+moodFace(n)+(label?' · '+label:'');if(txt!==n.tagText){n.tagText=txt;n.tag.textContent=txt;}}
 }
 // the people run the house: lamp on when it is dark and someone is up, TV on only while someone watches
 let wantLamp=null,wantTv=null,subText='';
@@ -749,6 +861,9 @@ function autoHome(){
   if(watching!==wantTv){wantTv=watching;if(S.tv!==watching){S.tv=watching;applySwitches();}}
   const txt='28 樓 · '+(home.length?'在家：'+home.join('、'):'沒有人在家');
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
+  if(!$('minds').hidden)$('minds').textContent=people.map(n=>{const pr=progress(n);
+    return n.o.name+' '+moodFace(n)+'　目標：'+GOALS[n.goal.id].label+(pr>=0?' '+Math.round(pr*100)+'%':'')+(n.resume?'（之後回去'+GOALS[n.resume.id].label+'）':'')+
+      '\n　'+Object.keys(NEED_ZH).map(k=>NEED_ZH[k]+' '+String(Math.round(n.need[k]*100)).padStart(2,' ')).join('　');}).join('\n');
 }
 
 /* ---------- reflections: photograph the room itself and use it as the mirror image ---------- */
@@ -912,7 +1027,7 @@ function tick(now){
 }
 scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=.45;});
 applySwitches();applyTime();drawTV(0);
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick};
 requestAnimationFrame(tick);
 })();
 
