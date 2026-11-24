@@ -19,5 +19,15 @@ const M={
   ceramic:new THREE.MeshStandardMaterial({color:0xe9e2d6,roughness:.25}),
   terracotta:new THREE.MeshStandardMaterial({color:0xa9583a,roughness:.8}),
   leaf:new THREE.MeshStandardMaterial({color:0x2c6a34,roughness:.5}),
+  grass:new THREE.MeshStandardMaterial({map:speckle('#557a3c',5000,.16),roughness:1}),
+  asphalt:new THREE.MeshStandardMaterial({map:speckle('#3a3a40',5000,.12),roughness:.85,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),
+  concrete:new THREE.MeshStandardMaterial({map:speckle('#aaa49b',3500,.1,true),roughness:.9,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),
+  paint:new THREE.MeshStandardMaterial({color:0xe8e4d8,roughness:.7,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),
+  sand:new THREE.MeshStandardMaterial({map:speckle('#d9c59a',4000,.1),roughness:1,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),
+  water:new THREE.MeshStandardMaterial({color:0x2a6f9a,roughness:.24,metalness:.5,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),
+  bark:new THREE.MeshStandardMaterial({color:0x4a3626,roughness:.95}),
+  crown:new THREE.MeshStandardMaterial({color:0x3f7a3a,roughness:.9,flatShading:true}),
+  crown2:new THREE.MeshStandardMaterial({color:0x5a8a3c,roughness:.9,flatShading:true}),
+  steel:new THREE.MeshStandardMaterial({color:0x2a2c32,roughness:.5,metalness:.7}),
   rug:new THREE.MeshStandardMaterial({map:rugTexture(),bumpMap:weave,bumpScale:.01,roughness:1})
 };

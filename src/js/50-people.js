@@ -1,31 +1,46 @@
 /* ---------- people who live here ---------- */
-const NR=.2,GC=.1,GW=Math.round((HB.x1-HB.x0)/GC),GH=Math.round((HB.z1-HB.z0)/GC),grid=new Uint8Array(GW*GH);
-function nBlocked(x,z){if(!roomAt(x,z))return true;
+// Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
+// (sidewalks and floors are cheap, grass costs a bit more, the road costs a lot, so people keep off it unless they must cross).
+const NR=.2,GC=.1,GW=Math.round((WB.x1-WB.x0)/GC),GH=Math.round((WB.z1-WB.z0)/GC),NC=GW*GH,grid=new Uint8Array(NC),cost=new Float32Array(NC);
+function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
   for(const d of doors){const c=d.openC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;}   // people plan around where an open door will be
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
-for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(HB.x0+(i+.5)*GC,HB.z0+(j+.5)*GC)?1:0;
-const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-HB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-HB.z0)/GC)));
+(function(){const S=WORLD.street;
+  for(const c of colliders.concat(doors.map(d=>d.openC))){                    // mark blocked squares box by box (much faster than asking every square)
+    const i0=Math.max(0,Math.floor((c[0]-NR-WB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-WB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-WB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-WB.z0)/GC));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
+  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC,k=j*GW+i;
+    if(!inWorld(x,z,NR)){grid[k]=1;continue;}
+    cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
+})();
+const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-WB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-WB.z0)/GC)));
 function nearestFree(i,j){if(!grid[j*GW+i])return j*GW+i;
-  for(let r=1;r<14;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;
+  for(let r=1;r<16;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;
     const a=i+di,b=j+dj;if(a<0||b<0||a>=GW||b>=GH)continue;if(!grid[b*GW+a])return b*GW+a;}
   return -1;}
-function lineFree(x0,z0,x1,z1){const n=Math.ceil(Math.hypot(x1-x0,z1-z0)/.05);
-  for(let k=1;k<n;k++){const u=k/n;if(nBlocked(x0+(x1-x0)*u,z0+(z1-z0)*u))return false;}return true;}
-function findPath(x0,z0,x1,z1){                         // A* over a 10 cm grid, then straighten the corners
+function lineFree(x0,z0,x1,z1){const n=Math.ceil(Math.hypot(x1-x0,z1-z0)/.06);
+  for(let k=1;k<n;k++){const u=k/n,i=cellX(x0+(x1-x0)*u),j=cellZ(z0+(z1-z0)*u);if(grid[j*GW+i]||cost[j*GW+i]>2)return false;}return true;}
+// A* with a heap. The score arrays are reused between searches; `mark` says which search wrote a square.
+const gs=new Float32Array(NC),from=new Int32Array(NC),mark=new Uint32Array(NC),shut=new Uint32Array(NC),hf=[],hi=[];let searchNo=0;
+function hpush(f,i){let k=hf.length;hf.push(f);hi.push(i);while(k>0){const p=(k-1)>>1;if(hf[p]<=f)break;hf[k]=hf[p];hi[k]=hi[p];k=p;}hf[k]=f;hi[k]=i;}
+function hpop(){const top=hi[0],f=hf.pop(),i=hi.pop(),n=hf.length;
+  if(n){let k=0;for(;;){let c=2*k+1;if(c>=n)break;if(c+1<n&&hf[c+1]<hf[c])c++;if(hf[c]>=f)break;hf[k]=hf[c];hi[k]=hi[c];k=c;}hf[k]=f;hi[k]=i;}
+  return top;}
+function findPath(x0,z0,x1,z1){
   const si=nearestFree(cellX(x0),cellZ(z0)),ei=nearestFree(cellX(x1),cellZ(z1));if(si<0||ei<0)return null;
-  const N=GW*GH,gs=new Float32Array(N).fill(1e9),from=new Int32Array(N).fill(-1),closed=new Uint8Array(N),open=[si],ex=ei%GW,ez=ei/GW|0;
-  gs[si]=0;
-  while(open.length){let bi=0,bf=1e9;for(let k=0;k<open.length;k++){const c=open[k],a=Math.abs(c%GW-ex),b=Math.abs((c/GW|0)-ez),f=gs[c]+Math.max(a,b)+.41*Math.min(a,b);if(f<bf){bf=f;bi=k;}}
-    const cur=open[bi];open[bi]=open[open.length-1];open.pop();if(cur===ei)break;if(closed[cur])continue;closed[cur]=1;
+  const ex=ei%GW,ez=ei/GW|0,no=++searchNo;hf.length=0;hi.length=0;
+  gs[si]=0;mark[si]=no;from[si]=-1;hpush(0,si);let found=si===ei,guard=0;
+  while(hf.length&&guard++<160000){const cur=hpop();if(cur===ei){found=true;break;}if(shut[cur]===no)continue;shut[cur]=no;
     const ci=cur%GW,cj=cur/GW|0;
     for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){if(!di&&!dj)continue;const ni=ci+di,nj=cj+dj;if(ni<0||nj<0||ni>=GW||nj>=GH)continue;
-      const n=nj*GW+ni;if(grid[n]||closed[n])continue;if(di&&dj&&(grid[cj*GW+ni]||grid[nj*GW+ci]))continue;
-      const ng=gs[cur]+(di&&dj?1.414:1);if(ng<gs[n]){gs[n]=ng;from[n]=cur;open.push(n);}}}
-  if(ei!==si&&from[ei]<0)return null;
-  const pts=[nBlocked(x1,z1)?[HB.x0+(ex+.5)*GC,HB.z0+(ez+.5)*GC]:[x1,z1]];
-  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([HB.x0+(c%GW+.5)*GC,HB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
-  const out=[];let cx=x0,cz=z0,i=0;
-  while(i<pts.length){let k=pts.length-1;while(k>i&&!lineFree(cx,cz,pts[k][0],pts[k][1]))k--;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
+      const n=nj*GW+ni;if(grid[n]||shut[n]===no)continue;if(di&&dj&&(grid[cj*GW+ni]||grid[nj*GW+ci]))continue;
+      const ng=gs[cur]+(di&&dj?1.414:1)*cost[n];
+      if(mark[n]!==no||ng<gs[n]){gs[n]=ng;mark[n]=no;from[n]=cur;const a=Math.abs(ni-ex),b=Math.abs(nj-ez);hpush(ng+Math.max(a,b)+.41*Math.min(a,b),n);}}}
+  if(!found)return null;
+  const pts=[nBlocked(x1,z1)?[WB.x0+(ex+.5)*GC,WB.z0+(ez+.5)*GC]:[x1,z1]];
+  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([WB.x0+(c%GW+.5)*GC,WB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
+  const out=[];let cx=x0,cz=z0,i=0;                                        // straighten: skip ahead while the straight line is clear and cheap
+  while(i<pts.length){let k=i;while(k+1<pts.length&&k-i<90&&lineFree(cx,cz,pts[k+1][0],pts[k+1][1]))k++;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
   return out;
 }
 const JK=['sx','sz','nx','ny','alx','alz','arx','arz','elx','erx','hlx','hrx','klx','krx','yo'];
@@ -61,4 +76,4 @@ function makePerson(o){
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
-const people=HOUSE.people.map(makePerson);
+const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home=H.id;return n;}));

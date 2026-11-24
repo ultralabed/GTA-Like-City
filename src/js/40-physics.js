@@ -33,8 +33,8 @@ const BALLS={                                            // name, radius (m), ma
   tennis:['網球',.033,.058,.74,.12,()=>std('tennis',{roughness:.95})],
   orb:['引力球',.14,30,.3,.02,()=>orbMat]
 };
-HOUSE.balls.forEach(q=>{const B=BALLS[q.kind];addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z).kind=q.kind;});
-const basket=bodies.find(b=>b.kind==='basket'),orb=bodies.find(b=>b.kind==='orb');
+for(const H of houses)H.balls.forEach(q=>{const B=BALLS[q.kind],b=addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z);b.kind=q.kind;if(q.kind==='basket')H.basket=b;});
+const orbs=bodies.filter(b=>b.kind==='orb');
 const fwd=new THREE.Vector3();
 function kick(b){
   camera.getWorldDirection(fwd);
@@ -68,7 +68,7 @@ function hitPerson(b,px,pz,rad,top,svx,svz,M,who){
 function physStep(dt){
   const g=GMODES[gIdx][0];
   for(const b of bodies){b.v.y-=g*dt;b.v.multiplyScalar(Math.exp(-b.drag*dt));}
-  if(S.orb)for(const b of bodies){if(b===orb)continue;            // attraction: F = G·m1·m2 / r², on both, opposite ways
+  if(G.orb)for(const orb of orbs)for(const b of bodies){if(b===orb)continue;            // attraction: F = G·m1·m2 / r², on both, opposite ways
     const dx=orb.p.x-b.p.x,dy=orb.p.y-b.p.y,dz=orb.p.z-b.p.z,min=orb.r+b.r,r2=Math.max(dx*dx+dy*dy+dz*dz,min*min),r=Math.sqrt(r2);
     const F=BIG_G*orb.m*b.m/r2,k=F*dt/r;
     b.v.x+=dx*k/b.m;b.v.y+=dy*k/b.m;b.v.z+=dz*k/b.m;orb.v.x-=dx*k/orb.m;orb.v.y-=dy*k/orb.m;orb.v.z-=dz*k/orb.m;}
@@ -87,12 +87,12 @@ function physStep(dt){
   for(const b of bodies){
     const r=b.r;
     if(b.p.y<r)contact(b,0,1,0,r-b.p.y,0,0,0);
-    if(b.p.y>RH-r)contact(b,0,-1,0,b.p.y-(RH-r),0,0,0);
-    if(b.p.x<HB.x0+r)contact(b,1,0,0,HB.x0+r-b.p.x,0,0,0);            // the walls are in pboxes; this is the last line of defence
-    if(b.p.x>HB.x1-r)contact(b,-1,0,0,b.p.x-(HB.x1-r),0,0,0);
-    if(b.p.z<HB.z0+r)contact(b,0,0,1,HB.z0+r-b.p.z,0,0,0);
-    if(b.p.z>HB.z1-r)contact(b,0,0,-1,b.p.z-(HB.z1-r),0,0,0);
+    if(b.p.x<WB.x0+r)contact(b,1,0,0,WB.x0+r-b.p.x,0,0,0);            // the edge of the world
+    if(b.p.x>WB.x1-r)contact(b,-1,0,0,b.p.x-(WB.x1-r),0,0,0);
+    if(b.p.z<WB.z0+r)contact(b,0,0,1,WB.z0+r-b.p.z,0,0,0);
+    if(b.p.z>WB.z1-r)contact(b,0,0,-1,b.p.z-(WB.z1-r),0,0,0);
     for(const q of pboxes){
+      if(b.p.x<q[0]-r||b.p.x>q[1]+r||b.p.z<q[4]-r||b.p.z>q[5]+r)continue;
       const cx=Math.max(q[0],Math.min(q[1],b.p.x)),cy=Math.max(q[2],Math.min(q[3],b.p.y)),cz=Math.max(q[4],Math.min(q[5],b.p.z));
       const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;
       if(d2>=r*r)continue;

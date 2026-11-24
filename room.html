@@ -61,14 +61,14 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 #err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:15px;line-height:1.6}
 </style>
 
-<canvas id="view" tabindex="0" aria-label="可以走動探索的 3D 房間"></canvas>
+<canvas id="view" tabindex="0" aria-label="可以走動探索的 3D 街道和房子"></canvas>
 <div id="cross"></div>
 <div id="tip" hidden></div>
 <div id="joy" hidden><i></i></div>
 <div id="tags"></div>
 <div class="hud">
   <div class="top">
-    <h1>夕陽小房間<small id="sub">28 樓 · 海景</small></h1>
+    <h1>夕陽街<small id="sub">海邊的一條小街</small></h1>
     <div class="switches">
       <button id="bLamp" type="button" aria-pressed="false">立燈</button>
       <button id="bTv" type="button" aria-pressed="true">電視</button>
@@ -103,8 +103,8 @@ const $=id=>document.getElementById(id);
 const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
-  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>球：踢　<b>點</b>人：打招呼'
-  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>點</b>球：踢　<b>點</b>人：打招呼　<b>Esc</b> 放開滑鼠';
+  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼'
+  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　<b>Esc</b> 放開滑鼠';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}
 
@@ -116,9 +116,13 @@ renderer.setPixelRatio(pr);
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
+// Safety net for every material: a single broken pixel (not-a-number, or brighter than the picture format can hold)
+// would spread through the blur passes and turn the whole reflection black. So: broken becomes 0, too bright is capped.
+THREE.ShaderChunk.output_fragment+='\nif(!(gl_FragColor.r>=0.0&&gl_FragColor.g>=0.0&&gl_FragColor.b>=0.0))gl_FragColor.rgb=vec3(0.0);\ngl_FragColor.rgb=min(gl_FragColor.rgb,vec3(64.0));\n';
+
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x05030a);
-const camera=new THREE.PerspectiveCamera(68,1,0.05,80);
+const camera=new THREE.PerspectiveCamera(68,1,0.08,800);
 camera.rotation.order='YXZ';
 
 /* ---------- procedural textures ---------- */
@@ -183,51 +187,27 @@ function artTexture(seed){
     g.fillStyle=P[3];g.fillRect(170,330,170,120);g.strokeStyle=P[4];g.lineWidth=7;g.beginPath();g.moveTo(40,470);g.lineTo(344,90);g.stroke();}
   const t=tex(c,true);t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;return t;
 }
-function palm(g,x,base,ht,lean,col){
-  g.strokeStyle=col;g.fillStyle=col;g.lineCap='round';
-  const tx=x+lean,ty=base-ht;
-  g.lineWidth=ht*.035;g.beginPath();g.moveTo(x,base);g.quadraticCurveTo(x+lean*.2,base-ht*.5,tx,ty);g.stroke();
-  for(let i=0;i<11;i++){
-    const a=-Math.PI*(.05+.9*i/10)+rnd(-.1,.1),L=ht*rnd(.34,.46);
-    const ex=tx+Math.cos(a)*L,ey=ty+Math.sin(a)*L*.55+L*.38,cx=tx+Math.cos(a)*L*.55,cy=ty+Math.sin(a)*L*.75;
-    g.lineWidth=ht*.012;g.beginPath();g.moveTo(tx,ty);g.quadraticCurveTo(cx,cy,ex,ey);g.stroke();
-    for(let k=1;k<=12;k++){const t=k/13,px=(1-t)*(1-t)*tx+2*(1-t)*t*cx+t*t*ex,py=(1-t)*(1-t)*ty+2*(1-t)*t*cy+t*t*ey;
-      g.lineWidth=ht*.007;g.beginPath();g.moveTo(px,py);g.lineTo(px+rnd(-4,4),py+ht*.07*(1-t*.5));g.stroke();}
-  }
+// far-away city for the horizon: one picture of plain shapes (tinted by the time of day), one of only the lit windows
+function ringTextures(){
+  const W=2048,H=256,a=cv(W,H),b=cv(W,H),g=a.getContext('2d'),w=b.getContext('2d');
+  g.fillStyle='#fff';
+  g.beginPath();g.moveTo(0,H);for(let x=0;x<=W;x+=16)g.lineTo(x,H-34-Math.sin(x/W*Math.PI*6)*14-Math.sin(x/W*Math.PI*22)*6);g.lineTo(W,H);g.fill();   // low hills
+  let x=0;while(x<W-30){const bw=Math.min(rnd(40,110),W-x),bh=Math.random()<.12?rnd(150,230):rnd(45,125);g.fillRect(x,H-bh,bw,bh);
+    for(let y=H-bh+8;y<H-44;y+=11)for(let k=x+6;k<x+bw-7;k+=10)if(Math.random()<.42){
+      w.fillStyle=Math.random()<.2?'#7fe9ff':(Math.random()<.2?'#ff7ac0':'#ffd98a');w.fillRect(k,y,4,5);}
+    x+=bw+rnd(0,26);}
+  return[a,b].map(c=>{const t=tex(c,true,4,1);t.wrapT=THREE.ClampToEdgeWrapping;return t;});
 }
-function skyTexture(mode){ // 0 dusk, 1 night, 2 day. The sun and moon are separate moving discs.
-  const W=2048,Hh=1024,H=707,c=cv(W,Hh),g=c.getContext('2d'),night=mode===1;
-  let gr=g.createLinearGradient(0,0,0,H);
-  [[[0,'#24184f'],[.32,'#7a2c7c'],[.6,'#e3507a'],[.82,'#ff9450'],[1,'#ffd88a']],
-   [[0,'#02030a'],[.55,'#0a1034'],[.88,'#231a55'],[1,'#4a2a6a']],
-   [[0,'#1f5fc4'],[.5,'#5fa3e6'],[.85,'#b5dcf7'],[1,'#e6f4fb']]][mode].forEach(s=>gr.addColorStop(s[0],s[1]));
-  g.fillStyle=gr;g.fillRect(0,0,W,H);
-  if(night)for(let i=0;i<500;i++){g.fillStyle=`rgba(255,255,255,${rnd(.2,.9)})`;g.fillRect(rnd(0,W),rnd(0,H*.8),rnd(1,2.4),rnd(1,2.4));}
-  const cl=[['255,190,150','255,170,140','120,50,110'],['60,50,110','70,55,120','20,15,50'],['255,255,255','255,255,255','210,225,240']][mode];
-  for(let i=0;i<16;i++){
-    const x=rnd(0,W),y=rnd(120,620),w=rnd(180,520),hh=rnd(8,mode===2?40:26);
-    gr=g.createLinearGradient(0,y-hh,0,y+hh);
-    gr.addColorStop(0,`rgba(${cl[0]},0)`);gr.addColorStop(.5,`rgba(${cl[1]},${mode===2?.8:.55})`);gr.addColorStop(1,`rgba(${cl[2]},0)`);
-    g.fillStyle=gr;g.beginPath();g.ellipse(x,y,w,hh,0,0,7);g.fill();
-  }
-  gr=g.createLinearGradient(0,H,0,Hh);
-  [[[0,'#ffb27a'],[.25,'#c2567c'],[1,'#2a1648']],[[0,'#2c1d55'],[.3,'#0d0f2c'],[1,'#03040c']],[[0,'#9fd0ee'],[.3,'#3f8fcb'],[1,'#134a86']]][mode]
-    .forEach(s=>gr.addColorStop(s[0],s[1]));
-  g.fillStyle=gr;g.fillRect(0,H,W,Hh-H);
-  const gl=['255,236,180','210,220,255','255,255,255'][mode];
-  for(let i=0;i<220;i++){const y=H+4+Math.pow(Math.random(),1.6)*(Hh-H-8);
-    g.fillStyle=`rgba(${gl},${rnd(.1,night?.3:.6)})`;g.fillRect(rnd(0,W),y,rnd(14,70),rnd(1.5,3.5));}
-  let x=0;while(x<W){
-    const w=rnd(12,34),hh=Math.random()<.12?rnd(50,84):rnd(8,40);
-    g.fillStyle=['#22123a','#070515','#6f84a6'][mode];g.fillRect(x,H-hh,w,hh+3);
-    for(let wy=H-hh+3;wy<H-3;wy+=5)for(let wx=x+2;wx<x+w-3;wx+=4)if(Math.random()<[.15,.45,0][mode]){
-      g.fillStyle=Math.random()<.2?'#7fe9ff':(Math.random()<.2?'#ff7ac0':'#ffd98a');g.fillRect(wx,wy,2,2.5);}
-    x+=w+rnd(0,6);
-  }
-  const pc=['#0c0612','#06040c','#12301c'][mode];
-  palm(g,330,Hh+20,520,60,pc);palm(g,560,Hh+30,400,-45,pc);palm(g,1700,Hh+20,560,-70,pc);palm(g,1880,Hh+30,380,40,pc);
-  const t=tex(c,true);t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;return t;
+// a flat colour with fine speckles: grass, asphalt, sand
+function speckle(base,dots,strength,lines){
+  const S=256,c=cv(S,S),g=c.getContext('2d');g.fillStyle=base;g.fillRect(0,0,S,S);
+  for(let i=0;i<dots;i++){const v=Math.random()<.5?0:255;g.fillStyle=`rgba(${v},${v},${v},${rnd(.02,strength)})`;g.fillRect(rnd(0,S),rnd(0,S),rnd(1,4),rnd(1,4));}
+  if(lines){g.strokeStyle='rgba(40,36,32,.55)';g.lineWidth=3;g.strokeRect(0,0,S,S);}                 // paving joints
+  return tex(c,true,1);
 }
+function plateTexture(no){const c=cv(128,128),g=c.getContext('2d');g.fillStyle='#20242c';g.fillRect(0,0,128,128);g.strokeStyle='#d9c08a';g.lineWidth=6;g.strokeRect(6,6,116,116);
+  g.fillStyle='#f6ecd8';g.font='bold 84px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(String(no),64,70);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;}
 
 /* ---------- materials ---------- */
 const [woodMap,woodBump]=woodTextures();
@@ -250,82 +230,146 @@ const M={
   ceramic:new THREE.MeshStandardMaterial({color:0xe9e2d6,roughness:.25}),
   terracotta:new THREE.MeshStandardMaterial({color:0xa9583a,roughness:.8}),
   leaf:new THREE.MeshStandardMaterial({color:0x2c6a34,roughness:.5}),
+  grass:new THREE.MeshStandardMaterial({map:speckle('#557a3c',5000,.16),roughness:1}),
+  asphalt:new THREE.MeshStandardMaterial({map:speckle('#3a3a40',5000,.12),roughness:.85,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),
+  concrete:new THREE.MeshStandardMaterial({map:speckle('#aaa49b',3500,.1,true),roughness:.9,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),
+  paint:new THREE.MeshStandardMaterial({color:0xe8e4d8,roughness:.7,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),
+  sand:new THREE.MeshStandardMaterial({map:speckle('#d9c59a',4000,.1),roughness:1,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),
+  water:new THREE.MeshStandardMaterial({color:0x2a6f9a,roughness:.24,metalness:.5,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),
+  bark:new THREE.MeshStandardMaterial({color:0x4a3626,roughness:.95}),
+  crown:new THREE.MeshStandardMaterial({color:0x3f7a3a,roughness:.9,flatShading:true}),
+  crown2:new THREE.MeshStandardMaterial({color:0x5a8a3c,roughness:.9,flatShading:true}),
+  steel:new THREE.MeshStandardMaterial({color:0x2a2c32,roughness:.5,metalness:.7}),
   rug:new THREE.MeshStandardMaterial({map:rugTexture(),bumpMap:weave,bumpScale:.01,roughness:1})
 };
 
-/* ---------- house data ---------- */
-// Everything that makes THIS house this house. Change the numbers and the house changes;
-// nothing below this file knows where the sofa is. Units are metres; x is left-right, z is front-back.
+/* ---------- world data ---------- */
+// Everything that makes THIS street this street. Change the numbers and the world changes;
+// nothing below this file knows where a sofa or a house is. Units are metres; x is along the street, z is across it.
 //
-// A room:  x,z = where its middle is in the house.  w,d = how wide and deep it is inside.
-// walls:   one entry per side. mat = material name. open = holes in that wall:
-//            {kind:'window', c, half, y0, y1}   c = where along the wall (in the room's own x or z)
-//            {kind:'door',   c, half, y1}       a real door: click it to open or shut it
+// TEMPLATES: a house design, drawn once. A room:  x,z = its middle, measured from the middle of the house.  w,d = inside size.
+//   walls: one entry per side. mat = material name. inner:true = the other side of this wall is another room.
+//          open = holes:  {kind:'window', c, half, y0, y1}   c = where along the wall (the room's own x or z)
+//                         {kind:'door',   c, half, y1}       a real door. front:true = the front door of the house
 //          a side set to null has no wall of its own: the room next door already built it.
-// furniture: positions are measured from the middle of the room. rot = quarter turns (0, 1, 2, 3).
-const HOUSE={
-  h:2.8,                                                       // ceiling height, same in every room
-  start:{x:1.9,z:1.3,yaw:.62,pitch:-.06},                         // where you stand when the page opens
-  clock:18.67,
-  rooms:[
-    {id:'living',name:'客廳',x:0,z:0,w:6,d:5,
-      walls:{
-        north:{mat:'wall',open:[{kind:'window',c:0,half:1.7,y0:.45,y1:2.45}]},
-        east:{mat:'accent',open:[{kind:'door',c:.2,half:.45,y1:2.1}]},
-        south:{mat:'wall'},west:{mat:'wall'}},
-      furniture:[
-        {type:'rug',x:-.95,z:.3},
-        {type:'tvConsole',x:-3,z:.3},
-        {type:'sofa',x:.45,z:.3},
-        {type:'coffeeTable',x:-1,z:.3},
-        {type:'bookshelf',x:3,z:-1.05},
-        {type:'art',x:-1.3,z:2.5,seed:0},
-        {type:'art',x:-.2,z:2.5,seed:1},
-        {type:'plant',x:-2.4,z:-1.9},
-        {type:'lampCorner',x:-2.45,z:1.95},
-        {type:'neon',x:3,z:1.3},
-        {type:'door',x:1.9,z:2.5},
-        // places on the open floor where people do things
-        {type:'spot',kind:'window',x:-.5,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
-        {type:'spot',kind:'window',x:.6,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
-        {type:'spot',kind:'stretch',x:1.75,z:1.4,yaw:Math.PI,pose:'stretch',label:'伸展'},
-        {type:'spot',kind:'dance',x:-1.85,z:-.95,yaw:Math.PI/2,pose:'dance',label:'跳舞'},
-        {type:'spot',kind:'dance',x:-.9,z:-1.25,yaw:-2.2,pose:'dance',label:'跳舞'},
-        {type:'spot',kind:'ball',chase:true,pose:'idle',label:'踢籃球'}
-      ]},
-    {id:'bedroom',name:'臥室',x:5.16,z:-.5,w:4,d:4,
-      walls:{
-        north:{mat:'wall',open:[{kind:'window',c:0,half:1.1,y0:.75,y1:2.3}]},
-        east:{mat:'sage'},south:{mat:'wall'},
-        west:null},                                               // the living room's east wall is this room's west wall
-      furniture:[
-        {type:'rug',x:-.6,z:.3,w:1.6,d:2.2},
-        {type:'bed',x:.88,z:-.3,rot:1},
-        {type:'wardrobe',x:-.9,z:2},
-        {type:'lampCorner',x:1.3,z:1.35},
-        {type:'plant',x:-1.55,z:-1.55},
-        {type:'art',x:.9,z:2,seed:1},
-        {type:'spot',kind:'window',x:-.4,z:-1.5,yaw:Math.PI,pose:'window',label:'看海'}
-      ]}
+//   furniture: measured from the middle of the room. rot = quarter turns (0, 1, 2, 3).
+// WORLD.lots: where copies of a template stand. flip:true turns the whole house around to face the other way.
+const TEMPLATES={
+  cottage:{
+    rooms:[
+      {id:'living',name:'客廳',x:0,z:0,w:6,d:5,
+        walls:{
+          north:{mat:'wall',open:[{kind:'window',c:0,half:1.7,y0:.45,y1:2.45}]},
+          east:{mat:'accent',inner:true,open:[{kind:'door',c:.2,half:.45,y1:2.1}]},
+          south:{mat:'wall',open:[{kind:'door',c:1.9,half:.45,y1:2.1,front:true}]},
+          west:{mat:'wall'}},
+        furniture:[
+          {type:'rug',x:-.95,z:.3},
+          {type:'tvConsole',x:-3,z:.3},
+          {type:'sofa',x:.45,z:.3},
+          {type:'coffeeTable',x:-1,z:.3},
+          {type:'bookshelf',x:3,z:-1.05},
+          {type:'art',x:-1.3,z:2.5,seed:0},
+          {type:'art',x:-.2,z:2.5,seed:1},
+          {type:'plant',x:-2.4,z:-1.9},
+          {type:'lampCorner',x:-2.45,z:1.95},
+          {type:'neon',x:3,z:1.3},
+          // places on the open floor where people do things
+          {type:'spot',kind:'window',x:-.5,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
+          {type:'spot',kind:'window',x:.6,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
+          {type:'spot',kind:'stretch',x:1.75,z:1.3,yaw:Math.PI,pose:'stretch',label:'伸展'},
+          {type:'spot',kind:'dance',x:-1.85,z:-.95,yaw:Math.PI/2,pose:'dance',label:'跳舞'},
+          {type:'spot',kind:'dance',x:-.9,z:-1.25,yaw:-2.2,pose:'dance',label:'跳舞'},
+          {type:'spot',kind:'ball',chase:true,pose:'idle',label:'踢籃球'}
+        ]},
+      {id:'bedroom',name:'臥室',x:5.16,z:-.5,w:4,d:4,
+        walls:{
+          north:{mat:'wall',open:[{kind:'window',c:0,half:1.1,y0:.75,y1:2.3}]},
+          east:{mat:'sage'},south:{mat:'wall'},
+          west:null},                                               // the living room's east wall is this room's west wall
+        furniture:[
+          {type:'rug',x:-.6,z:.3,w:1.6,d:2.2},
+          {type:'bed',x:.88,z:-.3,rot:1},
+          {type:'wardrobe',x:-.9,z:2},
+          {type:'lampCorner',x:1.3,z:1.35},
+          {type:'plant',x:-1.55,z:-1.55},
+          {type:'art',x:.9,z:2,seed:1},
+          {type:'spot',kind:'window',x:-.4,z:-1.5,yaw:Math.PI,pose:'window',label:'看海'}
+        ]}
+    ],
+    balls:[                                                         // 'all' houses get every ball, 'few' get the first two
+      {kind:'basket',x:1.7,z:-1.9},{kind:'tennis',x:4.2,z:.6},
+      {kind:'beach',x:-1.6,z:1.3},{kind:'bowl',x:2.3,z:.4},
+      {kind:'tennis',x:-1.9,z:-.6},{kind:'tennis',x:-1.7,z:-.95},{kind:'tennis',x:-.85,y:.445,z:.75},
+      {kind:'orb',x:2.6,z:2.0}
+    ]}
+};
+// a person: looks, working hours (shift, or null for none), bedtime, and character
+const person=(name,h,skin,hair,top,bottom,shoe,long,shift,bed,patience,playful,w)=>({name,h,skin,hair,top,bottom,shoe,long,shift,bed,patience,playful,w});
+const WORLD={
+  name:'夕陽街',
+  h:2.8,                                                           // ceiling height, same in every room
+  clock:17.4,
+  bounds:{x0:-24,x1:28,z0:-9,z1:26},                               // as far as anyone can walk
+  street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
+  start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},                        // where you stand when the page opens
+  lots:[
+    {no:1,tpl:'cottage',x:0,z:0,ext:0xe9dccb,accent:0x1c4a50,roof:0x3a3140,door:0xd9623f,balls:'all',people:[
+      person('小美',1.64,0xe8b996,0x2a1a16,0xd9623f,0xe9dfcf,0xf4f0e8,true,[9,17],[22,8],.8,.4,{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}),
+      person('阿傑',1.78,0xc98f68,0x15110f,0x1f6a6e,0x27304a,0x202024,false,[22,6],[8,16],.35,.9,{energy:1,fun:1.2,fit:1.2,calm:.7,care:.6})]},
+    {no:3,tpl:'cottage',x:13.5,z:0,ext:0xcfdfd9,accent:0x7a3b4a,roof:0x2f3b3a,door:0x1f6a6e,balls:'few',people:[
+      person('老陳',1.68,0xd9a57e,0xc9c5be,0x6b7a4a,0x4a4038,0x3a2a20,false,null,[21,6],.95,.2,{energy:1,fun:.7,fit:.6,calm:1.5,care:1.4}),
+      person('秀蘭',1.56,0xe6b594,0xd8d2cc,0x8a4a6a,0x3b3550,0x2a2030,true,null,[21,6],.9,.3,{energy:1,fun:.9,fit:.8,calm:1.3,care:1.5})]},
+    {no:5,tpl:'cottage',x:-13.5,z:0,ext:0xe8cfc0,accent:0x3b4a7a,roof:0x40302c,door:0xe0a45c,balls:'few',people:[
+      person('小安',1.6,0xf0c8a8,0x3a2418,0xf2c23d,0x2b3a67,0xffffff,true,[8,15],[22,7],.5,.85,{energy:1,fun:1.3,fit:1.1,calm:.7,care:.7})]},
+    {no:2,tpl:'cottage',x:-4,z:19,flip:true,ext:0xd9d3e6,accent:0x4a3b5a,roof:0x33303d,door:0x2b3a67,balls:'few',people:[
+      person('大衛',1.82,0xb87f5a,0x1a1412,0xb5533a,0x3a3a3a,0x151515,false,[7,16],[22,6],.6,.6,{energy:1,fun:1,fit:1.3,calm:.8,care:.8}),
+      person('莉莉',1.66,0xf2d0b4,0x7a4a22,0x7fb8a6,0xf0e8dc,0xd9623f,true,[13,21],[0,9],.7,.5,{energy:1,fun:1.1,fit:.9,calm:1,care:1.1})]},
+    {no:4,tpl:'cottage',x:10,z:19,flip:true,ext:0xe6dfc8,accent:0x5a4a2a,roof:0x3d3630,door:0x7a3b4a,balls:'few',people:[
+      person('阿明',1.74,0xcf9a72,0x241a14,0x3b4a7a,0x6a5a48,0x2a2420,false,[10,19],[23,8],.45,.7,{energy:1,fun:1.1,fit:1,calm:.9,care:.9})]}
   ],
-  balls:[
-    {kind:'basket',x:1.7,z:-1.9},{kind:'beach',x:-1.6,z:1.3},{kind:'bowl',x:2.3,z:.4},
-    {kind:'tennis',x:-1.9,z:-.6},{kind:'tennis',x:-1.7,z:-.95},{kind:'tennis',x:-.85,y:.445,z:.75},
-    {kind:'orb',x:2.4,z:1.9},{kind:'tennis',x:4.2,z:.6}
-  ],
-  people:[
-    {name:'小美',h:1.64,skin:0xe8b996,hair:0x2a1a16,top:0xd9623f,bottom:0xe9dfcf,shoe:0xf4f0e8,long:true,
-      shift:[9,17],bed:[22,8],patience:.8,playful:.4,w:{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}},
-    {name:'阿傑',h:1.78,skin:0xc98f68,hair:0x15110f,top:0x1f6a6e,bottom:0x27304a,shoe:0x202024,
-      shift:[22,6],bed:[8,16],patience:.35,playful:.9,w:{energy:1,fun:1.2,fit:1.2,calm:.7,care:.6}}
+  outdoor:[
+    // trees
+    {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:24.5,z:2.5,s:1.15},
+    {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:-18.5,z:18.5,s:1.2},{type:'tree',x:4.4,z:15.7,s:.85},
+    {type:'tree',x:17,z:19.5,s:1.1},{type:'tree',x:21.5,z:23},{type:'tree',x:25.5,z:17.5,s:.9},{type:'tree',x:25,z:22,s:1.2},
+    // street lamps: their arm reaches over the road
+    {type:'streetLamp',x:-18,z:5.8},{type:'streetLamp',x:-6,z:5.8},{type:'streetLamp',x:6,z:5.8},{type:'streetLamp',x:18,z:5.8},
+    {type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
+    // the little park
+    {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
+    // where people leave for work and come back
+    {type:'spot',kind:'exit',x:-23.2,z:5,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:27.2,z:5,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:-23.2,z:14,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:27.2,z:14,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    // places to walk to
+    {type:'spot',kind:'stroll',x:8.8,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
+    {type:'spot',kind:'stroll',x:-4.7,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
+    {type:'spot',kind:'stroll',x:21.5,z:17.6,yaw:.6,pose:'stretch',shared:true,label:'在公園伸展'}
   ]
 };
-const RH=HOUSE.h,WALL_T=.16;
-// each room's inside edges, and the box that holds the whole house
-const rooms=HOUSE.rooms.map(R=>Object.assign({},R,{cx:R.x,cz:R.z,x0:R.x-R.w/2,x1:R.x+R.w/2,z0:R.z-R.d/2,z1:R.z+R.d/2}));
-const HB={x0:Math.min(...rooms.map(r=>r.x0)),x1:Math.max(...rooms.map(r=>r.x1)),z0:Math.min(...rooms.map(r=>r.z0)),z1:Math.max(...rooms.map(r=>r.z1))};
-const HC={x:(HB.x0+HB.x1)/2,z:(HB.z0+HB.z1)/2};
-function roomAt(x,z){return rooms.find(r=>x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)||null;}   // doorways count as inside
+const RH=WORLD.h,WALL_T=.16,WB=WORLD.bounds;
+// make the real houses: one copy of the template per lot, moved (and turned around if flip is set)
+const FLIP={north:'south',south:'north',east:'west',west:'east'};
+const houses=WORLD.lots.map((L,i)=>{
+  const T=TEMPLATES[L.tpl],f=L.flip?-1:1;
+  const H={id:i,no:L.no,lot:L,S:{lamp:false,tv:false,neon:true},dev:{lamps:[],tvs:[],neons:[]},basket:null,mats:{}};
+  H.rooms=T.rooms.map(R=>{const W={};
+    for(const s of['north','east','south','west']){const src=R.walls[L.flip?FLIP[s]:s];
+      W[s]=src?Object.assign({},src,{open:(src.open||[]).map(o=>Object.assign({},o,{c:o.c*f}))}):null;}
+    const cx=L.x+R.x*f,cz=L.z+R.z*f;
+    return{id:R.id,name:R.name,house:H,w:R.w,d:R.d,walls:W,cx,cz,x0:cx-R.w/2,x1:cx+R.w/2,z0:cz-R.d/2,z1:cz+R.d/2,
+      furniture:R.furniture.map(it=>Object.assign({},it,{x:(it.x||0)*f,z:(it.z||0)*f,rot:(it.rot||0)+(L.flip?2:0)}))};});
+  H.balls=(L.balls==='all'?T.balls:T.balls.slice(0,2)).map(b=>Object.assign({},b,{x:L.x+b.x*f,z:L.z+b.z*f}));
+  H.x0=Math.min(...H.rooms.map(r=>r.x0))-WALL_T;H.x1=Math.max(...H.rooms.map(r=>r.x1))+WALL_T;
+  H.z0=Math.min(...H.rooms.map(r=>r.z0))-WALL_T;H.z1=Math.max(...H.rooms.map(r=>r.z1))+WALL_T;
+  return H;
+});
+const rooms=houses.flatMap(H=>H.rooms);
+function roomAt(x,z){for(const r of rooms)if(x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)return r;return null;}   // doorways count as inside
+function inWorld(x,z,m){return x>WB.x0+m&&x<WB.x1-m&&z>WB.z0+m&&z<WB.z1-m;}
+function houseDist(H,x,z){return Math.hypot(Math.max(H.x0-x,0,x-H.x1),Math.max(H.z0-z,0,z-H.z1));}
 
 /* ---------- builders ---------- */
 // Lists the rest of the game reads. Furniture fills them in when it is placed.
@@ -333,7 +377,10 @@ const colliders=[];          // floor areas you cannot walk through   [x0,x1,z0,
 const pboxes=[];             // shapes balls bounce off               [x0,x1,y0,y1,z0,z1]
 const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
-const dev={lamps:[],tvs:[],neons:[]};   // things the switches control
+let dev=null;                // the lamps, TVs and neon signs of the house being built
+let bH=null;                 // the house being built (null while building the street)
+let root=scene;              // where new furniture groups go
+const marks={streetLamp:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
 let cur=scene;               // where new meshes go: the scene, or the piece of furniture being built
 function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
@@ -342,6 +389,10 @@ function add(m,shadow){m.castShadow=shadow!==false;m.receiveShadow=true;cur.add(
 function box(w,h,d,mat,x,y,z,o){o=o||{};
   let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,4,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
   const m=new THREE.Mesh(g,mat);m.position.set(x,y,z);if(o.ry)m.rotation.y=o.ry;if(o.rz)m.rotation.z=o.rz;return add(m,o.shadow);}
+// a flat sheet on the ground; tile = how many metres one copy of the texture covers
+function flat(w,d,mat,x,y,z,tile){const g=new THREE.PlaneGeometry(w,d);
+  if(tile){const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/tile,uv.getY(i)*d/tile);}
+  const m=new THREE.Mesh(g,mat);m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.receiveShadow=true;cur.add(m);return m;}
 function cyl(rt,rb,h,mat,x,y,z,seg,open){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||28,1,!!open),mat);m.position.set(x,y,z);return add(m);}
 
 // A prefab builds one piece of furniture around its own middle and returns a description of itself:
@@ -355,7 +406,7 @@ const lieQ=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().make
 // makeFrame(): a group sitting at (ox,oz), turned by rot, plus the maths to carry points and areas along with it
 function makeFrame(ox,oz,rot){
   const g=new THREE.Group(),c=Math.round(Math.cos(rot)),s=Math.round(Math.sin(rot));
-  g.position.set(ox,0,oz);g.rotation.y=rot;scene.add(g);
+  g.position.set(ox,0,oz);g.rotation.y=rot;root.add(g);
   const pt=(x,z)=>[ox+x*c+z*s,oz-x*s+z*c];
   const span=(x0,x1,z0,z1)=>{const a=pt(x0,z0),b=pt(x1,z1);return[Math.min(a[0],b[0]),Math.max(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[1],b[1])];};
   return{g,pt,span};
@@ -366,18 +417,19 @@ function place(item,R){
   (d.solid||[]).forEach(q=>colliders.push(span(q[0],q[1],q[2],q[3])));
   (d.boxes||[]).forEach(q=>{const r=span(q[0],q[1],q[4],q[5]);pboxes.push([r[0],r[1],q[2],q[3],r[2],r[3]]);});
   const id=++furnSeq;
-  (d.spots||[]).forEach(sp=>{const n=spotCount[sp.type]=(spotCount[sp.type]||0)+1,o=Object.assign({},sp,{owner:id,room:R?R.id:null});
+  (d.spots||[]).forEach(sp=>{const n=spotCount[sp.type]=(spotCount[sp.type]||0)+1,o=Object.assign({},sp,{owner:id,room:R?R.id:null,house:R?R.house.id:null});
     o.ap=pt(sp.ap[0],sp.ap[1]);
     if(sp.an){const a=pt(sp.an[0],sp.an[2]);o.an=[a[0],sp.an[1],a[1]];}
     if(sp.yaw!=null)o.yaw=sp.yaw+rot;
     if(sp.lie)o.q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),rot).multiply(lieQ);
     ACT[sp.type+n]=o;});
+  (d.marks||[]).forEach(m=>{const a=pt(m.x,m.z);marks[m.kind].push(Object.assign({},m,{x:a[0],z:a[1]}));});
   return g;
 }
 
 /* ---------- furniture prefabs ---------- */
 // Every number in here is measured from the furniture's own middle (or from the wall it hangs on).
-PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase}]});
+PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase,hide:o.hide,shared:o.shared}]});
 
 PREFAB.rug=o=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(o.w||2.5,o.d||3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
 
@@ -389,7 +441,7 @@ PREFAB.tvConsole=()=>{
   const c=cv(256,144),tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;
   const mat=new THREE.MeshBasicMaterial({map:tex});
   const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.72),mat);scr.rotation.y=Math.PI/2;scr.position.set(.124,1.25,0);cur.add(scr);
-  scr.userData={label:'電視',act:userTv};interact.push(scr);
+  const H=bH;scr.userData={label:'電視',act:()=>userTv(H)};interact.push(scr);
   const light=new THREE.PointLight(0x9f8cff,0,5,2);light.position.set(.7,1.2,0);cur.add(light);
   dev.tvs.push({mat,tex,g:c.getContext('2d'),light});
   box(.12,.2,.12,M.ceramic,.28,.64,-.75,{r:.03});                     // vase
@@ -468,7 +520,7 @@ PREFAB.lampCorner=()=>{
   cyl(.16,.17,.02,M.brass,LX,.01,LZ,32);cyl(.012,.012,1.5,M.brass,LX,.76,LZ,12);
   const shade=new THREE.MeshStandardMaterial({color:0xf3e3c8,roughness:.9,side:THREE.DoubleSide,emissive:0xffa050,emissiveIntensity:0});
   const sh=cyl(.15,.22,.3,shade,LX,1.6,LZ,32,true);sh.castShadow=false;
-  sh.userData={label:'立燈',act:userLamp};interact.push(sh);
+  const H=bH;sh.userData={label:'立燈',act:()=>userLamp(H)};interact.push(sh);
   const bulb=new THREE.Mesh(new THREE.SphereGeometry(.04,12,8),new THREE.MeshBasicMaterial({color:0x000000}));bulb.position.set(LX,1.58,LZ);cur.add(bulb);
   const light=new THREE.PointLight(0xffab66,0,7,2);light.position.set(LX,1.5,LZ);cur.add(light);
   dev.lamps.push({light,shade,bulb:bulb.material.color});
@@ -485,17 +537,10 @@ PREFAB.neon=()=>{
   [[.03,.29],[.13,.22]].forEach(l=>tube([new THREE.Vector3(X,cy+l[0]+.08,-l[1]),new THREE.Vector3(X,cy+l[0]+.08,l[1])],pink));
   [[0,.5],[-.09,.38],[-.18,.26]].forEach(l=>{const p=[];for(let i=0;i<=8;i++){const u=i/8;p.push(new THREE.Vector3(X,cy-.06+l[0]+Math.sin(u*Math.PI*4)*.012,-l[1]+u*2*l[1]));}tube(p,cyan);});
   const hit=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.9),new THREE.MeshBasicMaterial({visible:false}));hit.rotation.y=-Math.PI/2;hit.position.set(X-.02,cy+.05,0);cur.add(hit);
-  hit.userData={label:'霓虹燈',act:userNeon};interact.push(hit);
+  const H=bH;hit.userData={label:'霓虹燈',act:()=>userNeon(H)};interact.push(hit);
   const l1=new THREE.PointLight(0xff3fa0,0,5,2);l1.position.set(-.45,1.8,0);cur.add(l1);
   const l2=new THREE.PointLight(0x35e6ff,0,3.5,2);l2.position.set(-.4,1.45,0);cur.add(l2);
   dev.neons.push({pink,cyan,l1,l2});
-};
-
-// the way out. Sits in a wall; you walk up to it from the -z side.
-PREFAB.door=()=>{
-  box(.95,2.1,.05,M.walnut,0,1.05,-.02);box(1.07,2.16,.03,M.trim,0,1.08,-.012);
-  cyl(.022,.022,.14,M.brass,-.35,1.02,-.07,16).rotation.x=Math.PI/2;
-  return{spots:[{type:'out',ap:[0,-.45],yaw:0,pose:'idle',hide:true,shared:true,label:'出門上班'}]};
 };
 
 // double bed. The pillows are at the +z end. Two people can sleep in it, one from each side.
@@ -517,21 +562,46 @@ PREFAB.wardrobe=()=>{
   return{solid:[[-.72,.72,-.58,0]],boxes:[[-.7,.7,0,2.1,-.55,0]]};
 };
 
-/* ---------- build the house from its data ---------- */
+/* ----- things that stand outside ----- */
+const icoG=new THREE.IcosahedronGeometry(1,1);
+PREFAB.tree=o=>{const s=o.s||1;
+  cyl(.13*s,.19*s,2.3*s,M.bark,0,1.15*s,0,10);
+  [[0,3.1,0,1.25],[.55,2.6,.3,.9],[-.5,2.75,-.35,.95],[.1,3.9,-.1,.8]].forEach((q,i)=>{const m=new THREE.Mesh(icoG,i%2?M.crown2:M.crown);
+    m.position.set(q[0]*s,q[1]*s,q[2]*s);m.scale.setScalar(q[3]*s);m.rotation.set(i,i*2,0);add(m);});
+  return{solid:[[-.24,.24,-.24,.24]],boxes:[[-.17,.17,0,2.3*s,-.17,.17]]};
+};
+// street lamp: the arm reaches toward +z
+PREFAB.streetLamp=()=>{
+  cyl(.05,.08,4.3,M.steel,0,2.15,0,10);box(.06,.06,1.0,M.steel,0,4.25,.45);
+  const mat=new THREE.MeshBasicMaterial({color:0x111111});const head=box(.26,.07,.42,mat,0,4.2,.9);head.castShadow=false;
+  return{solid:[[-.1,.1,-.1,.1]],boxes:[[-.07,.07,0,4.3,-.07,.07]],marks:[{kind:'streetLamp',x:0,z:.9,y:4.1,mat}]};
+};
+// park bench for two. You sit facing +z.
+PREFAB.bench=()=>{
+  box(1.5,.06,.46,M.walnut,0,.45,0);box(1.5,.44,.05,M.walnut,0,.76,-.22);
+  [-.65,.65].forEach(x=>{box(.06,.45,.42,M.steel,x,.225,0);box(.06,.5,.05,M.steel,x,.7,-.22);});
+  const sit=x=>({type:'bench',ap:[x,.62],an:[x,.56,.04],yaw:0,pose:'sit',label:'坐在長椅上'});
+  return{solid:[[-.78,.78,-.28,.25]],boxes:[[-.75,.75,0,.48,-.23,.23],[-.75,.75,.48,.98,-.26,-.19]],spots:[sit(-.38),sit(.38)]};
+};
+
+/* ---------- build the houses from their data ---------- */
+function hmat(H,name){return(H&&H.mats[name])||M[name];}
 // One wall, built in its own frame: u runs along the wall, the inside of the room is toward +z, the wall itself sits at z < 0.
-// Holes (windows, doorways) are cut by building the wall in pieces around them.
+// Holes (windows, doors) are cut by building the wall in pieces around them.
 function buildWall(R,side,def){
-  const T=WALL_T,horiz=side==='north'||side==='south',L=horiz?R.w:R.d,W=R.walls;
+  const T=WALL_T,H=R.house,horiz=side==='north'||side==='south',L=horiz?R.w:R.d,W=R.walls;
   const rot={north:0,south:Math.PI,east:-Math.PI/2,west:Math.PI/2}[side],sign=(side==='north'||side==='east')?1:-1;
   const ox=R.cx+(side==='east'?R.w/2:side==='west'?-R.w/2:0),oz=R.cz+(side==='south'?R.d/2:side==='north'?-R.d/2:0);
   const F=makeFrame(ox,oz,rot),prev=cur;cur=F.g;
   // long walls cover the corners, but only where a side wall actually meets them
   const lo=side==='north'?'west':'east',hi=side==='north'?'east':'west';
-  const u0=-L/2-(horiz&&W[lo]?T:0),u1=L/2+(horiz&&W[hi]?T:0),mat=M[def.mat];
+  const u0=-L/2-(horiz&&W[lo]?T:0),u1=L/2+(horiz&&W[hi]?T:0),mat=hmat(H,def.mat),ext=hmat(H,'ext');
   const piece=(a,b,y0,y1)=>{if(b-a<.01||y1-y0<.01)return;
     box(b-a,y1-y0,T,mat,(a+b)/2,(y0+y1)/2,-T/2);
+    if(!def.inner)box(b-a+(horiz?.06:0),y1-y0,.03,ext,(a+b)/2,(y0+y1)/2,-T-.015);              // outside skin in the house colour
     const s=F.span(a,b,-T,0);pboxes.push([s[0],s[1],y0,y1,s[2],s[3]]);
     if(y0<1){colliders.push(s);if(y0===0)box(b-a,.1,.02,M.trim,(a+b)/2,.05,.01);}};          // reaches the floor: you cannot walk through it
+  if(!horiz&&!def.inner)[-1,1].forEach(k=>box(T+.03,RH,.03,ext,k*(L/2+(T+.03)/2),RH/2,-T-.015));   // skin around the corners
   const holes=(def.open||[]).map(o=>Object.assign({},o,{u:o.c*sign})).sort((a,b)=>a.u-b.u);
   let u=u0;
   for(const o of holes){const a=o.u-o.half,b=o.u+o.half,y0=o.y0||0,y1=o.y1;
@@ -542,33 +612,52 @@ function buildWall(R,side,def){
       [y0+.03,y1-.03].forEach(y=>box(2*WX,.05,.06,M.black,o.u,y,-T/2));
       box(2*WX,y1-y0,.012,M.glass,o.u,ym,-T/2,{shadow:false}).receiveShadow=false;
       const s=F.span(a,b,-T/2-.01,-T/2+.01);pboxes.push([s[0],s[1],y0,y1,s[2],s[3]]);         // balls bounce off the glass
-      [-1,1].forEach(k=>{for(let i=0;i<5;i++)box(.1,y1+.1-.05,.07,M.linen,o.u+k*(WX+.08+i*.085),(y1+.1+.05)/2,.1+(i%2)*.035,{r:.03});});   // curtains
+      [-1,1].forEach(k=>{for(let i=0;i<5;i++)box(.1,y1+.05,.07,M.linen,o.u+k*(WX+.08+i*.085),(y1+.15)/2,.1+(i%2)*.035,{r:.03});});   // curtains
       box(2*WX+1.1,.03,.03,M.brass,o.u,y1+.1,.1);
     }else{                                                                                    // door: a wooden frame, and a leaf on hinges
-      [a-.03,b+.03].forEach(x=>box(.06,y1+.06,T+.04,M.walnut,x,(y1+.06)/2,-T/2));
-      box(b-a+.12,.06,T+.04,M.walnut,o.u,y1+.03,-T/2);
+      [a-.03,b+.03].forEach(x=>box(.06,y1+.06,T+.1,M.walnut,x,(y1+.06)/2,-T/2));
+      box(b-a+.12,.06,T+.1,M.walnut,o.u,y1+.03,-T/2);
       const w=b-a-.02,hinge=new THREE.Group();hinge.position.set(b-.01,0,-T/2);cur.add(hinge);   // hinges on the +u side; it swings away from this room
       const pv=cur;cur=hinge;
-      const leaf=box(w,y1-.02,.04,M.trim,-w/2,(y1-.02)/2+.01,0,{r:.008});
+      const leaf=box(w,y1-.02,.04,o.front?hmat(H,'doorLeaf'):M.trim,-w/2,(y1-.02)/2+.01,0,{r:.008});
       [-1,1].forEach(k=>{box(.13,.022,.022,M.brass,-w+.11,1.0,k*.05);box(.022,.022,.05,M.brass,-w+.055,1.0,k*.035);});   // handles
       cur=pv;
       const shut=F.span(a,b,-T,0),open=F.span(b-.05,b,-T/2-w,-T/2),mid=F.pt(o.u,-T/2);
       const D={hinge,t:0,open:false,user:false,shut,openC:open,x:mid[0],z:mid[1],y1,pb:[shut[0],shut[1],0,y1,shut[2],shut[3]]};
       pboxes.push(D.pb);doors.push(D);
       leaf.userData={tip:'點一下：開門或關門',act:()=>{D.user=D.t<.5;}};interact.push(leaf);
+      if(o.front){                                                                            // the front door: number plate, doorstep, and where the garden path starts
+        const pl=new THREE.Mesh(new THREE.PlaneGeometry(.26,.26),new THREE.MeshBasicMaterial({map:plateTexture(H.no)}));
+        pl.rotation.y=Math.PI;pl.position.set(a-.32,1.6,-T-.04);cur.add(pl);
+        box(1.3,.05,.5,M.concrete,o.u,.025,-T-.25);
+        const p0=F.pt(o.u,-T),p1=F.pt(o.u,-T-1);H.front={x:p0[0],z:p0[1],dx:p1[0]-p0[0],dz:p1[1]-p0[1]};
+      }
     }}
   piece(u,u1,0,RH);
   cur=prev;
 }
-rooms.forEach(R=>{
-  const T=WALL_T,W=R.walls,ex0=W.west?T:0,ex1=W.east?T:0,ez0=W.north?T:0,ez1=W.south?T:0;
-  // floor and ceiling reach under this room's own walls, and stop where the neighbour's begin
-  const fw=R.w+ex0+ex1,fd=R.d+ez0+ez1,fx=R.cx+(ex1-ex0)/2,fz=R.cz+(ez1-ez0)/2;
-  box(fw,T,fd,M.floor,fx,-T/2,fz);
-  box(fw,T,fd,M.ceil,fx,RH+T/2,fz);
-  for(const side of['north','east','south','west'])if(W[side])buildWall(R,side,W[side]);
-  R.furniture.forEach(it=>place(it,R));
+houses.forEach(H=>{
+  const L=H.lot,T=WALL_T;
+  H.mats={accent:M.accent.clone(),ext:new THREE.MeshStandardMaterial({color:L.ext,bumpMap:plaster,bumpScale:.004,roughness:.92}),
+    roof:new THREE.MeshStandardMaterial({color:L.roof,roughness:.8}),doorLeaf:new THREE.MeshStandardMaterial({color:L.door,roughness:.45})};
+  H.mats.accent.color.set(L.accent);
+  H.shell=new THREE.Group();H.inner=new THREE.Group();scene.add(H.shell,H.inner);   // shell = floor, walls, roof; inner = furniture (hidden when far away)
+  bH=H;dev=H.dev;
+  H.rooms.forEach(R=>{
+    root=H.shell;cur=H.shell;
+    const W=R.walls,ex0=W.west?T:0,ex1=W.east?T:0,ez0=W.north?T:0,ez1=W.south?T:0;
+    // floor and ceiling reach under this room's own walls, and stop where the neighbour's begin
+    const fw=R.w+ex0+ex1,fd=R.d+ez0+ez1,fx=R.cx+(ex1-ex0)/2,fz=R.cz+(ez1-ez0)/2;
+    box(fw,T,fd,M.floor,fx,-T/2,fz);
+    box(fw,T,fd,M.ceil,fx,RH+T/2,fz);
+    box(fw+.5,.14,fd+.5,H.mats.roof,fx,RH+T+.07,fz);                                // roof with a little overhang
+    pboxes.push([fx-fw/2-.25,fx+fw/2+.25,RH,RH+T+.14,fz-fd/2-.25,fz+fd/2+.25]);    // balls bounce off the ceiling from inside and land on the roof from outside
+    for(const side of['north','east','south','west'])if(W[side])buildWall(R,side,W[side]);
+    root=H.inner;cur=H.inner;
+    R.furniture.forEach(it=>place(it,R));
+  });
 });
+bH=null;dev=null;root=scene;cur=scene;
 
 // doors: you click them; people open them as they walk up and shut them behind themselves
 function doorArea(d){return d.open?d.openC:d.shut;}
@@ -578,6 +667,7 @@ function updateDoors(dt){
     for(const n of people){if(n.hidden)continue;const dist=Math.hypot(n.pos.x-d.x,n.pos.z-d.z);
       if(dist<.85)inWay=true;if(dist<1.35&&n.phase==='go'&&n.path.length)walker=true;}
     const want=(d.user||walker||(inWay&&d.t>.5))?1:0;
+    if(want===d.t)continue;
     d.t=Math.max(0,Math.min(1,d.t+Math.sign(want-d.t)*dt*2.6));
     const e=d.t*d.t*(3-2*d.t);d.hinge.rotation.y=-e*Math.PI/2;
     const nowOpen=d.t>.5;
@@ -585,32 +675,73 @@ function updateDoors(dt){
   }
 }
 
-/* ---------- outside ---------- */
+/* ---------- the street outside ---------- */
+(function(){
+  const S=WORLD.street,LEN=400,mid=(S.z0+S.z1)/2;
+  const g=new THREE.Mesh(new THREE.CircleGeometry(320,48),M.grass);g.rotation.x=-Math.PI/2;g.position.y=-.03;g.receiveShadow=true;scene.add(g);
+  M.grass.map.repeat.set(160,160);
+  flat(LEN,S.z1-S.z0,M.asphalt,0,-.02,mid,4);                                                  // the road
+  flat(LEN,S.walk,M.concrete,0,-.012,S.z0-S.walk/2,1.5);flat(LEN,S.walk,M.concrete,0,-.012,S.z1+S.walk/2,1.5);   // sidewalks
+  for(let x=-58;x<=62;x+=4)flat(1.7,.14,M.paint,x,-.008,mid);                                  // centre dashes
+  [S.z0+.25,S.z1-.25].forEach(z=>flat(LEN,.1,M.paint,0,-.008,z));                              // edge lines
+  for(let i=0;i<7;i++)flat(.5,S.z1-S.z0-.9,M.paint,1.9-3+i,-.008,mid);                         // zebra crossing in front of number 1
+  for(const H of houses)if(H.front){const f=H.front,edge=f.dz>0?S.z0-S.walk:S.z1+S.walk,len=Math.abs(edge-f.z);   // garden path from each front door
+    flat(1.2,len,M.concrete,f.x,-.012,(f.z+edge)/2,1.2);}
+  // the beach behind the north houses, and the sea beyond it
+  flat(LEN,7,M.sand,0,-.018,WB.z0-.5,3);
+  flat(900,400,M.water,0,-.014,WB.z0-3.5-200);
+  WORLD.outdoor.forEach(it=>place(it,null));
+})();
+// three real lights that jump to whichever street lamps are nearest to you, so the street can have any number of lamps
+const streetGlow=[0,1,2].map(()=>{const l=new THREE.PointLight(0xffc88a,0,15,2);scene.add(l);return l;});
+function updateStreetLamps(){
+  const k=Math.max(0,Math.min(1,(dark-.25)/.5));
+  const near=marks.streetLamp.map(m=>[Math.hypot(m.x-pos.x,m.z-pos.z),m]).sort((a,b)=>a[0]-b[0]);
+  for(const m of marks.streetLamp)m.mat.color.setRGB(.07+k*5,.07+k*3.6,.07+k*2);
+  streetGlow.forEach((l,i)=>{const m=near[i]&&near[i][1];if(m){l.position.set(m.x,m.y-.15,m.z);l.intensity=k*1.1;}else l.intensity=0;});
+}
+
+/* ---------- outside: sky, far city, sun and moon ---------- */
 renderer.localClippingEnabled=true;
-// the view outside is painted on the inside of a big drum around the house, so every window sees it
-const SKY_R=16,skyGeo=new THREE.CylinderGeometry(1,1,25,72,1,true);
-function skyLayer(mode,r,bright){const t=skyTexture(mode);t.wrapS=THREE.MirroredRepeatWrapping;t.repeat.set(2,1);
-  const m=new THREE.MeshBasicMaterial({map:t,fog:false,transparent:mode!==1,depthWrite:false,side:THREE.BackSide});
-  m.color.setScalar(bright);const p=new THREE.Mesh(skyGeo,m);p.scale.set(r,1,r);p.position.set(HC.x,6,HC.z);p.renderOrder=[-9,-10,-8][mode];scene.add(p);return m;}
-const skyNightMat=skyLayer(1,SKY_R,1),skyDuskMat=skyLayer(0,SKY_R-.02,1.3),skyDayMat=skyLayer(2,SKY_R-.04,1.45);
-const horizon=[new THREE.Plane(new THREE.Vector3(0,1,0),-1.24)];
+// the sky is a huge ball painted with three colours (top, middle, horizon) that change with the time of day
+const skyU={cTop:{value:new THREE.Color()},cMid:{value:new THREE.Color()},cHor:{value:new THREE.Color()},stars:{value:0}};
+const skyMesh=new THREE.Mesh(new THREE.SphereGeometry(320,32,20),new THREE.ShaderMaterial({uniforms:skyU,side:THREE.BackSide,depthWrite:false,fog:false,
+  vertexShader:'varying vec3 vDir;void main(){vDir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:`uniform vec3 cTop;uniform vec3 cMid;uniform vec3 cHor;uniform float stars;varying vec3 vDir;
+    float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+    void main(){vec3 d=normalize(vDir);float h=max(d.y,0.0);
+      vec3 col=h<0.16?mix(cHor,cMid,h/0.16):mix(cMid,cTop,pow((h-0.16)/0.84,0.55));
+      vec2 g=vec2(atan(d.z,d.x)*330.0,d.y*520.0);
+      float s=step(0.9975,hash(floor(g)))*stars*smoothstep(0.03,0.25,d.y);
+      gl_FragColor=vec4(col+vec3(s),1.0);
+      #include <tonemapping_fragment>
+      #include <encodings_fragment>
+    }`}));
+skyMesh.renderOrder=-10;skyMesh.frustumCulled=false;scene.add(skyMesh);
+// a ring of far-away city around the horizon
+const ringTex=ringTextures(),ringGeo=new THREE.CylinderGeometry(1,1,1,96,1,true);
+const ringMat=new THREE.MeshBasicMaterial({map:ringTex[0],transparent:true,side:THREE.BackSide,depthWrite:false,fog:false});
+const ringGlow=new THREE.MeshBasicMaterial({map:ringTex[1],transparent:true,side:THREE.BackSide,depthWrite:false,fog:false,blending:THREE.AdditiveBlending});
+const ring=new THREE.Group();[[ringMat,250,-8],[ringGlow,249,-7]].forEach(q=>{const m=new THREE.Mesh(ringGeo,q[0]);m.scale.set(q[1],36,q[1]);m.position.y=17;m.renderOrder=q[2];ring.add(m);});
+scene.add(ring);
+const SUN_R=290,horizon=[new THREE.Plane(new THREE.Vector3(0,1,0),0)];
 const glowC=cv(128,128);(function(){const g=glowC.getContext('2d'),gr=g.createRadialGradient(64,64,0,64,64,64);
   gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.2,'rgba(255,255,255,.45)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);})();
 const discMat=new THREE.MeshBasicMaterial({fog:false,clippingPlanes:horizon});
-const disc=new THREE.Mesh(new THREE.CircleGeometry(.6,40),discMat);disc.renderOrder=-5;scene.add(disc);
+const disc=new THREE.Mesh(new THREE.CircleGeometry(10.5,40),discMat);disc.renderOrder=-5;scene.add(disc);
 const glowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
-const glow=new THREE.Mesh(new THREE.PlaneGeometry(9,9),glowMat);glow.renderOrder=-6;scene.add(glow);
+const glow=new THREE.Mesh(new THREE.PlaneGeometry(160,160),glowMat);glow.renderOrder=-6;scene.add(glow);
+scene.fog=new THREE.FogExp2(0x000000,.0045);
 
 /* ---------- lights ---------- */
 const hemi=new THREE.HemisphereLight(0xffc7a0,0x3a2630,.3);scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xffa25e,3);
-sun.position.set(2.6,3.4,-7.2);sun.target.position.set(HC.x,.5,HC.z);scene.add(sun,sun.target);
+scene.add(sun,sun.target);
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
-const SH=Math.max(HB.x1-HB.x0,HB.z1-HB.z0)/2+1.6;     // the sun's shadow has to cover the whole house
-Object.assign(sun.shadow.camera,{left:-SH,right:SH,top:SH,bottom:-SH,near:1,far:26});
-sun.shadow.bias=-.0004;sun.shadow.normalBias=.025;sun.shadow.radius=3;
+Object.assign(sun.shadow.camera,{left:-19,right:19,top:19,bottom:-19,near:1,far:90});   // the shadow follows you around, 19 m each way
+sun.shadow.bias=-.0005;sun.shadow.normalBias=.04;sun.shadow.radius=3;
 
-// dust floating in the sun beam
+// dust floating in the sun beam (in number 1's living room)
 const DN=260,dPos=new Float32Array(DN*3);
 for(let i=0;i<DN;i++){dPos[i*3]=rnd(-2.3,1);dPos[i*3+1]=rnd(.2,2.3);dPos[i*3+2]=rnd(-2.3,2.2);}
 const dGeo=new THREE.BufferGeometry();dGeo.setAttribute('position',new THREE.BufferAttribute(dPos,3));
@@ -618,50 +749,64 @@ const dust=new THREE.Points(dGeo,new THREE.PointsMaterial({color:0xffd9a8,size:.
 scene.add(dust);
 
 /* ---------- state ---------- */
-const S={lamp:false,tv:true,neon:true,orb:false};
-let exposure=1,exposureTarget=1,envDirty=true,envTimer=0,dark=0;
+// every house has its own switches (H.S). The buttons at the top work the house you are in, or the nearest one.
+const G={orb:false};
+let exposure=1,exposureTarget=1,envDirty=true,envTimer=0,dark=0,activeHouse=houses[0];
 const dyn=new THREE.Group();scene.add(dyn);            // everything that moves: people and balls
-function userLamp(){S.lamp=!S.lamp;applySwitches();if(!S.lamp)people.forEach(n=>notify(n,'lampOff'));}
-function userTv(){S.tv=!S.tv;applySwitches();if(!S.tv)people.forEach(n=>notify(n,'tvOff'));}
-function userNeon(){S.neon=!S.neon;applySwitches();}
+function curHouse(){let best=houses[0],bd=1e9;for(const H of houses){const d=houseDist(H,pos.x,pos.z);if(d<bd){bd=d;best=H;}}return best;}
+const asHouse=H=>(H&&H.S)?H:curHouse();
+const inHouse=(n,H)=>{const r=roomAt(n.pos.x,n.pos.z);return!n.hidden&&r&&r.house===H;};
+function userLamp(H){H=asHouse(H);H.S.lamp=!H.S.lamp;applySwitches();if(!H.S.lamp)people.forEach(n=>inHouse(n,H)&&notify(n,'lampOff'));}
+function userTv(H){H=asHouse(H);H.S.tv=!H.S.tv;applySwitches();if(!H.S.tv)people.forEach(n=>inHouse(n,H)&&notify(n,'tvOff'));}
+function userNeon(H){H=asHouse(H);H.S.neon=!H.S.neon;applySwitches();}
 function applySwitches(){
-  for(const d of dev.lamps){d.light.intensity=S.lamp?.5:0;d.shade.emissiveIntensity=S.lamp?1.6:0;d.bulb.setScalar(S.lamp?4:0);}
-  for(const d of dev.tvs)d.mat.color.setScalar(S.tv?1.5:.02);
-  const k=S.neon?1:0;for(const d of dev.neons){d.pink.color.setRGB(.08+k*3.2,.03+k*.35,.06+k*1.7);d.cyan.color.setRGB(.03+k*.25,.07+k*2.2,.08+k*2.9);}
-  orbMat.emissiveIntensity=S.orb?2.2:.15;
+  for(const H of houses){const S=H.S,on=H===activeHouse;                 // only the nearest house has real lights; the others just glow
+    for(const d of H.dev.lamps){d.light.visible=on;d.light.intensity=S.lamp?.5:0;d.shade.emissiveIntensity=S.lamp?1.6:0;d.bulb.setScalar(S.lamp?4:0);}
+    for(const d of H.dev.tvs){d.light.visible=on;d.mat.color.setScalar(S.tv?1.5:.02);}
+    const k=S.neon?1:0;for(const d of H.dev.neons){d.l1.visible=d.l2.visible=on;d.pink.color.setRGB(.08+k*3.2,.03+k*.35,.06+k*1.7);d.cyan.color.setRGB(.03+k*.25,.07+k*2.2,.08+k*2.9);}}
+  orbMat.emissiveIntensity=G.orb?2.2:.15;
+  const S=activeHouse.S;
   $('bLamp').setAttribute('aria-pressed',S.lamp);$('bTv').setAttribute('aria-pressed',S.tv);
-  $('bNeon').setAttribute('aria-pressed',S.neon);$('bOrb').setAttribute('aria-pressed',S.orb);
+  $('bNeon').setAttribute('aria-pressed',S.neon);$('bOrb').setAttribute('aria-pressed',G.orb);
   envDirty=true;envTimer=0;
 }
 $('bLamp').onclick=userLamp;
 $('bTv').onclick=userTv;
 $('bMind').onclick=()=>{const m=$('minds');m.hidden=!m.hidden;$('bMind').setAttribute('aria-pressed',!m.hidden);};
 $('bNeon').onclick=userNeon;
-$('bOrb').onclick=()=>{S.orb=!S.orb;applySwitches();
-  say(S.orb?'引力球開了：它把別的球吸過來，別的球也用一樣大的力把它拉回去。':'引力球關了。');};
+$('bOrb').onclick=()=>{G.orb=!G.orb;applySwitches();
+  say(G.orb?'引力球開了：它把別的球吸過來，別的球也用一樣大的力把它拉回去。':'引力球關了。');};
 
 /* ---------- time: the clock runs, the sun and moon move, the light changes ---------- */
-let clock=HOUSE.clock,speedIdx=1,sliding=false;
+let clock=WORLD.clock,speedIdx=1,sliding=false;
 const SPEEDS=[[0,'暫停'],[2/60,'正常'],[15/60,'快轉']];   // game hours per real second
 const ss=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 const cNight=new THREE.Color(0x5a6cff),cDusk=new THREE.Color(0xffc7a0),cDay=new THREE.Color(0xd4e6ff),
   cLow=new THREE.Color(0xff7a3a),cHigh=new THREE.Color(0xfff2dd),cMoon=new THREE.Color(0x7f9cff),sunDir=new THREE.Vector3();
+const lin=h=>new THREE.Color(h).convertSRGBToLinear();
+const SKY={top:[lin(0x02030a),lin(0x24184f),lin(0x1f5fc4)],mid:[lin(0x0a1034),lin(0xe3507a),lin(0x8cc4f0)],hor:[lin(0x2a1d55),lin(0xffb870),lin(0xdff0fb)],
+  city:[lin(0x070515),lin(0x2a163f),lin(0x8fa2bf)],sea:[lin(0x0a1230),lin(0xb85a78),lin(0x2f7fb0)]};   // night, dusk, day
+const blend=(out,c,a,b)=>out.copy(c[0]).lerp(c[1],a).lerp(c[2],b);
 function applyTime(){
   const h=clock,isDay=h>=6&&h<18,a=(isDay?h-6:(h-18+24)%24)/12*Math.PI;
   const e=Math.sin(a),se=Math.sin((h-6)/12*Math.PI);     // e: height of whichever is up, se: sun height (negative at night)
   sunDir.set(Math.cos(a)*.75,e*.62,-1).normalize();
-  sun.position.copy(sun.target.position).addScaledVector(sunDir,12);
+  sun.target.position.set(Math.round(pos.x),0,Math.round(pos.z));        // the sun's shadow follows you
+  sun.position.copy(sun.target.position).addScaledVector(sunDir,45);
   const up=ss(-.02,.15,e),hi=ss(.05,.5,e);
-  if(isDay){sun.color.copy(cLow).lerp(cHigh,hi);sun.intensity=(2.3-.5*hi)*up;}else{sun.color.copy(cMoon);sun.intensity=.14*up;}
+  if(isDay){sun.color.copy(cLow).lerp(cHigh,hi);sun.intensity=(2.3-1.1*hi)*up;}else{sun.color.copy(cMoon);sun.intensity=.14*up;}
   const duskW=ss(-.3,-.02,se),dayW=ss(.12,.5,se);dark=1-duskW;
-  skyDuskMat.opacity=duskW;skyDayMat.opacity=dayW;
+  blend(skyU.cTop.value,SKY.top,duskW,dayW);blend(skyU.cMid.value,SKY.mid,duskW,dayW);blend(skyU.cHor.value,SKY.hor,duskW,dayW);skyU.stars.value=ss(.6,1,dark)*1.3;
+  blend(ringMat.color,SKY.city,duskW,dayW);ringGlow.opacity=.25+.75*dark-.25*dayW;blend(M.water.color,SKY.sea,duskW,dayW);
+  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8);
+  skyMesh.position.set(pos.x,0,pos.z);ring.position.set(pos.x,0,pos.z);
   hemi.color.copy(cNight).lerp(cDusk,duskW).lerp(cDay,dayW);hemi.intensity=.02+.08*duskW+.1*dayW;
-  exposureTarget=1.15-.15*duskW;
-  const k=(SKY_R-.1)/Math.hypot(sunDir.x,sunDir.z);disc.position.set(HC.x+sunDir.x*k,1.4+sunDir.y*k,HC.z+sunDir.z*k);disc.lookAt(HC.x,disc.position.y,HC.z);
-  glow.position.set(HC.x+sunDir.x*k*1.002,disc.position.y,HC.z+sunDir.z*k*1.002);glow.quaternion.copy(disc.quaternion);
+  exposureTarget=(1.15-.15*duskW)*(roomAt(pos.x,pos.z)?1:1-.22*dayW);    // outdoors in daylight is bright: squint a little
+  disc.position.set(pos.x+sunDir.x*SUN_R,1.6+sunDir.y*SUN_R,pos.z+sunDir.z*SUN_R);disc.lookAt(pos.x,1.6,pos.z);
+  glow.position.copy(disc.position).addScaledVector(sunDir,2);glow.quaternion.copy(disc.quaternion);
   if(isDay){disc.scale.setScalar(1);discMat.color.setRGB(5+hi,2.2+3.3*hi,.9+3.6*hi);glowMat.color.setRGB(1,.55+.4*hi,.3+.6*hi);glowMat.opacity=.9;}
   else{disc.scale.setScalar(.6);discMat.color.setRGB(1.7,1.8,2.1);glowMat.color.setRGB(.5,.6,.9);glowMat.opacity=.35;}
-  dust.visible=isDay&&e>.03;
+  dust.visible=isDay&&e>.03&&activeHouse===houses[0];
   const hh=Math.floor(h),mm=Math.floor((h-hh)*60);$('clk').textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
 }
 const slider=$('time');slider.value=clock;
@@ -705,8 +850,8 @@ const BALLS={                                            // name, radius (m), ma
   tennis:['網球',.033,.058,.74,.12,()=>std('tennis',{roughness:.95})],
   orb:['引力球',.14,30,.3,.02,()=>orbMat]
 };
-HOUSE.balls.forEach(q=>{const B=BALLS[q.kind];addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z).kind=q.kind;});
-const basket=bodies.find(b=>b.kind==='basket'),orb=bodies.find(b=>b.kind==='orb');
+for(const H of houses)H.balls.forEach(q=>{const B=BALLS[q.kind],b=addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z);b.kind=q.kind;if(q.kind==='basket')H.basket=b;});
+const orbs=bodies.filter(b=>b.kind==='orb');
 const fwd=new THREE.Vector3();
 function kick(b){
   camera.getWorldDirection(fwd);
@@ -740,7 +885,7 @@ function hitPerson(b,px,pz,rad,top,svx,svz,M,who){
 function physStep(dt){
   const g=GMODES[gIdx][0];
   for(const b of bodies){b.v.y-=g*dt;b.v.multiplyScalar(Math.exp(-b.drag*dt));}
-  if(S.orb)for(const b of bodies){if(b===orb)continue;            // attraction: F = G·m1·m2 / r², on both, opposite ways
+  if(G.orb)for(const orb of orbs)for(const b of bodies){if(b===orb)continue;            // attraction: F = G·m1·m2 / r², on both, opposite ways
     const dx=orb.p.x-b.p.x,dy=orb.p.y-b.p.y,dz=orb.p.z-b.p.z,min=orb.r+b.r,r2=Math.max(dx*dx+dy*dy+dz*dz,min*min),r=Math.sqrt(r2);
     const F=BIG_G*orb.m*b.m/r2,k=F*dt/r;
     b.v.x+=dx*k/b.m;b.v.y+=dy*k/b.m;b.v.z+=dz*k/b.m;orb.v.x-=dx*k/orb.m;orb.v.y-=dy*k/orb.m;orb.v.z-=dz*k/orb.m;}
@@ -759,12 +904,12 @@ function physStep(dt){
   for(const b of bodies){
     const r=b.r;
     if(b.p.y<r)contact(b,0,1,0,r-b.p.y,0,0,0);
-    if(b.p.y>RH-r)contact(b,0,-1,0,b.p.y-(RH-r),0,0,0);
-    if(b.p.x<HB.x0+r)contact(b,1,0,0,HB.x0+r-b.p.x,0,0,0);            // the walls are in pboxes; this is the last line of defence
-    if(b.p.x>HB.x1-r)contact(b,-1,0,0,b.p.x-(HB.x1-r),0,0,0);
-    if(b.p.z<HB.z0+r)contact(b,0,0,1,HB.z0+r-b.p.z,0,0,0);
-    if(b.p.z>HB.z1-r)contact(b,0,0,-1,b.p.z-(HB.z1-r),0,0,0);
+    if(b.p.x<WB.x0+r)contact(b,1,0,0,WB.x0+r-b.p.x,0,0,0);            // the edge of the world
+    if(b.p.x>WB.x1-r)contact(b,-1,0,0,b.p.x-(WB.x1-r),0,0,0);
+    if(b.p.z<WB.z0+r)contact(b,0,0,1,WB.z0+r-b.p.z,0,0,0);
+    if(b.p.z>WB.z1-r)contact(b,0,0,-1,b.p.z-(WB.z1-r),0,0,0);
     for(const q of pboxes){
+      if(b.p.x<q[0]-r||b.p.x>q[1]+r||b.p.z<q[4]-r||b.p.z>q[5]+r)continue;
       const cx=Math.max(q[0],Math.min(q[1],b.p.x)),cy=Math.max(q[2],Math.min(q[3],b.p.y)),cz=Math.max(q[4],Math.min(q[5],b.p.z));
       const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;
       if(d2>=r*r)continue;
@@ -787,33 +932,48 @@ function syncBalls(dt){for(const b of bodies){
   b.mesh.position.copy(b.p);}}
 
 /* ---------- people who live here ---------- */
-const NR=.2,GC=.1,GW=Math.round((HB.x1-HB.x0)/GC),GH=Math.round((HB.z1-HB.z0)/GC),grid=new Uint8Array(GW*GH);
-function nBlocked(x,z){if(!roomAt(x,z))return true;
+// Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
+// (sidewalks and floors are cheap, grass costs a bit more, the road costs a lot, so people keep off it unless they must cross).
+const NR=.2,GC=.1,GW=Math.round((WB.x1-WB.x0)/GC),GH=Math.round((WB.z1-WB.z0)/GC),NC=GW*GH,grid=new Uint8Array(NC),cost=new Float32Array(NC);
+function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
   for(const d of doors){const c=d.openC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;}   // people plan around where an open door will be
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
-for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(HB.x0+(i+.5)*GC,HB.z0+(j+.5)*GC)?1:0;
-const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-HB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-HB.z0)/GC)));
+(function(){const S=WORLD.street;
+  for(const c of colliders.concat(doors.map(d=>d.openC))){                    // mark blocked squares box by box (much faster than asking every square)
+    const i0=Math.max(0,Math.floor((c[0]-NR-WB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-WB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-WB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-WB.z0)/GC));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
+  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC,k=j*GW+i;
+    if(!inWorld(x,z,NR)){grid[k]=1;continue;}
+    cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
+})();
+const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-WB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-WB.z0)/GC)));
 function nearestFree(i,j){if(!grid[j*GW+i])return j*GW+i;
-  for(let r=1;r<14;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;
+  for(let r=1;r<16;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;
     const a=i+di,b=j+dj;if(a<0||b<0||a>=GW||b>=GH)continue;if(!grid[b*GW+a])return b*GW+a;}
   return -1;}
-function lineFree(x0,z0,x1,z1){const n=Math.ceil(Math.hypot(x1-x0,z1-z0)/.05);
-  for(let k=1;k<n;k++){const u=k/n;if(nBlocked(x0+(x1-x0)*u,z0+(z1-z0)*u))return false;}return true;}
-function findPath(x0,z0,x1,z1){                         // A* over a 10 cm grid, then straighten the corners
+function lineFree(x0,z0,x1,z1){const n=Math.ceil(Math.hypot(x1-x0,z1-z0)/.06);
+  for(let k=1;k<n;k++){const u=k/n,i=cellX(x0+(x1-x0)*u),j=cellZ(z0+(z1-z0)*u);if(grid[j*GW+i]||cost[j*GW+i]>2)return false;}return true;}
+// A* with a heap. The score arrays are reused between searches; `mark` says which search wrote a square.
+const gs=new Float32Array(NC),from=new Int32Array(NC),mark=new Uint32Array(NC),shut=new Uint32Array(NC),hf=[],hi=[];let searchNo=0;
+function hpush(f,i){let k=hf.length;hf.push(f);hi.push(i);while(k>0){const p=(k-1)>>1;if(hf[p]<=f)break;hf[k]=hf[p];hi[k]=hi[p];k=p;}hf[k]=f;hi[k]=i;}
+function hpop(){const top=hi[0],f=hf.pop(),i=hi.pop(),n=hf.length;
+  if(n){let k=0;for(;;){let c=2*k+1;if(c>=n)break;if(c+1<n&&hf[c+1]<hf[c])c++;if(hf[c]>=f)break;hf[k]=hf[c];hi[k]=hi[c];k=c;}hf[k]=f;hi[k]=i;}
+  return top;}
+function findPath(x0,z0,x1,z1){
   const si=nearestFree(cellX(x0),cellZ(z0)),ei=nearestFree(cellX(x1),cellZ(z1));if(si<0||ei<0)return null;
-  const N=GW*GH,gs=new Float32Array(N).fill(1e9),from=new Int32Array(N).fill(-1),closed=new Uint8Array(N),open=[si],ex=ei%GW,ez=ei/GW|0;
-  gs[si]=0;
-  while(open.length){let bi=0,bf=1e9;for(let k=0;k<open.length;k++){const c=open[k],a=Math.abs(c%GW-ex),b=Math.abs((c/GW|0)-ez),f=gs[c]+Math.max(a,b)+.41*Math.min(a,b);if(f<bf){bf=f;bi=k;}}
-    const cur=open[bi];open[bi]=open[open.length-1];open.pop();if(cur===ei)break;if(closed[cur])continue;closed[cur]=1;
+  const ex=ei%GW,ez=ei/GW|0,no=++searchNo;hf.length=0;hi.length=0;
+  gs[si]=0;mark[si]=no;from[si]=-1;hpush(0,si);let found=si===ei,guard=0;
+  while(hf.length&&guard++<160000){const cur=hpop();if(cur===ei){found=true;break;}if(shut[cur]===no)continue;shut[cur]=no;
     const ci=cur%GW,cj=cur/GW|0;
     for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){if(!di&&!dj)continue;const ni=ci+di,nj=cj+dj;if(ni<0||nj<0||ni>=GW||nj>=GH)continue;
-      const n=nj*GW+ni;if(grid[n]||closed[n])continue;if(di&&dj&&(grid[cj*GW+ni]||grid[nj*GW+ci]))continue;
-      const ng=gs[cur]+(di&&dj?1.414:1);if(ng<gs[n]){gs[n]=ng;from[n]=cur;open.push(n);}}}
-  if(ei!==si&&from[ei]<0)return null;
-  const pts=[nBlocked(x1,z1)?[HB.x0+(ex+.5)*GC,HB.z0+(ez+.5)*GC]:[x1,z1]];
-  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([HB.x0+(c%GW+.5)*GC,HB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
-  const out=[];let cx=x0,cz=z0,i=0;
-  while(i<pts.length){let k=pts.length-1;while(k>i&&!lineFree(cx,cz,pts[k][0],pts[k][1]))k--;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
+      const n=nj*GW+ni;if(grid[n]||shut[n]===no)continue;if(di&&dj&&(grid[cj*GW+ni]||grid[nj*GW+ci]))continue;
+      const ng=gs[cur]+(di&&dj?1.414:1)*cost[n];
+      if(mark[n]!==no||ng<gs[n]){gs[n]=ng;mark[n]=no;from[n]=cur;const a=Math.abs(ni-ex),b=Math.abs(nj-ez);hpush(ng+Math.max(a,b)+.41*Math.min(a,b),n);}}}
+  if(!found)return null;
+  const pts=[nBlocked(x1,z1)?[WB.x0+(ex+.5)*GC,WB.z0+(ez+.5)*GC]:[x1,z1]];
+  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([WB.x0+(c%GW+.5)*GC,WB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
+  const out=[];let cx=x0,cz=z0,i=0;                                        // straighten: skip ahead while the straight line is clear and cheap
+  while(i<pts.length){let k=i;while(k+1<pts.length&&k-i<90&&lineFree(cx,cz,pts[k+1][0],pts[k+1][1]))k++;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
   return out;
 }
 const JK=['sx','sz','nx','ny','alx','alz','arx','arz','elx','erx','hlx','hrx','klx','krx','yo'];
@@ -849,7 +1009,7 @@ function makePerson(o){
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
-const people=HOUSE.people.map(makePerson);
+const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home=H.id;return n;}));
 
 /* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
 // Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
@@ -857,7 +1017,7 @@ const people=HOUSE.people.map(makePerson);
 const NEED_ZH={energy:'體力',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
 const DECAY={energy:.05,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
 const GOALS={                                                           // type = which kind of spot it needs; gain is per game hour, dur is game hours
-  work:{label:'上班',type:'out'},
+  work:{label:'上班',type:'exit'},
   sleep:{label:'睡覺',type:'sleep',need:'energy',gain:.13},
   tv:{label:'看電視',type:'tv',need:'fun',gain:.45,dur:1.6},
   dance:{label:'跳舞',type:'dance',need:'fun',gain:.8,dur:.6,also:'fit'},
@@ -865,17 +1025,23 @@ const GOALS={                                                           // type 
   stretch:{label:'伸展',type:'stretch',need:'fit',gain:1.1,dur:.4},
   read:{label:'看書',type:'read',need:'calm',gain:.6,dur:1.2},
   window:{label:'看海',type:'window',need:'calm',gain:.7,dur:.6},
-  plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25}
+  plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25},
+  bench:{label:'去公園坐坐',type:'bench',need:'calm',gain:.9,dur:.5,outside:true},
+  stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true}
 };
-const inSpan=(sp,h)=>sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]);
+const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
+const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
-  const type=GOALS[id].type,other=people.find(m=>m!==n),ow=other&&!other.hidden?other.want:null,O=ow?ACT[ow]:null;
-  let best=null;
+  const type=GOALS[id].type;let best=null,bs=-1e9;
   for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
-    if(A.shared)return k;                                                // the door: any number of people
-    if(k===ow)continue;
-    if(O&&O.owner===A.owner&&(A.solo||O.solo))continue;                  // someone lying on a sofa takes the whole sofa
-    if(!best||(A.pref||0)>(ACT[best].pref||0))best=k;}                   // a bed beats a sofa
+    if(A.house!=null&&A.house!==n.home)continue;                         // other people's houses are off limits
+    if(!A.shared){let taken=false;
+      for(const m of people){if(m===n||!m.want)continue;const O=ACT[m.want];
+        if(O.shared)continue;
+        if(m.want===k||(O.owner===A.owner&&(A.solo||O.solo))){taken=true;break;}}   // someone lying on a sofa takes the whole sofa
+      if(taken)continue;}
+    const s=(A.pref||0)*100-Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);  // a bed beats a sofa; otherwise the nearest one
+    if(s>bs){bs=s;best=k;}}
   return best;
 }
 function utility(n,id){
@@ -885,8 +1051,8 @@ function utility(n,id){
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  const other=people.find(m=>m!==n);
-  if(other&&!other.hidden&&other.goal&&other.goal.id===id&&(id==='tv'||id==='dance'))u+=.15;   // more fun together
+  if(g.outside)u*=dark>.6?.2:.85;                                        // few people go out after dark
+  if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
 }
 function setGoal(n,id){n.goal={id,elapsed:0,kicks:0};n.want=freeAct(n,id)||Object.keys(ACT).find(k=>ACT[k].type===GOALS[id].type);}
@@ -942,15 +1108,16 @@ function notify(n,type,b){
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
   else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
     n.tvOffs=(now-n.tvOffAt<90?n.tvOffs:0)+1;n.tvOffAt=now;
-    if(n.tvOffs<2)react(n,'欸，我在看耶',1.8,'glare',()=>{if(!S.tv){S.tv=true;applySwitches();}});          // turns it back on
+    if(n.tvOffs<2)react(n,'欸，我在看耶',1.8,'glare',()=>{const S=houses[n.home].S;if(!S.tv){S.tv=true;applySwitches();}});          // turns it back on
     else{n.mood-=.2;react(n,'好吧，不看了…',1.8,null,()=>{n.cool.tv=1;endGoal(n,false);});}                 // gives up, finds something else
-  }else if(type==='lampOff'&&dark>.5)react(n,'好暗！',1.5,'startle',()=>{if(!S.lamp){S.lamp=true;applySwitches();}});
+  }else if(type==='lampOff'&&dark>.5)react(n,'好暗！',1.5,'startle',()=>{const S=houses[n.home].S;if(!S.lamp){S.lamp=true;applySwitches();}});
 }
 const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
 function sched(n){return n.want;}
 function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
-people.forEach((n,i)=>{setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
+people.forEach((n,i)=>{const H=houses[n.home];n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);       // start from home so 'nearest spot' means something
+  setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
   else{const q=A.an||[A.ap[0],n.stand,A.ap[1]];n.pos.set(q[0],0,q[2]);n.y=q[1];n.yaw=A.yaw||0;n.phase='at';
@@ -991,7 +1158,7 @@ function updNPC(n,dt,t){
     if(Math.hypot(ap[0]-n.pos.x,ap[1]-n.pos.z)<.06&&Math.abs(n.y-n.stand)<.05){n.act=want;begin(n);}
   }else if(n.phase==='go'){
     label='要去'+A.label;
-    if(A.chase){label=A.label;n.repath-=dt;
+    if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
         const rc=roomAt(basket.p.x,basket.p.z)||rooms[0],cxr=basket.p.x-rc.cx,czr=basket.p.z-rc.cz,cl=Math.hypot(cxr,czr)||1,kx=bx/bd*.4-cxr/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-czr/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
@@ -1034,35 +1201,45 @@ function updNPC(n,dt,t){
   n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
   // name tag above the head
   n.head.getWorldPosition(hv);hv.y+=.3;hv.project(camera);
-  const show=hv.z<1&&Math.abs(hv.x)<1.1&&Math.abs(hv.y)<1.1;n.tag.hidden=!show;
+  const pr0=roomAt(pos.x,pos.z),nr0=roomAt(n.pos.x,n.pos.z);               // no name tags through walls: indoors people only show to someone in the same house
+  const show=dP<16&&(!nr0||(pr0&&pr0.house===nr0.house))&&hv.z<1&&Math.abs(hv.x)<1.1&&Math.abs(hv.y)<1.1;n.tag.hidden=!show;
   if(show){n.tag.style.left=((hv.x+1)/2*canvas.clientWidth)+'px';n.tag.style.top=((1-hv.y)/2*canvas.clientHeight)+'px';
     if(R)label=R.say;else if(n.phase==='at'&&n.act===n.want){const pr=progress(n);if(pr>=0)label+=' '+Math.min(99,Math.round(pr*100))+'%';}
     const txt=n.o.name+' '+moodFace(n)+(label?' · '+label:'');if(txt!==n.tagText){n.tagText=txt;n.tag.textContent=txt;}}
 }
 // the people run the house: lamp on when it is dark and someone is up, TV on only while someone watches
-let wantLamp=null,wantTv=null,subText='';
+let subText='';
 function autoHome(){
-  let awake=false,watching=false;const home=[];
-  for(const n of people){if(n.hidden)continue;home.push(n.o.name);if(!n.lie)awake=true;if(ACT[n.act].tv&&n.phase==='at')watching=true;}
-  const wl=dark>.5&&awake;
-  if(wl!==wantLamp){wantLamp=wl;if(S.lamp!==wl){S.lamp=wl;applySwitches();}}
-  if(watching!==wantTv){wantTv=watching;if(S.tv!==watching){S.tv=watching;applySwitches();}}
-  const here=roomAt(pos.x,pos.z);if(here&&here!==bakedRoom){envDirty=true;envTimer=0;}           // walked into another room: redo the reflections
-  const txt='你在'+(here?here.name:'門口')+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家');
+  const ah=curHouse();if(ah!==activeHouse){activeHouse=ah;applySwitches();}        // moved next to a different house: its lights become the real ones
+  const home=[];let out=0;
+  for(const n of people){const r=roomAt(n.pos.x,n.pos.z);n.root.visible=!n.hidden&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<60;
+    if(!n.hidden&&!r)out++;if(!n.hidden&&r&&r.house===ah)home.push(n.o.name);}
+  for(const H of houses){let awake=false,watching=false;                           // each house looks after its own lamp and TV
+    H.inner.visible=houseDist(H,pos.x,pos.z)<26;                                   // far-away furniture is not drawn
+    for(const n of people){if(!inHouse(n,H))continue;if(!n.lie)awake=true;if(ACT[n.act].tv&&n.phase==='at')watching=true;}
+    const wl=dark>.5&&awake;
+    if(wl!==H.wantLamp){H.wantLamp=wl;if(H.S.lamp!==wl){H.S.lamp=wl;applySwitches();}}
+    if(watching!==H.wantTv){H.wantTv=watching;if(H.S.tv!==watching){H.S.tv=watching;applySwitches();}}}
+  updateStreetLamps();
+  const here=roomAt(pos.x,pos.z);if(bakeKey()!==bakedKey){envDirty=true;envTimer=0;}                // walked somewhere new: redo the reflections
+  const txt=here?'你在 '+here.house.no+' 號的'+here.name+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家'):'你在街上 · 外面有 '+out+' 個人';
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
-  if(!$('minds').hidden)$('minds').textContent=people.map(n=>{const pr=progress(n);
+  if(!$('minds').hidden)$('minds').textContent=people.filter(n=>!n.hidden).sort((a,b)=>Math.hypot(a.pos.x-pos.x,a.pos.z-pos.z)-Math.hypot(b.pos.x-pos.x,b.pos.z-pos.z)).slice(0,3).map(n=>{const pr=progress(n);
     return n.o.name+' '+moodFace(n)+'　目標：'+GOALS[n.goal.id].label+(pr>=0?' '+Math.round(pr*100)+'%':'')+(n.resume?'（之後回去'+GOALS[n.resume.id].label+'）':'')+
       '\n　'+Object.keys(NEED_ZH).map(k=>NEED_ZH[k]+' '+String(Math.round(n.need[k]*100)).padStart(2,' ')).join('　');}).join('\n');
 }
 
 /* ---------- reflections: photograph the room itself and use it as the mirror image ---------- */
-const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null,bakedRoom=null;
+const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null,bakedKey='';
+// reflections are re-photographed when you enter another room, or walk a good way down the street
+function bakeKey(){const r=roomAt(pos.x,pos.z);return r?r.house.id+r.id:'out'+Math.round(pos.x/16)+','+Math.round(pos.z/16);}
 function bakeEnv(){
   const hadDust=dust.visible;dust.visible=false;dyn.visible=false;scene.environment=null;
-  const r=roomAt(pos.x,pos.z)||rooms[0];bakedRoom=r;                  // photograph the room you are standing in
-  scene.position.set(-r.cx,-1.4,-r.cz);scene.updateMatrixWorld(true);
-  const rt=pmrem.fromScene(scene,.03,.05,60);
-  scene.position.set(0,0,0);scene.updateMatrixWorld(true);dust.visible=hadDust;dyn.visible=true;
+  M.water.visible=M.glass.visible=false;                              // mirror-like things can catch the sun so brightly that the photo breaks; leave them out
+  const r=roomAt(pos.x,pos.z);bakedKey=bakeKey();                     // photograph the room you are standing in, or the street around you
+  if(r)scene.position.set(-r.cx,-1.4,-r.cz);else scene.position.set(-pos.x,-1.6,-pos.z);scene.updateMatrixWorld(true);
+  const rt=pmrem.fromScene(scene,.03,.05,500);
+  scene.position.set(0,0,0);scene.updateMatrixWorld(true);dust.visible=hadDust;dyn.visible=true;M.water.visible=M.glass.visible=true;
   scene.environment=rt.texture;if(envRT)envRT.dispose();envRT=rt;
 }
 
@@ -1102,13 +1279,13 @@ function resize(){
 addEventListener('resize',resize);resize();
 
 /* ---------- walking + looking ---------- */
-const pos=new THREE.Vector3(HOUSE.start.x,1.6,HOUSE.start.z);let yaw=HOUSE.start.yaw,pitch=HOUSE.start.pitch;
+const pos=new THREE.Vector3(WORLD.start.x,1.6,WORLD.start.z);let yaw=WORLD.start.yaw,pitch=WORLD.start.pitch;
 const vel={x:0,z:0},keys={},joy={x:0,y:0,id:null,ox:0,oy:0},look={id:null,x:0,y:0};
 let down=null,bob=0,locked=false;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PR=.3;
 function blocked(x,z){
-  if(!roomAt(x,z))return true;
+  if(!inWorld(x,z,PR))return true;
   for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
     if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
@@ -1184,7 +1361,7 @@ function tick(now){
   applyTime();
   if(frame%20===0&&!sliding)slider.value=clock;
   let dc=Math.abs(clock-bakeClock);dc=Math.min(dc,24-dc);
-  if(dc>.2&&t-bakeAt>2.5)envDirty=true;
+  if(dc>.2&&t-bakeAt>3.5)envDirty=true;
   // you
   const f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;
   const s=(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x;
@@ -1204,8 +1381,8 @@ function tick(now){
   acc+=dt;let steps=0;while(acc>=PH&&steps<14){physStep(PH);acc-=PH;steps++;}if(steps===14)acc=0;
   syncBalls(dt);
   // lights that live
-  const k=S.neon?1:0;for(const d of dev.neons){d.l1.intensity=k*(.3+.2*dark);d.l2.intensity=k*(.18+.12*dark);}
-  for(const d of dev.tvs){if(S.tv){if(frame%3===0)drawTV(d,t);d.light.intensity=(.18+.12*dark)*(1+Math.sin(t*5.3)*.08+Math.sin(t*13.1)*.05);}else d.light.intensity=0;}
+  const AS=activeHouse.S,AD=activeHouse.dev,k=AS.neon?1:0;for(const d of AD.neons){d.l1.intensity=k*(.3+.2*dark);d.l2.intensity=k*(.18+.12*dark);}
+  for(const d of AD.tvs){if(AS.tv){if(frame%3===0)drawTV(d,t);d.light.intensity=(.18+.12*dark)*(1+Math.sin(t*5.3)*.08+Math.sin(t*13.1)*.05);}else d.light.intensity=0;}
   if(dust.visible){const p=dGeo.attributes.position;for(let i=0;i<DN;i++){let y=p.getY(i)+Math.sin(t*.4+i)*.0006-.0004;if(y<.15)y=2.3;p.setY(i,y);p.setX(i,p.getX(i)+Math.cos(t*.3+i*1.7)*.0005);}p.needsUpdate=true;}
   exposure+=(exposureTarget-exposure)*(1-Math.exp(-dt*3));
   if(envDirty){envTimer+=dt;if(frame<3||envTimer>.12){bakeEnv();envDirty=false;bakeAt=t;bakeClock=clock;}}
@@ -1219,8 +1396,11 @@ function tick(now){
   if(frame>90){slow=dt>.034?slow+1:Math.max(0,slow-1);if(slow>45&&pr>.75){pr=Math.max(.75,pr-.25);slow=0;resize();}}
 }
 scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=.45;});
-applySwitches();applyTime();dev.tvs.forEach(d=>drawTV(d,0));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+// things that stand outside take much more of their light from the sky
+[M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
+M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
+applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

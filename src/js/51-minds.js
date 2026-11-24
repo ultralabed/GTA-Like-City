@@ -4,7 +4,7 @@
 const NEED_ZH={energy:'體力',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
 const DECAY={energy:.05,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
 const GOALS={                                                           // type = which kind of spot it needs; gain is per game hour, dur is game hours
-  work:{label:'上班',type:'out'},
+  work:{label:'上班',type:'exit'},
   sleep:{label:'睡覺',type:'sleep',need:'energy',gain:.13},
   tv:{label:'看電視',type:'tv',need:'fun',gain:.45,dur:1.6},
   dance:{label:'跳舞',type:'dance',need:'fun',gain:.8,dur:.6,also:'fit'},
@@ -12,17 +12,23 @@ const GOALS={                                                           // type 
   stretch:{label:'伸展',type:'stretch',need:'fit',gain:1.1,dur:.4},
   read:{label:'看書',type:'read',need:'calm',gain:.6,dur:1.2},
   window:{label:'看海',type:'window',need:'calm',gain:.7,dur:.6},
-  plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25}
+  plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25},
+  bench:{label:'去公園坐坐',type:'bench',need:'calm',gain:.9,dur:.5,outside:true},
+  stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true}
 };
-const inSpan=(sp,h)=>sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]);
+const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
+const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
-  const type=GOALS[id].type,other=people.find(m=>m!==n),ow=other&&!other.hidden?other.want:null,O=ow?ACT[ow]:null;
-  let best=null;
+  const type=GOALS[id].type;let best=null,bs=-1e9;
   for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
-    if(A.shared)return k;                                                // the door: any number of people
-    if(k===ow)continue;
-    if(O&&O.owner===A.owner&&(A.solo||O.solo))continue;                  // someone lying on a sofa takes the whole sofa
-    if(!best||(A.pref||0)>(ACT[best].pref||0))best=k;}                   // a bed beats a sofa
+    if(A.house!=null&&A.house!==n.home)continue;                         // other people's houses are off limits
+    if(!A.shared){let taken=false;
+      for(const m of people){if(m===n||!m.want)continue;const O=ACT[m.want];
+        if(O.shared)continue;
+        if(m.want===k||(O.owner===A.owner&&(A.solo||O.solo))){taken=true;break;}}   // someone lying on a sofa takes the whole sofa
+      if(taken)continue;}
+    const s=(A.pref||0)*100-Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);  // a bed beats a sofa; otherwise the nearest one
+    if(s>bs){bs=s;best=k;}}
   return best;
 }
 function utility(n,id){
@@ -32,8 +38,8 @@ function utility(n,id){
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  const other=people.find(m=>m!==n);
-  if(other&&!other.hidden&&other.goal&&other.goal.id===id&&(id==='tv'||id==='dance'))u+=.15;   // more fun together
+  if(g.outside)u*=dark>.6?.2:.85;                                        // few people go out after dark
+  if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
 }
 function setGoal(n,id){n.goal={id,elapsed:0,kicks:0};n.want=freeAct(n,id)||Object.keys(ACT).find(k=>ACT[k].type===GOALS[id].type);}
@@ -89,15 +95,16 @@ function notify(n,type,b){
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
   else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
     n.tvOffs=(now-n.tvOffAt<90?n.tvOffs:0)+1;n.tvOffAt=now;
-    if(n.tvOffs<2)react(n,'欸，我在看耶',1.8,'glare',()=>{if(!S.tv){S.tv=true;applySwitches();}});          // turns it back on
+    if(n.tvOffs<2)react(n,'欸，我在看耶',1.8,'glare',()=>{const S=houses[n.home].S;if(!S.tv){S.tv=true;applySwitches();}});          // turns it back on
     else{n.mood-=.2;react(n,'好吧，不看了…',1.8,null,()=>{n.cool.tv=1;endGoal(n,false);});}                 // gives up, finds something else
-  }else if(type==='lampOff'&&dark>.5)react(n,'好暗！',1.5,'startle',()=>{if(!S.lamp){S.lamp=true;applySwitches();}});
+  }else if(type==='lampOff'&&dark>.5)react(n,'好暗！',1.5,'startle',()=>{const S=houses[n.home].S;if(!S.lamp){S.lamp=true;applySwitches();}});
 }
 const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
 function sched(n){return n.want;}
 function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
-people.forEach((n,i)=>{setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
+people.forEach((n,i)=>{const H=houses[n.home];n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);       // start from home so 'nearest spot' means something
+  setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
   else{const q=A.an||[A.ap[0],n.stand,A.ap[1]];n.pos.set(q[0],0,q[2]);n.y=q[1];n.yaw=A.yaw||0;n.phase='at';
@@ -138,7 +145,7 @@ function updNPC(n,dt,t){
     if(Math.hypot(ap[0]-n.pos.x,ap[1]-n.pos.z)<.06&&Math.abs(n.y-n.stand)<.05){n.act=want;begin(n);}
   }else if(n.phase==='go'){
     label='要去'+A.label;
-    if(A.chase){label=A.label;n.repath-=dt;
+    if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
         const rc=roomAt(basket.p.x,basket.p.z)||rooms[0],cxr=basket.p.x-rc.cx,czr=basket.p.z-rc.cz,cl=Math.hypot(cxr,czr)||1,kx=bx/bd*.4-cxr/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-czr/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
@@ -181,23 +188,30 @@ function updNPC(n,dt,t){
   n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
   // name tag above the head
   n.head.getWorldPosition(hv);hv.y+=.3;hv.project(camera);
-  const show=hv.z<1&&Math.abs(hv.x)<1.1&&Math.abs(hv.y)<1.1;n.tag.hidden=!show;
+  const pr0=roomAt(pos.x,pos.z),nr0=roomAt(n.pos.x,n.pos.z);               // no name tags through walls: indoors people only show to someone in the same house
+  const show=dP<16&&(!nr0||(pr0&&pr0.house===nr0.house))&&hv.z<1&&Math.abs(hv.x)<1.1&&Math.abs(hv.y)<1.1;n.tag.hidden=!show;
   if(show){n.tag.style.left=((hv.x+1)/2*canvas.clientWidth)+'px';n.tag.style.top=((1-hv.y)/2*canvas.clientHeight)+'px';
     if(R)label=R.say;else if(n.phase==='at'&&n.act===n.want){const pr=progress(n);if(pr>=0)label+=' '+Math.min(99,Math.round(pr*100))+'%';}
     const txt=n.o.name+' '+moodFace(n)+(label?' · '+label:'');if(txt!==n.tagText){n.tagText=txt;n.tag.textContent=txt;}}
 }
 // the people run the house: lamp on when it is dark and someone is up, TV on only while someone watches
-let wantLamp=null,wantTv=null,subText='';
+let subText='';
 function autoHome(){
-  let awake=false,watching=false;const home=[];
-  for(const n of people){if(n.hidden)continue;home.push(n.o.name);if(!n.lie)awake=true;if(ACT[n.act].tv&&n.phase==='at')watching=true;}
-  const wl=dark>.5&&awake;
-  if(wl!==wantLamp){wantLamp=wl;if(S.lamp!==wl){S.lamp=wl;applySwitches();}}
-  if(watching!==wantTv){wantTv=watching;if(S.tv!==watching){S.tv=watching;applySwitches();}}
-  const here=roomAt(pos.x,pos.z);if(here&&here!==bakedRoom){envDirty=true;envTimer=0;}           // walked into another room: redo the reflections
-  const txt='你在'+(here?here.name:'門口')+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家');
+  const ah=curHouse();if(ah!==activeHouse){activeHouse=ah;applySwitches();}        // moved next to a different house: its lights become the real ones
+  const home=[];let out=0;
+  for(const n of people){const r=roomAt(n.pos.x,n.pos.z);n.root.visible=!n.hidden&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<60;
+    if(!n.hidden&&!r)out++;if(!n.hidden&&r&&r.house===ah)home.push(n.o.name);}
+  for(const H of houses){let awake=false,watching=false;                           // each house looks after its own lamp and TV
+    H.inner.visible=houseDist(H,pos.x,pos.z)<26;                                   // far-away furniture is not drawn
+    for(const n of people){if(!inHouse(n,H))continue;if(!n.lie)awake=true;if(ACT[n.act].tv&&n.phase==='at')watching=true;}
+    const wl=dark>.5&&awake;
+    if(wl!==H.wantLamp){H.wantLamp=wl;if(H.S.lamp!==wl){H.S.lamp=wl;applySwitches();}}
+    if(watching!==H.wantTv){H.wantTv=watching;if(H.S.tv!==watching){H.S.tv=watching;applySwitches();}}}
+  updateStreetLamps();
+  const here=roomAt(pos.x,pos.z);if(bakeKey()!==bakedKey){envDirty=true;envTimer=0;}                // walked somewhere new: redo the reflections
+  const txt=here?'你在 '+here.house.no+' 號的'+here.name+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家'):'你在街上 · 外面有 '+out+' 個人';
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
-  if(!$('minds').hidden)$('minds').textContent=people.map(n=>{const pr=progress(n);
+  if(!$('minds').hidden)$('minds').textContent=people.filter(n=>!n.hidden).sort((a,b)=>Math.hypot(a.pos.x-pos.x,a.pos.z-pos.z)-Math.hypot(b.pos.x-pos.x,b.pos.z-pos.z)).slice(0,3).map(n=>{const pr=progress(n);
     return n.o.name+' '+moodFace(n)+'　目標：'+GOALS[n.goal.id].label+(pr>=0?' '+Math.round(pr*100)+'%':'')+(n.resume?'（之後回去'+GOALS[n.resume.id].label+'）':'')+
       '\n　'+Object.keys(NEED_ZH).map(k=>NEED_ZH[k]+' '+String(Math.round(n.need[k]*100)).padStart(2,' ')).join('　');}).join('\n');
 }

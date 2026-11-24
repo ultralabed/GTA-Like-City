@@ -8,7 +8,7 @@ function tick(now){
   applyTime();
   if(frame%20===0&&!sliding)slider.value=clock;
   let dc=Math.abs(clock-bakeClock);dc=Math.min(dc,24-dc);
-  if(dc>.2&&t-bakeAt>2.5)envDirty=true;
+  if(dc>.2&&t-bakeAt>3.5)envDirty=true;
   // you
   const f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;
   const s=(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x;
@@ -28,8 +28,8 @@ function tick(now){
   acc+=dt;let steps=0;while(acc>=PH&&steps<14){physStep(PH);acc-=PH;steps++;}if(steps===14)acc=0;
   syncBalls(dt);
   // lights that live
-  const k=S.neon?1:0;for(const d of dev.neons){d.l1.intensity=k*(.3+.2*dark);d.l2.intensity=k*(.18+.12*dark);}
-  for(const d of dev.tvs){if(S.tv){if(frame%3===0)drawTV(d,t);d.light.intensity=(.18+.12*dark)*(1+Math.sin(t*5.3)*.08+Math.sin(t*13.1)*.05);}else d.light.intensity=0;}
+  const AS=activeHouse.S,AD=activeHouse.dev,k=AS.neon?1:0;for(const d of AD.neons){d.l1.intensity=k*(.3+.2*dark);d.l2.intensity=k*(.18+.12*dark);}
+  for(const d of AD.tvs){if(AS.tv){if(frame%3===0)drawTV(d,t);d.light.intensity=(.18+.12*dark)*(1+Math.sin(t*5.3)*.08+Math.sin(t*13.1)*.05);}else d.light.intensity=0;}
   if(dust.visible){const p=dGeo.attributes.position;for(let i=0;i<DN;i++){let y=p.getY(i)+Math.sin(t*.4+i)*.0006-.0004;if(y<.15)y=2.3;p.setY(i,y);p.setX(i,p.getX(i)+Math.cos(t*.3+i*1.7)*.0005);}p.needsUpdate=true;}
   exposure+=(exposureTarget-exposure)*(1-Math.exp(-dt*3));
   if(envDirty){envTimer+=dt;if(frame<3||envTimer>.12){bakeEnv();envDirty=false;bakeAt=t;bakeClock=clock;}}
@@ -43,6 +43,9 @@ function tick(now){
   if(frame>90){slow=dt>.034?slow+1:Math.max(0,slow-1);if(slow>45&&pr>.75){pr=Math.max(.75,pr-.25);slow=0;resize();}}
 }
 scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=.45;});
-applySwitches();applyTime();dev.tvs.forEach(d=>drawTV(d,0));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+// things that stand outside take much more of their light from the sky
+[M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
+M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
+applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);

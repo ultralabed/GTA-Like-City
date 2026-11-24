@@ -4,7 +4,10 @@ const colliders=[];          // floor areas you cannot walk through   [x0,x1,z0,
 const pboxes=[];             // shapes balls bounce off               [x0,x1,y0,y1,z0,z1]
 const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
-const dev={lamps:[],tvs:[],neons:[]};   // things the switches control
+let dev=null;                // the lamps, TVs and neon signs of the house being built
+let bH=null;                 // the house being built (null while building the street)
+let root=scene;              // where new furniture groups go
+const marks={streetLamp:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
 let cur=scene;               // where new meshes go: the scene, or the piece of furniture being built
 function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
@@ -13,6 +16,10 @@ function add(m,shadow){m.castShadow=shadow!==false;m.receiveShadow=true;cur.add(
 function box(w,h,d,mat,x,y,z,o){o=o||{};
   let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,4,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
   const m=new THREE.Mesh(g,mat);m.position.set(x,y,z);if(o.ry)m.rotation.y=o.ry;if(o.rz)m.rotation.z=o.rz;return add(m,o.shadow);}
+// a flat sheet on the ground; tile = how many metres one copy of the texture covers
+function flat(w,d,mat,x,y,z,tile){const g=new THREE.PlaneGeometry(w,d);
+  if(tile){const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/tile,uv.getY(i)*d/tile);}
+  const m=new THREE.Mesh(g,mat);m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.receiveShadow=true;cur.add(m);return m;}
 function cyl(rt,rb,h,mat,x,y,z,seg,open){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||28,1,!!open),mat);m.position.set(x,y,z);return add(m);}
 
 // A prefab builds one piece of furniture around its own middle and returns a description of itself:
@@ -26,7 +33,7 @@ const lieQ=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().make
 // makeFrame(): a group sitting at (ox,oz), turned by rot, plus the maths to carry points and areas along with it
 function makeFrame(ox,oz,rot){
   const g=new THREE.Group(),c=Math.round(Math.cos(rot)),s=Math.round(Math.sin(rot));
-  g.position.set(ox,0,oz);g.rotation.y=rot;scene.add(g);
+  g.position.set(ox,0,oz);g.rotation.y=rot;root.add(g);
   const pt=(x,z)=>[ox+x*c+z*s,oz-x*s+z*c];
   const span=(x0,x1,z0,z1)=>{const a=pt(x0,z0),b=pt(x1,z1);return[Math.min(a[0],b[0]),Math.max(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[1],b[1])];};
   return{g,pt,span};
@@ -37,11 +44,12 @@ function place(item,R){
   (d.solid||[]).forEach(q=>colliders.push(span(q[0],q[1],q[2],q[3])));
   (d.boxes||[]).forEach(q=>{const r=span(q[0],q[1],q[4],q[5]);pboxes.push([r[0],r[1],q[2],q[3],r[2],r[3]]);});
   const id=++furnSeq;
-  (d.spots||[]).forEach(sp=>{const n=spotCount[sp.type]=(spotCount[sp.type]||0)+1,o=Object.assign({},sp,{owner:id,room:R?R.id:null});
+  (d.spots||[]).forEach(sp=>{const n=spotCount[sp.type]=(spotCount[sp.type]||0)+1,o=Object.assign({},sp,{owner:id,room:R?R.id:null,house:R?R.house.id:null});
     o.ap=pt(sp.ap[0],sp.ap[1]);
     if(sp.an){const a=pt(sp.an[0],sp.an[2]);o.an=[a[0],sp.an[1],a[1]];}
     if(sp.yaw!=null)o.yaw=sp.yaw+rot;
     if(sp.lie)o.q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),rot).multiply(lieQ);
     ACT[sp.type+n]=o;});
+  (d.marks||[]).forEach(m=>{const a=pt(m.x,m.z);marks[m.kind].push(Object.assign({},m,{x:a[0],z:a[1]}));});
   return g;
 }

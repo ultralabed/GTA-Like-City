@@ -2,8 +2,8 @@ const $=id=>document.getElementById(id);
 const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
-  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>球：踢　<b>點</b>人：打招呼'
-  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>點</b>球：踢　<b>點</b>人：打招呼　<b>Esc</b> 放開滑鼠';
+  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼'
+  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　<b>Esc</b> 放開滑鼠';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}
 
@@ -15,7 +15,11 @@ renderer.setPixelRatio(pr);
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
+// Safety net for every material: a single broken pixel (not-a-number, or brighter than the picture format can hold)
+// would spread through the blur passes and turn the whole reflection black. So: broken becomes 0, too bright is capped.
+THREE.ShaderChunk.output_fragment+='\nif(!(gl_FragColor.r>=0.0&&gl_FragColor.g>=0.0&&gl_FragColor.b>=0.0))gl_FragColor.rgb=vec3(0.0);\ngl_FragColor.rgb=min(gl_FragColor.rgb,vec3(64.0));\n';
+
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x05030a);
-const camera=new THREE.PerspectiveCamera(68,1,0.05,80);
+const camera=new THREE.PerspectiveCamera(68,1,0.08,800);
 camera.rotation.order='YXZ';

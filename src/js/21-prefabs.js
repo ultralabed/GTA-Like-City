@@ -1,6 +1,6 @@
 /* ---------- furniture prefabs ---------- */
 // Every number in here is measured from the furniture's own middle (or from the wall it hangs on).
-PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase}]});
+PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase,hide:o.hide,shared:o.shared}]});
 
 PREFAB.rug=o=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(o.w||2.5,o.d||3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
 
@@ -12,7 +12,7 @@ PREFAB.tvConsole=()=>{
   const c=cv(256,144),tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;
   const mat=new THREE.MeshBasicMaterial({map:tex});
   const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.72),mat);scr.rotation.y=Math.PI/2;scr.position.set(.124,1.25,0);cur.add(scr);
-  scr.userData={label:'電視',act:userTv};interact.push(scr);
+  const H=bH;scr.userData={label:'電視',act:()=>userTv(H)};interact.push(scr);
   const light=new THREE.PointLight(0x9f8cff,0,5,2);light.position.set(.7,1.2,0);cur.add(light);
   dev.tvs.push({mat,tex,g:c.getContext('2d'),light});
   box(.12,.2,.12,M.ceramic,.28,.64,-.75,{r:.03});                     // vase
@@ -91,7 +91,7 @@ PREFAB.lampCorner=()=>{
   cyl(.16,.17,.02,M.brass,LX,.01,LZ,32);cyl(.012,.012,1.5,M.brass,LX,.76,LZ,12);
   const shade=new THREE.MeshStandardMaterial({color:0xf3e3c8,roughness:.9,side:THREE.DoubleSide,emissive:0xffa050,emissiveIntensity:0});
   const sh=cyl(.15,.22,.3,shade,LX,1.6,LZ,32,true);sh.castShadow=false;
-  sh.userData={label:'立燈',act:userLamp};interact.push(sh);
+  const H=bH;sh.userData={label:'立燈',act:()=>userLamp(H)};interact.push(sh);
   const bulb=new THREE.Mesh(new THREE.SphereGeometry(.04,12,8),new THREE.MeshBasicMaterial({color:0x000000}));bulb.position.set(LX,1.58,LZ);cur.add(bulb);
   const light=new THREE.PointLight(0xffab66,0,7,2);light.position.set(LX,1.5,LZ);cur.add(light);
   dev.lamps.push({light,shade,bulb:bulb.material.color});
@@ -108,17 +108,10 @@ PREFAB.neon=()=>{
   [[.03,.29],[.13,.22]].forEach(l=>tube([new THREE.Vector3(X,cy+l[0]+.08,-l[1]),new THREE.Vector3(X,cy+l[0]+.08,l[1])],pink));
   [[0,.5],[-.09,.38],[-.18,.26]].forEach(l=>{const p=[];for(let i=0;i<=8;i++){const u=i/8;p.push(new THREE.Vector3(X,cy-.06+l[0]+Math.sin(u*Math.PI*4)*.012,-l[1]+u*2*l[1]));}tube(p,cyan);});
   const hit=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.9),new THREE.MeshBasicMaterial({visible:false}));hit.rotation.y=-Math.PI/2;hit.position.set(X-.02,cy+.05,0);cur.add(hit);
-  hit.userData={label:'霓虹燈',act:userNeon};interact.push(hit);
+  const H=bH;hit.userData={label:'霓虹燈',act:()=>userNeon(H)};interact.push(hit);
   const l1=new THREE.PointLight(0xff3fa0,0,5,2);l1.position.set(-.45,1.8,0);cur.add(l1);
   const l2=new THREE.PointLight(0x35e6ff,0,3.5,2);l2.position.set(-.4,1.45,0);cur.add(l2);
   dev.neons.push({pink,cyan,l1,l2});
-};
-
-// the way out. Sits in a wall; you walk up to it from the -z side.
-PREFAB.door=()=>{
-  box(.95,2.1,.05,M.walnut,0,1.05,-.02);box(1.07,2.16,.03,M.trim,0,1.08,-.012);
-  cyl(.022,.022,.14,M.brass,-.35,1.02,-.07,16).rotation.x=Math.PI/2;
-  return{spots:[{type:'out',ap:[0,-.45],yaw:0,pose:'idle',hide:true,shared:true,label:'出門上班'}]};
 };
 
 // double bed. The pillows are at the +z end. Two people can sleep in it, one from each side.
@@ -138,4 +131,26 @@ PREFAB.wardrobe=()=>{
   box(1.4,2.1,.55,M.walnut,0,1.05,-.275,{r:.012});
   [-.35,.35].forEach(x=>{box(.66,1.98,.02,M.trim,x,1.06,-.56);cyl(.012,.012,.3,M.brass,x<0?x+.27:x-.27,1.05,-.585,10);});
   return{solid:[[-.72,.72,-.58,0]],boxes:[[-.7,.7,0,2.1,-.55,0]]};
+};
+
+/* ----- things that stand outside ----- */
+const icoG=new THREE.IcosahedronGeometry(1,1);
+PREFAB.tree=o=>{const s=o.s||1;
+  cyl(.13*s,.19*s,2.3*s,M.bark,0,1.15*s,0,10);
+  [[0,3.1,0,1.25],[.55,2.6,.3,.9],[-.5,2.75,-.35,.95],[.1,3.9,-.1,.8]].forEach((q,i)=>{const m=new THREE.Mesh(icoG,i%2?M.crown2:M.crown);
+    m.position.set(q[0]*s,q[1]*s,q[2]*s);m.scale.setScalar(q[3]*s);m.rotation.set(i,i*2,0);add(m);});
+  return{solid:[[-.24,.24,-.24,.24]],boxes:[[-.17,.17,0,2.3*s,-.17,.17]]};
+};
+// street lamp: the arm reaches toward +z
+PREFAB.streetLamp=()=>{
+  cyl(.05,.08,4.3,M.steel,0,2.15,0,10);box(.06,.06,1.0,M.steel,0,4.25,.45);
+  const mat=new THREE.MeshBasicMaterial({color:0x111111});const head=box(.26,.07,.42,mat,0,4.2,.9);head.castShadow=false;
+  return{solid:[[-.1,.1,-.1,.1]],boxes:[[-.07,.07,0,4.3,-.07,.07]],marks:[{kind:'streetLamp',x:0,z:.9,y:4.1,mat}]};
+};
+// park bench for two. You sit facing +z.
+PREFAB.bench=()=>{
+  box(1.5,.06,.46,M.walnut,0,.45,0);box(1.5,.44,.05,M.walnut,0,.76,-.22);
+  [-.65,.65].forEach(x=>{box(.06,.45,.42,M.steel,x,.225,0);box(.06,.5,.05,M.steel,x,.7,-.22);});
+  const sit=x=>({type:'bench',ap:[x,.62],an:[x,.56,.04],yaw:0,pose:'sit',label:'坐在長椅上'});
+  return{solid:[[-.78,.78,-.28,.25]],boxes:[[-.75,.75,0,.48,-.23,.23],[-.75,.75,.48,.98,-.26,-.19]],spots:[sit(-.38),sit(.38)]};
 };

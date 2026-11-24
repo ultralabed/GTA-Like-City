@@ -1,11 +1,14 @@
 /* ---------- reflections: photograph the room itself and use it as the mirror image ---------- */
-const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null,bakedRoom=null;
+const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null,bakedKey='';
+// reflections are re-photographed when you enter another room, or walk a good way down the street
+function bakeKey(){const r=roomAt(pos.x,pos.z);return r?r.house.id+r.id:'out'+Math.round(pos.x/16)+','+Math.round(pos.z/16);}
 function bakeEnv(){
   const hadDust=dust.visible;dust.visible=false;dyn.visible=false;scene.environment=null;
-  const r=roomAt(pos.x,pos.z)||rooms[0];bakedRoom=r;                  // photograph the room you are standing in
-  scene.position.set(-r.cx,-1.4,-r.cz);scene.updateMatrixWorld(true);
-  const rt=pmrem.fromScene(scene,.03,.05,60);
-  scene.position.set(0,0,0);scene.updateMatrixWorld(true);dust.visible=hadDust;dyn.visible=true;
+  M.water.visible=M.glass.visible=false;                              // mirror-like things can catch the sun so brightly that the photo breaks; leave them out
+  const r=roomAt(pos.x,pos.z);bakedKey=bakeKey();                     // photograph the room you are standing in, or the street around you
+  if(r)scene.position.set(-r.cx,-1.4,-r.cz);else scene.position.set(-pos.x,-1.6,-pos.z);scene.updateMatrixWorld(true);
+  const rt=pmrem.fromScene(scene,.03,.05,500);
+  scene.position.set(0,0,0);scene.updateMatrixWorld(true);dust.visible=hadDust;dyn.visible=true;M.water.visible=M.glass.visible=true;
   scene.environment=rt.texture;if(envRT)envRT.dispose();envRT=rt;
 }
 
