@@ -252,42 +252,242 @@ const M={
   rug:new THREE.MeshStandardMaterial({map:rugTexture(),bumpMap:weave,bumpScale:.01,roughness:1})
 };
 
+/* ---------- room data ---------- */
+// Everything that makes THIS room this room. Change the numbers and the room changes;
+// nothing below this file knows where the sofa is. Units are metres; x is left-right, z is front-back.
+// rot turns a piece of furniture in quarter turns (0, 1, 2, 3).
+const ROOM={
+  name:'夕陽小房間',
+  w:6,d:5,h:2.8,
+  walls:{west:'wall',east:'accent',south:'wall',north:'wall'},     // material names from the materials file
+  window:{half:1.7,y0:.45,y1:2.45},                               // always on the north wall (-z), where the sun is
+  start:{x:1.9,z:1.3,yaw:.62,pitch:-.06},                         // where you stand when the page opens
+  clock:18.67,
+  furniture:[
+    {type:'rug',x:-.95,z:.3},
+    {type:'tvConsole',x:-3,z:.3},
+    {type:'sofa',x:.45,z:.3},
+    {type:'coffeeTable',x:-1,z:.3},
+    {type:'bookshelf',x:3,z:-1},
+    {type:'art',x:-1.3,z:2.5,seed:0},
+    {type:'art',x:-.2,z:2.5,seed:1},
+    {type:'plant',x:-2.4,z:-1.9},
+    {type:'lampCorner',x:-2.45,z:1.95},
+    {type:'neon',x:3,z:1.15},
+    {type:'door',x:1.9,z:2.5},
+    // places on the open floor where people do things
+    {type:'spot',kind:'window',x:-.5,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
+    {type:'spot',kind:'window',x:.6,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
+    {type:'spot',kind:'stretch',x:1.7,z:.5,yaw:Math.PI,pose:'stretch',label:'伸展'},
+    {type:'spot',kind:'dance',x:-1.85,z:-.95,yaw:Math.PI/2,pose:'dance',label:'跳舞'},
+    {type:'spot',kind:'dance',x:-.9,z:-1.25,yaw:-2.2,pose:'dance',label:'跳舞'},
+    {type:'spot',kind:'ball',chase:true,pose:'idle',label:'踢籃球'}
+  ],
+  balls:[
+    {kind:'basket',x:1.7,z:-1.9},{kind:'beach',x:-1.6,z:1.3},{kind:'bowl',x:2.3,z:.4},
+    {kind:'tennis',x:-1.9,z:-.6},{kind:'tennis',x:-1.7,z:-.95},{kind:'tennis',x:-.85,y:.445,z:.75},
+    {kind:'orb',x:2.4,z:1.75}
+  ],
+  people:[
+    {name:'小美',h:1.64,skin:0xe8b996,hair:0x2a1a16,top:0xd9623f,bottom:0xe9dfcf,shoe:0xf4f0e8,long:true,
+      shift:[9,17],bed:[22,8],patience:.8,playful:.4,w:{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}},
+    {name:'阿傑',h:1.78,skin:0xc98f68,hair:0x15110f,top:0x1f6a6e,bottom:0x27304a,shoe:0x202024,
+      shift:[22,6],bed:[8,16],patience:.35,playful:.9,w:{energy:1,fun:1.2,fit:1.2,calm:.7,care:.6}}
+  ]
+};
+const RW=ROOM.w/2,RD=ROOM.d/2,RH=ROOM.h;
+
 /* ---------- builders ---------- */
-const colliders=[],interact=[];
+// Lists the rest of the game reads. Furniture fills them in when it is placed.
+const colliders=[];          // floor areas you cannot walk through   [x0,x1,z0,z1]
+const pboxes=[];             // shapes balls bounce off               [x0,x1,y0,y1,z0,z1]
+const interact=[];           // things you can click
+const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
+const dev={lamps:[],tvs:[],neons:[]};   // things the switches control
+let cur=scene;               // where new meshes go: the scene, or the piece of furniture being built
 function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
   for(let i=0;i<uv.count;i++){const f=dm[Math.floor(i/4)];uv.setXY(i,uv.getX(i)*f[0],uv.getY(i)*f[1]);}}
-function add(m,shadow){m.castShadow=shadow!==false;m.receiveShadow=true;scene.add(m);return m;}
+function add(m,shadow){m.castShadow=shadow!==false;m.receiveShadow=true;cur.add(m);return m;}
 function box(w,h,d,mat,x,y,z,o){o=o||{};
   let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,4,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
   const m=new THREE.Mesh(g,mat);m.position.set(x,y,z);if(o.ry)m.rotation.y=o.ry;if(o.rz)m.rotation.z=o.rz;return add(m,o.shadow);}
 function cyl(rt,rb,h,mat,x,y,z,seg,open){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||28,1,!!open),mat);m.position.set(x,y,z);return add(m);}
-function solid(x0,x1,z0,z1){colliders.push([x0,x1,z0,z1]);}
 
-/* ---------- room shell: 6 m x 5 m, 2.8 m high. Window on the -z wall ---------- */
-const RW=3,RD=2.5,RH=2.8,T=.16;
-box(6+2*T,T,5+2*T,M.floor,0,-T/2,0);
-box(6+2*T,T,5+2*T,M.ceil,0,RH+T/2,0);
-box(T,RH,5,M.wall,-RW-T/2,RH/2,0);
-box(T,RH,5,M.accent,RW+T/2,RH/2,0);
-box(6+2*T,RH,T,M.wall,0,RH/2,RD+T/2);
-const WX=1.7,WY0=.45,WY1=2.45,zw=-RD-T/2;
-box(RW-WX+T,RH,T,M.wall,-(RW+WX+T)/2,RH/2,zw);
-box(RW-WX+T,RH,T,M.wall,(RW+WX+T)/2,RH/2,zw);
-box(2*WX,WY0,T,M.wall,0,WY0/2,zw);
-box(2*WX,RH-WY1,T,M.wall,0,(RH+WY1)/2,zw);
-box(2*WX+.1,.04,.3,M.trim,0,WY0+.02,-RD+.02);                      // sill
-[-WX+.03,-WX/3,WX/3,WX-.03].forEach(x=>box(.05,WY1-WY0,.06,M.black,x,(WY0+WY1)/2,zw)); // mullions
-[WY0+.03,WY1-.03].forEach(y=>box(2*WX,.05,.06,M.black,0,y,zw));
-box(2*WX,WY1-WY0,.012,M.glass,0,(WY0+WY1)/2,zw,{shadow:false}).receiveShadow=false;
-// baseboards + ceiling trim
-[[6,.1,.02,0,.05,RD-.01],[.02,.1,5,-RW+.01,.05,0],[.02,.1,5,RW-.01,.05,0],[1.3,.1,.02,-2.35,.05,-RD+.01],[1.3,.1,.02,2.35,.05,-RD+.01]]
-  .forEach(a=>box(a[0],a[1],a[2],M.trim,a[3],a[4],a[5]));
-// curtains
-[-1,1].forEach(s=>{for(let i=0;i<5;i++)box(.1,2.45,.07,M.linen,s*(WX+.08+i*.085),1.27,-RD+.1+(i%2)*.035,{r:.03});});
-box(2*WX+1.1,.03,.03,M.brass,0,2.55,-RD+.1);
-// door on the front wall
-box(.95,2.1,.05,M.walnut,1.9,1.05,RD-.02);box(1.07,2.16,.03,M.trim,1.9,1.08,RD-.012);
-cyl(.022,.022,.14,M.brass,1.55,1.02,RD-.07,16).rotation.x=Math.PI/2;
+// A prefab builds one piece of furniture around its own middle and returns a description of itself:
+//   solid: [x0,x1,z0,z1]         where you cannot walk
+//   boxes: [x0,x1,y0,y1,z0,z1]   what balls hit
+//   spots: {type, ap:[x,z], an:[x,y,z], yaw, pose, label ...}   how a person uses it
+// place() puts it in the room, turns it, and moves all of those numbers along with it.
+const PREFAB={},spotCount={};let furnSeq=0;
+const lieQ=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+  new THREE.Vector3(-1,0,0),new THREE.Vector3(0,0,1),new THREE.Vector3(0,1,0)));   // lying on your back, head toward +z
+function place(item){
+  const g=new THREE.Group(),rot=(item.rot||0)*Math.PI/2,c=Math.cos(rot),s=Math.sin(rot),ox=item.x||0,oz=item.z||0;
+  g.position.set(ox,0,oz);g.rotation.y=rot;scene.add(g);
+  const prev=cur;cur=g;const d=PREFAB[item.type](item)||{};cur=prev;
+  const pt=(x,z)=>[ox+x*c+z*s,oz-x*s+z*c];
+  const span=(x0,x1,z0,z1)=>{const a=pt(x0,z0),b=pt(x1,z1);return[Math.min(a[0],b[0]),Math.max(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[1],b[1])];};
+  (d.solid||[]).forEach(q=>colliders.push(span(q[0],q[1],q[2],q[3])));
+  (d.boxes||[]).forEach(q=>{const r=span(q[0],q[1],q[4],q[5]);pboxes.push([r[0],r[1],q[2],q[3],r[2],r[3]]);});
+  const id=++furnSeq;
+  (d.spots||[]).forEach(sp=>{const n=spotCount[sp.type]=(spotCount[sp.type]||0)+1,o=Object.assign({},sp,{owner:id});
+    o.ap=pt(sp.ap[0],sp.ap[1]);
+    if(sp.an){const a=pt(sp.an[0],sp.an[2]);o.an=[a[0],sp.an[1],a[1]];}
+    if(sp.yaw!=null)o.yaw=sp.yaw+rot;
+    if(sp.lie)o.q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),rot).multiply(lieQ);
+    ACT[sp.type+n]=o;});
+  return g;
+}
+
+/* ---------- furniture prefabs ---------- */
+// Every number in here is measured from the furniture's own middle (or from the wall it hangs on).
+PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase}]});
+
+PREFAB.rug=()=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(2.5,3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
+
+// low cabinet with a TV above it. Stands against a wall; the screen faces +x.
+PREFAB.tvConsole=()=>{
+  box(.45,.42,1.9,M.walnut,.28,.33,0,{r:.015});
+  [-.75,.75].forEach(z=>box(.35,.12,.05,M.black,.28,.06,z));
+  box(.04,.78,1.36,M.black,.1,1.25,0,{r:.012});
+  const c=cv(256,144),tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;
+  const mat=new THREE.MeshBasicMaterial({map:tex});
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.72),mat);scr.rotation.y=Math.PI/2;scr.position.set(.124,1.25,0);cur.add(scr);
+  scr.userData={label:'電視',act:userTv};interact.push(scr);
+  const light=new THREE.PointLight(0x9f8cff,0,5,2);light.position.set(.7,1.2,0);cur.add(light);
+  dev.tvs.push({mat,tex,g:c.getContext('2d'),light});
+  box(.12,.2,.12,M.ceramic,.28,.64,-.75,{r:.03});                     // vase
+  cyl(.05,.05,.02,M.black,.28,.55,.7,24);                             // little speaker puck
+  box(.2,.03,.28,M.coral,.3,.555,.45);box(.19,.03,.27,M.teal,.3,.585,.45,{ry:.15});
+  return{solid:[[0,.52,-.98,.98]],boxes:[[.05,.51,0,.54,-.95,.95],[.07,.13,.86,1.64,-.68,.68]]};
+};
+
+// three-seat sofa. You sit facing -x. Two people can sit, or one can lie down.
+PREFAB.sofa=()=>{
+  box(.95,.3,2.1,M.sofa,0,.25,0,{r:.07});
+  box(.28,.62,2.1,M.sofa,.41,.6,0,{r:.09});
+  [-1,1].forEach(s=>box(.95,.5,.22,M.sofa,0,.38,s*1.08,{r:.08}));
+  [-.48,.48].forEach(z=>box(.72,.16,.92,M.sofa,-.09,.46,z,{r:.07}));
+  box(.14,.4,.42,M.coral,.21,.72,-.7,{r:.06,rz:-.25});
+  box(.14,.4,.42,M.teal,.21,.72,.65,{r:.06,rz:-.25});
+  [[-.4,-1],[-.4,1],[.45,-1],[.45,1]].forEach(p=>cyl(.02,.015,.1,M.brass,p[0],.05,p[1],12));
+  const sit=z=>({type:'tv',ap:[-.8,z],an:[-.03,.62,z],yaw:-Math.PI/2,pose:'sit',label:'看電視',tv:true});
+  return{solid:[[-.5,.57,-1.2,1.2]],
+    boxes:[[-.48,.3,0,.54,-1.05,1.05],[.27,.55,0,.91,-1.05,1.05],[-.48,.48,0,.63,-1.19,-.97],[-.48,.48,0,.63,.97,1.19]],
+    spots:[sit(-.48),sit(.48),{type:'sleep',ap:[-.8,0],an:[-.07,.66,0],lie:true,pose:'lie',label:'睡覺 💤'}]};
+};
+
+// glass top on brass legs, with a wooden shelf underneath
+PREFAB.coffeeTable=()=>{
+  box(.62,.02,1.15,new THREE.MeshPhysicalMaterial({color:0xbfe8e4,roughness:.04,transparent:true,opacity:.28}),0,.4,0,{shadow:false});
+  box(.56,.03,1.09,M.walnut,0,.16,0);
+  [[-.27,-.52],[.27,-.52],[-.27,.52],[.27,.52]].forEach(p=>cyl(.014,.014,.4,M.brass,p[0],.2,p[1],12));
+  cyl(.045,.036,.09,M.ceramic,.1,.455,-.25,24);                        // mug
+  box(.2,.025,.27,M.teal,-.08,.423,.25,{ry:.3});box(.19,.02,.26,M.coral,-.08,.446,.25,{ry:.1});
+  cyl(.1,.07,.05,M.brass,0,.435,-.1,28);                              // bowl
+  return{solid:[[-.33,.33,-.6,.6]],boxes:[[-.31,.31,.39,.41,-.575,.575],[-.28,.28,.145,.175,-.545,.545]]};
+};
+
+// tall shelf full of books. Stands against a wall; the books face -x.
+const bookCols=[0xb5533a,0x1f5a5e,0xe0a45c,0x3b2a3f,0xe8d9c0,0x7a2c5a,0x2b3a67,0xd9783f];
+PREFAB.bookshelf=()=>{
+  const bx=-.2;
+  box(.34,2.0,.03,M.walnut,bx,1.0,-.62);box(.34,2.0,.03,M.walnut,bx,1.0,.62);
+  for(let i=0;i<5;i++)box(.34,.03,1.24,M.walnut,bx,.03+i*.49,0);
+  box(.02,2.0,1.24,M.walnut,-.04,1.0,0);
+  for(let s=0;s<4;s++){let z=-.58;const y0=.045+s*.49;
+    while(z<.5){const w=rnd(.025,.06),hh=rnd(.24,.38),d=rnd(.18,.26);
+      if(Math.random()<.14){z+=rnd(.1,.22);continue;}
+      box(d,hh,w,new THREE.MeshStandardMaterial({color:bookCols[Math.floor(rnd(0,8))],roughness:.75}),bx-.02,y0+hh/2,z+w/2,{rz:Math.random()<.1?.12:0});
+      z+=w+.004;}}
+  cyl(.09,.06,.16,M.terracotta,bx-.02,2.07,-.3,20);cyl(.07,.07,.2,M.brass,bx-.02,2.09,.3,20);
+  return{solid:[[-.42,0,-.7,.7]],boxes:[[-.38,-.03,0,2.0,-.64,.64]],
+    spots:[{type:'read',ap:[-.85,0],yaw:Math.PI/2,pose:'read',label:'看書'}]};
+};
+
+// framed picture. Hangs on a wall; faces -z.
+PREFAB.art=o=>{
+  box(.78,1.02,.03,M.black,0,1.55,-.02);
+  const p=new THREE.Mesh(new THREE.PlaneGeometry(.7,.94),new THREE.MeshStandardMaterial({map:artTexture(o.seed||0),roughness:.6}));
+  p.rotation.y=Math.PI;p.position.set(0,1.55,-.037);p.receiveShadow=true;cur.add(p);
+};
+
+const leafG=new THREE.SphereGeometry(1,14,8);
+PREFAB.plant=()=>{
+  cyl(.2,.15,.36,M.terracotta,0,.18,0,28);
+  cyl(.185,.185,.02,new THREE.MeshStandardMaterial({color:0x2a1c12,roughness:1}),0,.35,0,28);
+  for(let i=0;i<16;i++){const p=new THREE.Group();p.position.set(0,.36,0);p.rotation.y=i*2.4+rnd(-.2,.2);
+    const tilt=rnd(.25,1.05),L=rnd(.55,1.05);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(.006,.01,L,6),M.leaf);stem.position.set(0,Math.cos(tilt)*L/2,Math.sin(tilt)*L/2);stem.rotation.x=tilt;
+    const lf=new THREE.Mesh(leafG,M.leaf);lf.scale.set(rnd(.09,.14),.008,rnd(.17,.26));lf.position.set(0,Math.cos(tilt)*L,Math.sin(tilt)*L);lf.rotation.x=tilt-.5;
+    [stem,lf].forEach(m=>{m.castShadow=true;m.receiveShadow=true;p.add(m);});cur.add(p);}
+  return{solid:[[-.35,.35,-.35,.35]],boxes:[[-.18,.18,0,.36,-.18,.18]],
+    spots:[{type:'plant',ap:[.6,.15],yaw:-Math.PI/2,pose:'water',label:'照顧盆栽'}]};
+};
+
+// little round table with a floor lamp next to it
+PREFAB.lampCorner=()=>{
+  cyl(.24,.24,.025,M.walnut,0,.5,0,32);cyl(.02,.02,.5,M.black,0,.25,0,12);cyl(.16,.16,.015,M.black,0,.008,0,28);
+  const LX=.5,LZ=.15;
+  cyl(.16,.17,.02,M.brass,LX,.01,LZ,32);cyl(.012,.012,1.5,M.brass,LX,.76,LZ,12);
+  const shade=new THREE.MeshStandardMaterial({color:0xf3e3c8,roughness:.9,side:THREE.DoubleSide,emissive:0xffa050,emissiveIntensity:0});
+  const sh=cyl(.15,.22,.3,shade,LX,1.6,LZ,32,true);sh.castShadow=false;
+  sh.userData={label:'立燈',act:userLamp};interact.push(sh);
+  const bulb=new THREE.Mesh(new THREE.SphereGeometry(.04,12,8),new THREE.MeshBasicMaterial({color:0x000000}));bulb.position.set(LX,1.58,LZ);cur.add(bulb);
+  const light=new THREE.PointLight(0xffab66,0,7,2);light.position.set(LX,1.5,LZ);cur.add(light);
+  dev.lamps.push({light,shade,bulb:bulb.material.color});
+  return{solid:[[-.3,.7,-.25,.55]],boxes:[[-.2,.2,.48,.515,-.2,.2]]};
+};
+
+// neon sign: a sun setting into the sea. Hangs on a wall; faces -x.
+PREFAB.neon=()=>{
+  const pink=new THREE.MeshBasicMaterial({color:0xffffff}),cyan=new THREE.MeshBasicMaterial({color:0xffffff});
+  const tube=(pts,mat)=>cur.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),pts.length*6,.011,8,false),mat));
+  const X=-.03,cy=1.72,r=.36,a=[];
+  for(let i=0;i<=20;i++){const t=Math.PI*i/20;a.push(new THREE.Vector3(X,cy+Math.sin(t)*r,Math.cos(t)*r));}
+  tube(a,pink);
+  [[.03,.29],[.13,.22]].forEach(l=>tube([new THREE.Vector3(X,cy+l[0]+.08,-l[1]),new THREE.Vector3(X,cy+l[0]+.08,l[1])],pink));
+  [[0,.5],[-.09,.38],[-.18,.26]].forEach(l=>{const p=[];for(let i=0;i<=8;i++){const u=i/8;p.push(new THREE.Vector3(X,cy-.06+l[0]+Math.sin(u*Math.PI*4)*.012,-l[1]+u*2*l[1]));}tube(p,cyan);});
+  const hit=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.9),new THREE.MeshBasicMaterial({visible:false}));hit.rotation.y=-Math.PI/2;hit.position.set(X-.02,cy+.05,0);cur.add(hit);
+  hit.userData={label:'霓虹燈',act:userNeon};interact.push(hit);
+  const l1=new THREE.PointLight(0xff3fa0,0,5,2);l1.position.set(-.45,1.8,0);cur.add(l1);
+  const l2=new THREE.PointLight(0x35e6ff,0,3.5,2);l2.position.set(-.4,1.45,0);cur.add(l2);
+  dev.neons.push({pink,cyan,l1,l2});
+};
+
+// the way out. Sits in a wall; you walk up to it from the -z side.
+PREFAB.door=()=>{
+  box(.95,2.1,.05,M.walnut,0,1.05,-.02);box(1.07,2.16,.03,M.trim,0,1.08,-.012);
+  cyl(.022,.022,.14,M.brass,-.35,1.02,-.07,16).rotation.x=Math.PI/2;
+  return{spots:[{type:'out',ap:[0,-.45],yaw:0,pose:'idle',hide:true,shared:true,label:'出門上班'}]};
+};
+
+/* ---------- build the room from its data ---------- */
+(function(){
+  const T=.16,W=ROOM.w,D=ROOM.d,wm=ROOM.walls,win=ROOM.window,WX=win.half,WY0=win.y0,WY1=win.y1,zw=-RD-T/2;
+  box(W+2*T,T,D+2*T,M.floor,0,-T/2,0);
+  box(W+2*T,T,D+2*T,M.ceil,0,RH+T/2,0);
+  box(T,RH,D,M[wm.west],-RW-T/2,RH/2,0);
+  box(T,RH,D,M[wm.east],RW+T/2,RH/2,0);
+  box(W+2*T,RH,T,M[wm.south],0,RH/2,RD+T/2);
+  // north wall with the window cut out of it
+  const side=RW-WX;
+  box(side+T,RH,T,M[wm.north],-(RW+WX+T)/2,RH/2,zw);
+  box(side+T,RH,T,M[wm.north],(RW+WX+T)/2,RH/2,zw);
+  box(2*WX,WY0,T,M[wm.north],0,WY0/2,zw);
+  box(2*WX,RH-WY1,T,M[wm.north],0,(RH+WY1)/2,zw);
+  box(2*WX+.1,.04,.3,M.trim,0,WY0+.02,-RD+.02);                                              // sill
+  [-WX+.03,-WX/3,WX/3,WX-.03].forEach(x=>box(.05,WY1-WY0,.06,M.black,x,(WY0+WY1)/2,zw));       // mullions
+  [WY0+.03,WY1-.03].forEach(y=>box(2*WX,.05,.06,M.black,0,y,zw));
+  box(2*WX,WY1-WY0,.012,M.glass,0,(WY0+WY1)/2,zw,{shadow:false}).receiveShadow=false;
+  // baseboards
+  [[W,.1,.02,0,.05,RD-.01],[.02,.1,D,-RW+.01,.05,0],[.02,.1,D,RW-.01,.05,0],[side,.1,.02,-(RW+WX)/2,.05,-RD+.01],[side,.1,.02,(RW+WX)/2,.05,-RD+.01]]
+    .forEach(a=>box(a[0],a[1],a[2],M.trim,a[3],a[4],a[5]));
+  // curtains
+  [-1,1].forEach(s=>{for(let i=0;i<5;i++)box(.1,2.45,.07,M.linen,s*(WX+.08+i*.085),1.27,-RD+.1+(i%2)*.035,{r:.03});});
+  box(2*WX+1.1,.03,.03,M.brass,0,2.55,-RD+.1);
+  ROOM.furniture.forEach(place);
+})();
 
 /* ---------- outside ---------- */
 renderer.localClippingEnabled=true;
@@ -303,86 +503,6 @@ const disc=new THREE.Mesh(new THREE.CircleGeometry(.6,40),discMat);disc.renderOr
 const glowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
 const glow=new THREE.Mesh(new THREE.PlaneGeometry(9,9),glowMat);glow.renderOrder=-6;scene.add(glow);
 
-/* ---------- furniture ---------- */
-// rug
-const rug=new THREE.Mesh(new THREE.PlaneGeometry(2.5,3.1),M.rug);rug.rotation.x=-Math.PI/2;rug.position.set(-.95,.008,.3);rug.receiveShadow=true;scene.add(rug);
-// TV console + TV on the left wall
-box(.45,.42,1.9,M.walnut,-2.72,.33,.3,{r:.015});
-[-.75,.75].forEach(z=>box(.35,.12,.05,M.black,-2.72,.06,.3+z));
-solid(-3,-2.48,-.68,1.28);
-box(.04,.78,1.36,M.black,-2.9,1.25,.3,{r:.012});
-const tvC=cv(256,144),tvG=tvC.getContext('2d'),tvTex=new THREE.CanvasTexture(tvC);tvTex.encoding=THREE.sRGBEncoding;
-const tvMat=new THREE.MeshBasicMaterial({map:tvTex});
-const tv=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.72),tvMat);tv.rotation.y=Math.PI/2;tv.position.set(-2.876,1.25,.3);scene.add(tv);
-box(.12,.2,.12,M.ceramic,-2.72,.64,-.45,{r:.03});                    // vase
-cyl(.05,.05,.02,M.black,-2.72,.55,1.0,24);                          // little speaker puck
-box(.2,.03,.28,M.coral,-2.7,.555,.75);box(.19,.03,.27,M.teal,-2.7,.585,.75,{ry:.15});
-// sofa (faces the TV)
-box(.95,.3,2.1,M.sofa,.45,.25,.3,{r:.07});
-box(.28,.62,2.1,M.sofa,.86,.6,.3,{r:.09});
-[-1,1].forEach(s=>box(.95,.5,.22,M.sofa,.45,.38,.3+s*1.08,{r:.08}));
-[-.48,.48].forEach(z=>box(.72,.16,.92,M.sofa,.36,.46,.3+z,{r:.07}));
-box(.14,.4,.42,M.coral,.66,.72,-.4,{r:.06,rz:-.25});
-box(.14,.4,.42,M.teal,.66,.72,.95,{r:.06,rz:-.25});
-[[.05,-.7],[.05,1.3],[.9,-.7],[.9,1.3]].forEach(p=>cyl(.02,.015,.1,M.brass,p[0],.05,p[1],12));
-solid(-.05,1.02,-.9,1.5);
-// coffee table: glass top on brass legs
-box(.62,.02,1.15,new THREE.MeshPhysicalMaterial({color:0xbfe8e4,roughness:.04,transparent:true,opacity:.28}),-1.0,.4,.3,{shadow:false});
-box(.56,.03,1.09,M.walnut,-1.0,.16,.3);
-[[-.27,-.52],[.27,-.52],[-.27,.52],[.27,.52]].forEach(p=>cyl(.014,.014,.4,M.brass,-1+p[0],.2,.3+p[1],12));
-solid(-1.33,-.67,-.3,.9);
-cyl(.045,.036,.09,M.ceramic,-.9,.455,.05,24);                        // mug
-box(.2,.025,.27,M.teal,-1.08,.423,.55,{ry:.3});box(.19,.02,.26,M.coral,-1.08,.446,.55,{ry:.1});
-cyl(.1,.07,.05,M.brass,-1.0,.435,.2,28);                            // bowl
-// bookshelf on the teal wall
-const bx=2.8;
-box(.34,2.0,.03,M.walnut,bx,1.0,-1.62);box(.34,2.0,.03,M.walnut,bx,1.0,-.38);
-for(let i=0;i<5;i++)box(.34,.03,1.24,M.walnut,bx,.03+i*.49,-1.0);
-box(.02,2.0,1.24,M.walnut,2.96,1.0,-1.0);
-const bookCols=[0xb5533a,0x1f5a5e,0xe0a45c,0x3b2a3f,0xe8d9c0,0x7a2c5a,0x2b3a67,0xd9783f];
-for(let s=0;s<4;s++){let z=-1.58;const y0=.045+s*.49;
-  while(z<-.5){const w=rnd(.025,.06),hh=rnd(.24,.38),d=rnd(.18,.26);
-    if(Math.random()<.14){z+=rnd(.1,.22);continue;}
-    box(d,hh,w,new THREE.MeshStandardMaterial({color:bookCols[Math.floor(rnd(0,8))],roughness:.75}),bx-.02,y0+hh/2,z+w/2,{rz:Math.random()<.1?.12:0});
-    z+=w+.004;}}
-cyl(.09,.06,.16,M.terracotta,bx-.02,2.07,-1.3,20);cyl(.07,.07,.2,M.brass,bx-.02,2.09,-.7,20);
-solid(2.58,3,-1.7,-.3);
-// art on the front wall
-[[-1.3,0],[-.2,1]].forEach(a=>{box(.78,1.02,.03,M.black,a[0],1.55,RD-.02);
-  const p=new THREE.Mesh(new THREE.PlaneGeometry(.7,.94),new THREE.MeshStandardMaterial({map:artTexture(a[1]),roughness:.6}));
-  p.rotation.y=Math.PI;p.position.set(a[0],1.55,RD-.037);p.receiveShadow=true;scene.add(p);});
-// plant by the window
-cyl(.2,.15,.36,M.terracotta,-2.4,.18,-1.9,28);
-cyl(.185,.185,.02,new THREE.MeshStandardMaterial({color:0x2a1c12,roughness:1}),-2.4,.35,-1.9,28);
-const leafG=new THREE.SphereGeometry(1,14,8);
-for(let i=0;i<16;i++){const p=new THREE.Group();p.position.set(-2.4,.36,-1.9);p.rotation.y=i*2.4+rnd(-.2,.2);
-  const tilt=rnd(.25,1.05),L=rnd(.55,1.05);p.rotation.z=0;
-  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.006,.01,L,6),M.leaf);stem.position.set(0,Math.cos(tilt)*L/2,Math.sin(tilt)*L/2);stem.rotation.x=tilt;
-  const lf=new THREE.Mesh(leafG,M.leaf);lf.scale.set(rnd(.09,.14),.008,rnd(.17,.26));lf.position.set(0,Math.cos(tilt)*L,Math.sin(tilt)*L);lf.rotation.x=tilt-.5;
-  [stem,lf].forEach(m=>{m.castShadow=true;m.receiveShadow=true;p.add(m);});scene.add(p);}
-solid(-2.75,-2.05,-2.25,-1.55);
-// side table + floor lamp (front-left corner)
-cyl(.24,.24,.025,M.walnut,-2.45,.5,1.95,32);cyl(.02,.02,.5,M.black,-2.45,.25,1.95,12);cyl(.16,.16,.015,M.black,-2.45,.008,1.95,28);
-const LX=-1.95,LZ=2.1;
-cyl(.16,.17,.02,M.brass,LX,.01,LZ,32);cyl(.012,.012,1.5,M.brass,LX,.76,LZ,12);
-const shadeMat=new THREE.MeshStandardMaterial({color:0xf3e3c8,roughness:.9,side:THREE.DoubleSide,emissive:0xffa050,emissiveIntensity:0});
-const shade=cyl(.15,.22,.3,shadeMat,LX,1.6,LZ,32,true);shade.castShadow=false;
-const bulb=new THREE.Mesh(new THREE.SphereGeometry(.04,12,8),new THREE.MeshBasicMaterial({color:0x000000}));bulb.position.set(LX,1.58,LZ);scene.add(bulb);
-solid(-2.75,-1.75,1.7,2.5);
-
-/* ---------- neon sign on the teal wall: a sun setting into the sea ---------- */
-const neon=new THREE.Group();scene.add(neon);
-const neonPink=new THREE.MeshBasicMaterial({color:0xffffff}),neonCyan=new THREE.MeshBasicMaterial({color:0xffffff});
-function tube(pts,mat){const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),pts.length*6,.011,8,false),mat);neon.add(m);return m;}
-(function(){const X=RW-.03,cy=1.72,cz=1.15,r=.36,a=[];
-  for(let i=0;i<=20;i++){const t=Math.PI*i/20;a.push(new THREE.Vector3(X,cy+Math.sin(t)*r,cz+Math.cos(t)*r));}
-  tube(a,neonPink);
-  [[.03,.29],[.13,.22]].forEach(l=>tube([new THREE.Vector3(X,cy+l[0]+.08,cz-l[1]),new THREE.Vector3(X,cy+l[0]+.08,cz+l[1])],neonPink));
-  [[0,.5],[-.09,.38],[-.18,.26]].forEach(l=>{const p=[];for(let i=0;i<=8;i++){const u=i/8;p.push(new THREE.Vector3(X,cy-.06+l[0]+Math.sin(u*Math.PI*4)*.012,cz-l[1]+u*2*l[1]));}tube(p,neonCyan);});
-  const hit=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.9),new THREE.MeshBasicMaterial({visible:false}));hit.rotation.y=-Math.PI/2;hit.position.set(X-.02,cy+.05,cz);neon.add(hit);
-  hit.userData={label:'霓虹燈',act:()=>{S.neon=!S.neon;apply();}};interact.push(hit);
-})();
-
 /* ---------- lights ---------- */
 const hemi=new THREE.HemisphereLight(0xffc7a0,0x3a2630,.3);scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xffa25e,3);
@@ -390,10 +510,6 @@ sun.position.set(2.6,3.4,-7.2);sun.target.position.set(0,.5,0);scene.add(sun,sun
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 Object.assign(sun.shadow.camera,{left:-4.5,right:4.5,top:4.5,bottom:-4.5,near:1,far:16});
 sun.shadow.bias=-.0004;sun.shadow.normalBias=.025;sun.shadow.radius=3;
-const lampL=new THREE.PointLight(0xffab66,0,7,2);lampL.position.set(LX,1.5,LZ);scene.add(lampL);
-const tvL=new THREE.PointLight(0x9f8cff,0,5,2);tvL.position.set(-2.3,1.2,.3);scene.add(tvL);
-const neonL=new THREE.PointLight(0xff3fa0,0,5,2);neonL.position.set(2.55,1.8,1.15);scene.add(neonL);
-const neonL2=new THREE.PointLight(0x35e6ff,0,3.5,2);neonL2.position.set(2.6,1.45,1.15);scene.add(neonL2);
 
 // dust floating in the sun beam
 const DN=260,dPos=new Float32Array(DN*3);
@@ -408,12 +524,11 @@ let exposure=1,exposureTarget=1,envDirty=true,envTimer=0,dark=0;
 const dyn=new THREE.Group();scene.add(dyn);            // everything that moves: people and balls
 function userLamp(){S.lamp=!S.lamp;applySwitches();if(!S.lamp)people.forEach(n=>notify(n,'lampOff'));}
 function userTv(){S.tv=!S.tv;applySwitches();if(!S.tv)people.forEach(n=>notify(n,'tvOff'));}
-shade.userData={label:'立燈',act:userLamp};interact.push(shade);
-tv.userData={label:'電視',act:userTv};interact.push(tv);
+function userNeon(){S.neon=!S.neon;applySwitches();}
 function applySwitches(){
-  lampL.intensity=S.lamp?.5:0;shadeMat.emissiveIntensity=S.lamp?1.6:0;bulb.material.color.setScalar(S.lamp?4:0);
-  tvMat.color.setScalar(S.tv?1.5:.02);
-  const k=S.neon?1:0;neonPink.color.setRGB(.08+k*3.2,.03+k*.35,.06+k*1.7);neonCyan.color.setRGB(.03+k*.25,.07+k*2.2,.08+k*2.9);
+  for(const d of dev.lamps){d.light.intensity=S.lamp?.5:0;d.shade.emissiveIntensity=S.lamp?1.6:0;d.bulb.setScalar(S.lamp?4:0);}
+  for(const d of dev.tvs)d.mat.color.setScalar(S.tv?1.5:.02);
+  const k=S.neon?1:0;for(const d of dev.neons){d.pink.color.setRGB(.08+k*3.2,.03+k*.35,.06+k*1.7);d.cyan.color.setRGB(.03+k*.25,.07+k*2.2,.08+k*2.9);}
   orbMat.emissiveIntensity=S.orb?2.2:.15;
   $('bLamp').setAttribute('aria-pressed',S.lamp);$('bTv').setAttribute('aria-pressed',S.tv);
   $('bNeon').setAttribute('aria-pressed',S.neon);$('bOrb').setAttribute('aria-pressed',S.orb);
@@ -422,12 +537,12 @@ function applySwitches(){
 $('bLamp').onclick=userLamp;
 $('bTv').onclick=userTv;
 $('bMind').onclick=()=>{const m=$('minds');m.hidden=!m.hidden;$('bMind').setAttribute('aria-pressed',!m.hidden);};
-$('bNeon').onclick=()=>{S.neon=!S.neon;applySwitches();};
+$('bNeon').onclick=userNeon;
 $('bOrb').onclick=()=>{S.orb=!S.orb;applySwitches();
   say(S.orb?'引力球開了：它把別的球吸過來，別的球也用一樣大的力把它拉回去。':'引力球關了。');};
 
 /* ---------- time: the clock runs, the sun and moon move, the light changes ---------- */
-let clock=18.67,speedIdx=1,sliding=false;
+let clock=ROOM.clock,speedIdx=1,sliding=false;
 const SPEEDS=[[0,'暫停'],[2/60,'正常'],[15/60,'快轉']];   // game hours per real second
 const ss=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 const cNight=new THREE.Color(0x5a6cff),cDusk=new THREE.Color(0xffc7a0),cDay=new THREE.Color(0xd4e6ff),
@@ -449,7 +564,7 @@ function applyTime(){
   dust.visible=isDay&&e>.03;
   const hh=Math.floor(h),mm=Math.floor((h-hh)*60);$('clk').textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
 }
-const slider=$('time');
+const slider=$('time');slider.value=clock;
 slider.addEventListener('input',()=>{clock=+slider.value;envDirty=true;envTimer=0;});
 slider.addEventListener('pointerdown',()=>{sliding=true;});
 addEventListener('pointerup',()=>{sliding=false;});
@@ -462,11 +577,6 @@ $('bGrav').onclick=()=>{gIdx=(gIdx+1)%3;$('bGrav').textContent='重力：'+GMODE
   say(['地球重力：每秒往下加快 9.8 公尺。','月球重力：只有地球的六分之一，球跳得又高又慢。','沒有重力：踢一下，球就一直飄。'][gIdx]);};
 let sayAt=0;
 function say(txt,soft){const now=performance.now();if(soft&&now-sayAt<400)return;sayAt=now;$('phys').textContent=txt;}
-// solid shapes the balls can hit: [x0,x1,y0,y1,z0,z1]
-const pboxes=[[-2.95,-2.49,0,.54,-.65,1.25],[-2.93,-2.87,.86,1.64,-.38,.98],
-  [-.03,.75,0,.54,-.75,1.35],[.72,1.0,0,.91,-.75,1.35],[-.03,.93,0,.63,-.89,-.67],[-.03,.93,0,.63,1.27,1.49],
-  [-1.31,-.69,.39,.41,-.275,.875],[-1.28,-.72,.145,.175,-.245,.845],
-  [2.62,2.97,0,2.0,-1.64,-.36],[-2.58,-2.22,0,.36,-2.08,-1.72],[-2.65,-2.25,.48,.515,1.75,2.15]];
 function ballTex(kind){const c=cv(256,128),g=c.getContext('2d');
   if(kind==='basket'){g.fillStyle='#c8591c';g.fillRect(0,0,256,128);g.strokeStyle='#1a0f0a';g.lineWidth=3;
     g.beginPath();g.moveTo(0,64);g.lineTo(256,64);for(const x of[1,128,255]){g.moveTo(x,0);g.lineTo(x,128);}g.stroke();
@@ -487,12 +597,16 @@ function addBall(name,r,m,e,drag,mat,x,y,z){
   mesh.userData={tip:'點一下：踢'+name+'（'+m+' 公斤）',act:()=>kick(b)};interact.push(mesh);bodies.push(b);return b;}
 const orbTex=ballTex('orb');
 const orbMat=new THREE.MeshStandardMaterial({map:orbTex,emissiveMap:orbTex,emissive:0xffffff,emissiveIntensity:.15,roughness:.25,metalness:.3});
-const basket=addBall('籃球',.12,.6,.78,.05,new THREE.MeshStandardMaterial({map:ballTex('basket'),roughness:.75}),1.7,.12,-1.9);
-addBall('海灘球',.18,.1,.7,1.1,new THREE.MeshStandardMaterial({map:ballTex('beach'),roughness:.35}),-1.6,.18,1.3);
-addBall('保齡球',.11,6,.2,.01,new THREE.MeshStandardMaterial({map:ballTex('bowl'),roughness:.08,metalness:.2}),2.3,.11,.4);
-[[-1.9,.033,-.6],[-1.7,.033,-.95],[-.85,.445,.75]].forEach(q=>addBall('網球',.033,.058,.74,.12,
-  new THREE.MeshStandardMaterial({map:ballTex('tennis'),roughness:.95}),q[0],q[1],q[2]));
-const orb=addBall('引力球',.14,30,.3,.02,orbMat,2.4,.14,1.75);
+const std=(kind,o)=>new THREE.MeshStandardMaterial(Object.assign({map:ballTex(kind)},o));
+const BALLS={                                            // name, radius (m), mass (kg), bounciness, air drag, material
+  basket:['籃球',.12,.6,.78,.05,()=>std('basket',{roughness:.75})],
+  beach:['海灘球',.18,.1,.7,1.1,()=>std('beach',{roughness:.35})],
+  bowl:['保齡球',.11,6,.2,.01,()=>std('bowl',{roughness:.08,metalness:.2})],
+  tennis:['網球',.033,.058,.74,.12,()=>std('tennis',{roughness:.95})],
+  orb:['引力球',.14,30,.3,.02,()=>orbMat]
+};
+ROOM.balls.forEach(q=>{const B=BALLS[q.kind];addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z).kind=q.kind;});
+const basket=bodies.find(b=>b.kind==='basket'),orb=bodies.find(b=>b.kind==='orb');
 const fwd=new THREE.Vector3();
 function kick(b){
   camera.getWorldDirection(fwd);
@@ -573,7 +687,7 @@ function syncBalls(dt){for(const b of bodies){
   b.mesh.position.copy(b.p);}}
 
 /* ---------- people who live here ---------- */
-const NR=.2,GC=.1,GW=60,GH=50,grid=new Uint8Array(GW*GH);
+const NR=.2,GC=.1,GW=Math.round(2*RW/GC),GH=Math.round(2*RD/GC),grid=new Uint8Array(GW*GH);
 function nBlocked(x,z){if(x<-RW+NR||x>RW-NR||z<-RD+NR||z>RD-NR)return true;
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
 for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(-RW+(i+.5)*GC,-RD+(j+.5)*GC)?1:0;
@@ -601,23 +715,6 @@ function findPath(x0,z0,x1,z1){                         // A* over a 10 cm grid,
   while(i<pts.length){let k=pts.length-1;while(k>i&&!lineFree(cx,cz,pts[k][0],pts[k][1]))k--;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
   return out;
 }
-// places to be. ap = where to walk to, an = where the body ends up (may be on the furniture), yaw = which way to face
-const ACT={
-  tv1:{ap:[-.35,-.18],an:[.42,.62,-.18],yaw:-Math.PI/2,pose:'sit',label:'看電視',tv:true},
-  tv2:{ap:[-.35,.78],an:[.42,.62,.78],yaw:-Math.PI/2,pose:'sit',label:'看電視',tv:true},
-  sleep:{ap:[-.35,.3],an:[.38,.66,.3],lie:true,pose:'lie',label:'睡覺 💤'},
-  window1:{ap:[-.5,-1.95],yaw:Math.PI,pose:'window',label:'看海'},
-  window2:{ap:[.6,-1.95],yaw:Math.PI,pose:'window',label:'看海'},
-  read:{ap:[2.15,-1.0],yaw:Math.PI/2,pose:'read',label:'看書'},
-  plant:{ap:[-1.8,-1.75],yaw:-Math.PI/2,pose:'water',label:'照顧盆栽'},
-  stretch:{ap:[1.7,.5],yaw:Math.PI,pose:'stretch',label:'伸展'},
-  dance1:{ap:[-1.85,-.95],yaw:Math.PI/2,pose:'dance',label:'跳舞'},
-  dance2:{ap:[-.9,-1.25],yaw:-2.2,pose:'dance',label:'跳舞'},
-  ball:{chase:true,pose:'idle',label:'踢籃球'},
-  out:{ap:[1.9,2.05],yaw:0,pose:'idle',hide:true,label:'出門上班'}
-};
-const lieQ=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
-  new THREE.Vector3(-1,0,0),new THREE.Vector3(0,0,1),new THREE.Vector3(0,1,0)));   // on your back, head toward +z
 const JK=['sx','sz','nx','ny','alx','alz','arx','arz','elx','erx','hlx','hrx','klx','krx','yo'];
 function makePerson(o){
   const s=o.h/1.75,root=new THREE.Group(),body=new THREE.Group();body.scale.setScalar(s);root.add(body);dyn.add(root);
@@ -651,35 +748,32 @@ function makePerson(o){
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
-const people=[
-  makePerson({name:'小美',h:1.64,skin:0xe8b996,hair:0x2a1a16,top:0xd9623f,bottom:0xe9dfcf,shoe:0xf4f0e8,long:true,
-    shift:[9,17],bed:[22,8],patience:.8,playful:.4,w:{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}}),
-  makePerson({name:'阿傑',h:1.78,skin:0xc98f68,hair:0x15110f,top:0x1f6a6e,bottom:0x27304a,shoe:0x202024,shorts:false,
-    shift:[22,6],bed:[8,16],patience:.35,playful:.9,w:{energy:1,fun:1.2,fit:1.2,calm:.7,care:.6}})
-];
+const people=ROOM.people.map(makePerson);
 
 /* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
 // Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
 // walk to it, and stay until the goal is finished. Nobody follows a timetable except for going to work.
 const NEED_ZH={energy:'體力',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
 const DECAY={energy:.05,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
-const GOALS={                                                           // gain is per game hour, dur is game hours
-  work:{label:'上班',acts:['out']},
-  sleep:{label:'睡覺',acts:['sleep'],need:'energy',gain:.13},
-  tv:{label:'看電視',acts:['tv1','tv2'],need:'fun',gain:.45,dur:1.6},
-  dance:{label:'跳舞',acts:['dance1','dance2'],need:'fun',gain:.8,dur:.6,also:'fit'},
-  ball:{label:'踢籃球',acts:['ball'],need:'fit',gain:.7,dur:.8,kicks:3},
-  stretch:{label:'伸展',acts:['stretch'],need:'fit',gain:1.1,dur:.4},
-  read:{label:'看書',acts:['read'],need:'calm',gain:.6,dur:1.2},
-  window:{label:'看海',acts:['window1','window2'],need:'calm',gain:.7,dur:.6},
-  plant:{label:'照顧盆栽',acts:['plant'],need:'care',gain:3.5,dur:.25}
+const GOALS={                                                           // type = which kind of spot it needs; gain is per game hour, dur is game hours
+  work:{label:'上班',type:'out'},
+  sleep:{label:'睡覺',type:'sleep',need:'energy',gain:.13},
+  tv:{label:'看電視',type:'tv',need:'fun',gain:.45,dur:1.6},
+  dance:{label:'跳舞',type:'dance',need:'fun',gain:.8,dur:.6,also:'fit'},
+  ball:{label:'踢籃球',type:'ball',need:'fit',gain:.7,dur:.8,kicks:3},
+  stretch:{label:'伸展',type:'stretch',need:'fit',gain:1.1,dur:.4},
+  read:{label:'看書',type:'read',need:'calm',gain:.6,dur:1.2},
+  window:{label:'看海',type:'window',need:'calm',gain:.7,dur:.6},
+  plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25}
 };
 const inSpan=(sp,h)=>sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]);
-function freeAct(n,id){                                                 // a spot nobody else is using
-  const other=people.find(m=>m!==n),ow=other&&!other.hidden?other.want:null;   // people may not exist yet on the first call
-  if(id==='sleep'&&ow&&(ow==='sleep'||ow==='tv1'||ow==='tv2'))return null;     // one sofa
-  if(id==='tv'&&ow==='sleep')return null;
-  for(const a of GOALS[id].acts)if(a!==ow||a==='out')return a;
+function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
+  const type=GOALS[id].type,other=people.find(m=>m!==n),ow=other&&!other.hidden?other.want:null,O=ow?ACT[ow]:null;
+  for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
+    if(A.shared)return k;                                                // the door: any number of people
+    if(k===ow)continue;
+    if(O&&O.owner===A.owner&&(A.lie||O.lie))continue;                    // someone lying on a sofa takes the whole sofa
+    return k;}
   return null;
 }
 function utility(n,id){
@@ -693,7 +787,7 @@ function utility(n,id){
   if(other&&!other.hidden&&other.goal&&other.goal.id===id&&(id==='tv'||id==='dance'))u+=.15;   // more fun together
   return u+rnd(0,.08);
 }
-function setGoal(n,id){n.goal={id,elapsed:0,kicks:0};n.want=freeAct(n,id)||GOALS[id].acts[0];}
+function setGoal(n,id){n.goal={id,elapsed:0,kicks:0};n.want=freeAct(n,id)||Object.keys(ACT).find(k=>ACT[k].type===GOALS[id].type);}
 function choose(n){
   if(n.resume){const r=n.resume;n.resume=null;                          // go back to what you were doing before
     if(utility(n,r.id)>0){n.goal=r;n.want=freeAct(n,r.id);return;}}
@@ -754,12 +848,12 @@ const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
 function sched(n){return n.want;}
 function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
-people.forEach((n,i)=>{setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');if(n.goal.id==='tv')n.want=i?'tv2':'tv1';
+people.forEach((n,i)=>{setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
   else{const q=A.an||[A.ap[0],n.stand,A.ap[1]];n.pos.set(q[0],0,q[2]);n.y=q[1];n.yaw=A.yaw||0;n.phase='at';
     if(A.hide){n.hidden=true;n.root.visible=false;}}
-  n.root.position.set(n.pos.x,n.y,n.pos.z);n.root.quaternion.copy(A.lie?lieQ:qSpin.setFromAxisAngle(up3,n.yaw));});
+  n.root.position.set(n.pos.x,n.y,n.pos.z);n.root.quaternion.copy(A.lie?A.q:qSpin.setFromAxisAngle(up3,n.yaw));});
 function pose(P,name,n,t){
   JK.forEach(k=>P[k]=0);P.alz=.07;P.arz=-.07;P.sx=Math.sin(t*1.4+n.stand*9)*.012;
   if(name==='walk'){const w=Math.sin(n.ph);P.hlx=-w*.55;P.hrx=w*.55;P.klx=Math.max(0,Math.sin(n.ph+.9))*.9;P.krx=Math.max(0,Math.sin(n.ph+.9+Math.PI))*.9;
@@ -835,7 +929,7 @@ function updNPC(n,dt,t){
   J.hl.rotation.x=c.hlx;J.hr.rotation.x=c.hrx;J.kl.rotation.x=c.klx;J.kr.rotation.x=c.krx;
   n.book.visible=name==='read';
   n.root.position.set(n.pos.x,n.y+c.yo,n.pos.z);
-  n.root.quaternion.slerp(lie?lieQ:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
+  n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
   // name tag above the head
   n.head.getWorldPosition(hv);hv.y+=.3;hv.project(camera);
   const show=hv.z<1&&Math.abs(hv.x)<1.1&&Math.abs(hv.y)<1.1;n.tag.hidden=!show;
@@ -904,7 +998,7 @@ function resize(){
 addEventListener('resize',resize);resize();
 
 /* ---------- walking + looking ---------- */
-const pos=new THREE.Vector3(1.9,1.6,1.3);let yaw=.62,pitch=-.06;
+const pos=new THREE.Vector3(ROOM.start.x,1.6,ROOM.start.z);let yaw=ROOM.start.yaw,pitch=ROOM.start.pitch;
 const vel={x:0,z:0},keys={},joy={x:0,y:0,id:null,ox:0,oy:0},look={id:null,x:0,y:0};
 let down=null,bob=0,locked=false;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -962,8 +1056,8 @@ canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
 /* ---------- TV programme: an endless neon road ---------- */
-function drawTV(t){
-  const g=tvG,W=256,H=144,hz=78;
+function drawTV(d,t){
+  const g=d.g,W=256,H=144,hz=78;
   let gr=g.createLinearGradient(0,0,0,hz);gr.addColorStop(0,'#1a0b3d');gr.addColorStop(1,'#ff4f9a');g.fillStyle=gr;g.fillRect(0,0,W,hz);
   g.fillStyle='#ffd36a';g.beginPath();g.arc(128,hz,34,Math.PI,0);g.fill();
   g.fillStyle='#ff4f9a';for(let i=0;i<4;i++)g.fillRect(90,hz-8-i*7,76,2+i*.5);
@@ -971,7 +1065,7 @@ function drawTV(t){
   g.strokeStyle='#35e6ff';g.lineWidth=1;
   for(let i=-10;i<=10;i++){g.beginPath();g.moveTo(128+i*6,hz);g.lineTo(128+i*60,H);g.stroke();}
   for(let i=0;i<8;i++){const u=((i+t*.9)%8)/8,y=hz+u*u*(H-hz);g.globalAlpha=.3+u*.7;g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();}
-  g.globalAlpha=1;tvTex.needsUpdate=true;
+  g.globalAlpha=1;d.tex.needsUpdate=true;
 }
 
 /* ---------- main loop ---------- */
@@ -1003,8 +1097,8 @@ function tick(now){
   acc+=dt;let steps=0;while(acc>=PH&&steps<14){physStep(PH);acc-=PH;steps++;}if(steps===14)acc=0;
   syncBalls(dt);
   // lights that live
-  const k=S.neon?1:0;neonL.intensity=k*(.3+.2*dark);neonL2.intensity=k*(.18+.12*dark);
-  if(S.tv){if(frame%3===0)drawTV(t);tvL.intensity=(.18+.12*dark)*(1+Math.sin(t*5.3)*.08+Math.sin(t*13.1)*.05);}else tvL.intensity=0;
+  const k=S.neon?1:0;for(const d of dev.neons){d.l1.intensity=k*(.3+.2*dark);d.l2.intensity=k*(.18+.12*dark);}
+  for(const d of dev.tvs){if(S.tv){if(frame%3===0)drawTV(d,t);d.light.intensity=(.18+.12*dark)*(1+Math.sin(t*5.3)*.08+Math.sin(t*13.1)*.05);}else d.light.intensity=0;}
   if(dust.visible){const p=dGeo.attributes.position;for(let i=0;i<DN;i++){let y=p.getY(i)+Math.sin(t*.4+i)*.0006-.0004;if(y<.15)y=2.3;p.setY(i,y);p.setX(i,p.getX(i)+Math.cos(t*.3+i*1.7)*.0005);}p.needsUpdate=true;}
   exposure+=(exposureTarget-exposure)*(1-Math.exp(-dt*3));
   if(envDirty){envTimer+=dt;if(frame<3||envTimer>.12){bakeEnv();envDirty=false;bakeAt=t;bakeClock=clock;}}
@@ -1018,9 +1112,9 @@ function tick(now){
   if(frame>90){slow=dt>.034?slow+1:Math.max(0,slow-1);if(slow>45&&pr>.75){pr=Math.max(.75,pr-.25);slow=0;resize();}}
 }
 scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=.45;});
-applySwitches();applyTime();drawTV(0);
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick};
+applySwitches();applyTime();dev.tvs.forEach(d=>drawTV(d,0));
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick,ACT,colliders,pboxes};
 requestAnimationFrame(tick);
-})();
 
+})();
 </script>

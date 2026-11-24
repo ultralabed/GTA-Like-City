@@ -41,7 +41,30 @@
 
 ## 檔案
 
-- `room.html`：全部的程式（畫面、物理、人物都在這一個檔案）。
-- `index.html`：把 `room.html` 包成完整網頁，給瀏覽器直接開。
-- `ROADMAP.md`：三個階段的計畫和進度。
-- `build.py`：改完 `room.html` 之後跑 `python3 build.py`，會重新產生 `index.html`。
+改程式請改 `src/` 裡的小檔案，然後跑 `python3 build.py`，它會把小檔案黏成 `room.html` 和 `index.html`。
+
+| 檔案 | 裡面是什麼 |
+| --- | --- |
+| `src/page.html` | 網頁的外殼：樣式、按鈕 |
+| `src/js/00-core.js` | 開機：畫布、鏡頭 |
+| `src/js/10-textures.js` `11-materials.js` | 木頭、布、天空這些花紋和材質 |
+| **`src/js/15-room-data.js`** | **這個房間的資料：多大、家具放哪、有哪些球、住誰。想改房間就改這裡** |
+| `src/js/20-build.js` | 把家具放進房間的工具（可以移動、可以轉向） |
+| `src/js/21-prefabs.js` | 家具積木：沙發、電視櫃、書櫃、盆栽、立燈、霓虹燈、門… |
+| `src/js/22-shell.js` | 照資料蓋出地板、牆、窗戶，再把家具一個個放進去 |
+| `src/js/30-sky-lights.js` `31-state-time.js` | 天空、太陽、時鐘、開關 |
+| `src/js/40-physics.js` | 物理引擎 |
+| `src/js/50-people.js` | 人的身體、動作、找路 |
+| `src/js/51-minds.js` | 人的大腦：需要、目標、被打斷的反應 |
+| `src/js/60-render.js` `70-controls.js` `80-tv.js` `90-main.js` | 畫面特效、操作、電視節目、主迴圈 |
+| `room.html` `index.html` | 黏好的成品（不要直接改） |
+| `ROADMAP.md` | 三個階段的計畫和進度 |
+
+### 改房間的例子
+打開 `src/js/15-room-data.js`，把沙發那一行改成：
+
+```js
+{type:'sofa',x:.3,z:1.6,rot:1},
+```
+
+沙發就會搬到新位置並轉 90 度。人會自己走去新位置坐，球也會撞到新位置的沙發，不用改別的地方。

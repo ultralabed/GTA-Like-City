@@ -1,0 +1,201 @@
+/* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
+// Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
+// walk to it, and stay until the goal is finished. Nobody follows a timetable except for going to work.
+const NEED_ZH={energy:'體力',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
+const DECAY={energy:.05,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
+const GOALS={                                                           // type = which kind of spot it needs; gain is per game hour, dur is game hours
+  work:{label:'上班',type:'out'},
+  sleep:{label:'睡覺',type:'sleep',need:'energy',gain:.13},
+  tv:{label:'看電視',type:'tv',need:'fun',gain:.45,dur:1.6},
+  dance:{label:'跳舞',type:'dance',need:'fun',gain:.8,dur:.6,also:'fit'},
+  ball:{label:'踢籃球',type:'ball',need:'fit',gain:.7,dur:.8,kicks:3},
+  stretch:{label:'伸展',type:'stretch',need:'fit',gain:1.1,dur:.4},
+  read:{label:'看書',type:'read',need:'calm',gain:.6,dur:1.2},
+  window:{label:'看海',type:'window',need:'calm',gain:.7,dur:.6},
+  plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25}
+};
+const inSpan=(sp,h)=>sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]);
+function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
+  const type=GOALS[id].type,other=people.find(m=>m!==n),ow=other&&!other.hidden?other.want:null,O=ow?ACT[ow]:null;
+  for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
+    if(A.shared)return k;                                                // the door: any number of people
+    if(k===ow)continue;
+    if(O&&O.owner===A.owner&&(A.lie||O.lie))continue;                    // someone lying on a sofa takes the whole sofa
+    return k;}
+  return null;
+}
+function utility(n,id){
+  const g=GOALS[id];
+  if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
+  if(n.cool[id]>0||!freeAct(n,id))return -1;
+  const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
+  if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
+  else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
+  const other=people.find(m=>m!==n);
+  if(other&&!other.hidden&&other.goal&&other.goal.id===id&&(id==='tv'||id==='dance'))u+=.15;   // more fun together
+  return u+rnd(0,.08);
+}
+function setGoal(n,id){n.goal={id,elapsed:0,kicks:0};n.want=freeAct(n,id)||Object.keys(ACT).find(k=>ACT[k].type===GOALS[id].type);}
+function choose(n){
+  if(n.resume){const r=n.resume;n.resume=null;                          // go back to what you were doing before
+    if(utility(n,r.id)>0){n.goal=r;n.want=freeAct(n,r.id);return;}}
+  let best='window',bu=-1;for(const id in GOALS){const u=utility(n,id);if(u>bu){bu=u;best=id;}}
+  if(bu<0){best=freeAct(n,'window')?'window':'stretch';}
+  setGoal(n,best);
+}
+function endGoal(n,ok){if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);}
+function brain(n,dt){
+  const dh=dt*SPEEDS[speedIdx][0],g=n.goal,G=GOALS[g.id],atWork=(g.id==='work'&&n.hidden)||n.lie;   // needs run down slower at work and asleep
+  for(const k in DECAY)n.need[k]=Math.max(0,n.need[k]-DECAY[k]*dh*(atWork&&k!=='energy'?.35:1));
+  for(const k in n.cool)n.cool[k]-=dh;
+  n.mood+=(.75-n.mood)*dt*.01;
+  const doing=n.act===n.want&&(n.phase==='at'||(ACT[n.act].chase&&n.phase==='go'));
+  if(doing&&G.need){g.elapsed+=dh;n.need[G.need]=Math.min(1,n.need[G.need]+G.gain*dh);
+    if(G.also)n.need[G.also]=Math.min(1,n.need[G.also]+G.gain*.5*dh);}
+  if(n.react)return;                                                    // finish reacting before deciding anything
+  if(g.id!=='work'&&inSpan(n.o.shift,clock)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
+  if(g.id!=='sleep'&&g.id!=='work'&&n.need.energy<.06&&utility(n,'sleep')>0){setGoal(n,'sleep');return;}   // so does being worn out
+  const done=g.id==='work'?!inSpan(n.o.shift,clock):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
+  if(done)endGoal(n,true);
+}
+function progress(n){const g=n.goal,G=GOALS[g.id];
+  return g.id==='work'?-1:g.id==='sleep'?n.need.energy:Math.max(g.elapsed/G.dur,G.kicks?g.kicks/G.kicks:0);}
+// interruptions. The reaction depends on what happened, who they are, their mood, and how many times it has happened.
+function react(n,say,t,pose,after){n.react={say,t,pose,after};}
+function notify(n,type,b){
+  if(n.hidden||!n.goal)return;
+  const now=performance.now()/1000,g=n.goal;
+  if(type!=='greet'&&(n.react||now<n.calmAt))return;
+  n.calmAt=now+1.2;
+  if(n.lie){                                              // asleep: ignore, then grumble, then give up on sleeping
+    if(type!=='greet'&&type!=='hit')return;
+    n.poked=(now-n.pokeAt<40?n.poked:0)+1;n.pokeAt=now;
+    if(n.poked===1)react(n,'💤 …嗯？',1.6);
+    else if(n.poked===2){n.mood-=.15;n.need.energy=Math.max(0,n.need.energy-.03);react(n,'讓我睡啦…',2);}
+    else{n.mood-=.25;n.poked=0;react(n,'睡不著了！',1.6,null,()=>{n.cool.sleep=1;endGoal(n,false);});}
+    return;
+  }
+  if(type==='greet'){
+    if(n.mood>.35){n.mood=Math.min(1,n.mood+.04);react(n,n.phase==='at'?'嗨！我在'+GOALS[g.id].label:'嗨！',2.4,'wave');}
+    else react(n,'…現在不想講話',2,'glare');
+  }else if(type==='hit'){
+    if(g.id==='ball')return;                              // playing ball already: getting bumped is part of the game
+    if(!(b.kickBy==='你'&&now-b.kickAt<4)){react(n,'哇！',1,'startle');return;}       // nobody to blame
+    n.hits=(now-n.hitAt<60?n.hits:0)+1;n.hitAt=now;
+    if(n.o.playful>.6&&n.mood>.4&&g.id!=='work')react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
+    else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
+    else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
+  }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
+  else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
+    n.tvOffs=(now-n.tvOffAt<90?n.tvOffs:0)+1;n.tvOffAt=now;
+    if(n.tvOffs<2)react(n,'欸，我在看耶',1.8,'glare',()=>{if(!S.tv){S.tv=true;applySwitches();}});          // turns it back on
+    else{n.mood-=.2;react(n,'好吧，不看了…',1.8,null,()=>{n.cool.tv=1;endGoal(n,false);});}                 // gives up, finds something else
+  }else if(type==='lampOff'&&dark>.5)react(n,'好暗！',1.5,'startle',()=>{if(!S.lamp){S.lamp=true;applySwitches();}});
+}
+const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
+function sched(n){return n.want;}
+function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
+  n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
+people.forEach((n,i)=>{setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
+  n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
+  if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
+  else{const q=A.an||[A.ap[0],n.stand,A.ap[1]];n.pos.set(q[0],0,q[2]);n.y=q[1];n.yaw=A.yaw||0;n.phase='at';
+    if(A.hide){n.hidden=true;n.root.visible=false;}}
+  n.root.position.set(n.pos.x,n.y,n.pos.z);n.root.quaternion.copy(A.lie?A.q:qSpin.setFromAxisAngle(up3,n.yaw));});
+function pose(P,name,n,t){
+  JK.forEach(k=>P[k]=0);P.alz=.07;P.arz=-.07;P.sx=Math.sin(t*1.4+n.stand*9)*.012;
+  if(name==='walk'){const w=Math.sin(n.ph);P.hlx=-w*.55;P.hrx=w*.55;P.klx=Math.max(0,Math.sin(n.ph+.9))*.9;P.krx=Math.max(0,Math.sin(n.ph+.9+Math.PI))*.9;
+    P.alx=w*.45;P.arx=-w*.45;P.elx=P.erx=-.3;P.sx=.05;P.yo=Math.abs(Math.cos(n.ph))*.02-.02;}
+  else if(name==='sit'){P.hlx=P.hrx=-1.5;P.klx=P.krx=1.45;P.sx=-.14;P.alx=P.arx=-.45;P.elx=P.erx=-.7;P.nx=.08;}
+  else if(name==='lie'){P.alz=.14;P.arz=-.14;P.sx=0;P.yo=Math.sin(t*1.1)*.006;}
+  else if(name==='dance'){const b=t*6+n.stand*5;P.yo=Math.abs(Math.sin(b))*.04-.03;P.sz=Math.sin(b*.5)*.13;P.alx=-2.4+Math.sin(b)*.4;P.arx=-2.4+Math.sin(b+1.5)*.4;
+    P.alz=.4;P.arz=-.4;P.elx=P.erx=-.7;P.hlx=Math.sin(b)*.25;P.hrx=-Math.sin(b)*.25;P.klx=P.krx=.3;P.ny=Math.sin(b*.25)*.4;}
+  else if(name==='stretch'){P.alx=P.arx=-3;P.alz=.15;P.arz=-.15;P.sz=Math.sin(t*.8)*.28;}
+  else if(name==='read'){P.alx=P.arx=-.4;P.elx=P.erx=-1.6;P.alz=-.12;P.arz=.12;P.nx=.38;}
+  else if(name==='water'){P.arx=-1.15;P.erx=-.4;P.sx=.16;P.nx=.22;P.arz=-.1+Math.sin(t*2)*.08;}
+  else if(name==='window'){P.alz=.45;P.arz=-.45;P.elx=P.erx=-1.1;P.ny=Math.sin(t*.3+n.stand*7)*.35;}
+}
+const qT=new THREE.Quaternion(),P={},hv=new THREE.Vector3();
+const angDiff=(a,b)=>{let d=(a-b)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return d;};
+function updNPC(n,dt,t){
+  brain(n,dt);
+  const want=sched(n);
+  if(want!==n.act){
+    if(n.hidden){n.hidden=false;n.root.visible=true;n.act=want;begin(n);}
+    else if(n.phase==='go'){n.act=want;begin(n);}
+    else if(n.phase!=='exit'){n.phase='exit';n.from=ACT[n.act];}
+  }
+  if(n.hidden){n.tag.hidden=true;return;}
+  const A=ACT[n.act],k4=1-Math.exp(-dt*4),ox=n.pos.x,oz=n.pos.z;
+  let name='idle',ty=n.stand,lie=false,tyaw=n.yaw,label=A.label;
+  const dpx=pos.x-n.pos.x,dpz=pos.z-n.pos.z,dP=Math.hypot(dpx,dpz);
+  n.kickCd-=dt;
+  const R=n.react;if(R){R.t-=dt;if(R.t<=0){n.react=null;if(R.after)R.after();}}
+  if(n.phase==='exit'){                                   // get up and step clear of the furniture
+    const F=n.from,ap=F.ap||[n.pos.x,n.pos.z];
+    n.pos.x+=(ap[0]-n.pos.x)*k4;n.pos.z+=(ap[1]-n.pos.z)*k4;label='';
+    if(Math.hypot(ap[0]-n.pos.x,ap[1]-n.pos.z)<.06&&Math.abs(n.y-n.stand)<.05){n.act=want;begin(n);}
+  }else if(n.phase==='go'){
+    label='要去'+A.label;
+    if(A.chase){label=A.label;n.repath-=dt;
+      const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
+      if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
+        const cl=Math.hypot(basket.p.x,basket.p.z)||1,kx=bx/bd*.4-basket.p.x/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-basket.p.z/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
+        basket.v.x+=kx/kl*J/basket.m;basket.v.z+=kz/kl*J/basket.m;basket.v.y+=1.8;n.kickCd=2.5;n.path=[];n.repath=1.2;n.goal.kicks++;basket.kickBy=n.o.name;
+        say(n.o.name+'踢了籃球：球被推 '+J.toFixed(1)+' 牛頓·秒，'+n.o.name+'的腳也被球往回推一樣多。');}
+      else if(n.repath<=0){n.repath=.8;n.path=bd>.4?(findPath(n.pos.x,n.pos.z,basket.p.x,basket.p.z)||[]):[];}
+    }
+    if(n.path.length){
+      if(R){tyaw=Math.atan2(dpx,dpz);}                                        // reacting: stand still and face you
+      else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
+        if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
+      else{if(dP>.9){n.wait=0;n.said=false;}
+        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),stp=1.15*dt;
+        if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
+        name='walk';n.ph+=dt*7.2;}
+    }else if(!A.chase){n.phase='in';n.settle=0;}
+  }else{                                                  // settle in, then stay
+    const q=A.an||[A.ap[0],n.stand,A.ap[1]];
+    n.pos.x+=(q[0]-n.pos.x)*k4;n.pos.z+=(q[2]-n.pos.z)*k4;ty=q[1];tyaw=A.yaw||0;name=A.pose;lie=!!A.lie;n.settle+=dt;
+    if(n.phase==='in'&&n.settle>1){n.phase='at';if(A.hide){n.hidden=true;n.root.visible=false;n.tag.hidden=true;return;}}
+  }
+  n.lie=lie;n.sit=name==='sit';
+  n.vx=(n.pos.x-ox)/dt;n.vz=(n.pos.z-oz)/dt;
+  n.yaw+=angDiff(tyaw,n.yaw)*(1-Math.exp(-dt*8));
+  n.y+=(ty-n.y)*(1-Math.exp(-dt*6));
+  pose(P,name,n,t);
+  if(!lie){
+    if(R||(dP<2.3&&name!=='dance'))P.ny=Math.max(-1.1,Math.min(1.1,angDiff(Math.atan2(dpx,dpz),n.yaw)));
+    if(R){if(R.pose==='wave'){P.arx=-2.7;P.arz=-.25+Math.sin(t*11)*.35;P.erx=-.35;}
+      else if(R.pose==='startle'){P.alx=P.arx=-1.9;P.alz=.9;P.arz=-.9;P.elx=P.erx=-1.2;P.yo+=.03;P.sx=-.1;}
+      else if(R.pose==='glare'){P.alz=.5;P.arz=-.5;P.elx=P.erx=-1.3;P.sx=.06;}}
+  }
+  const kp=1-Math.exp(-dt*(name==='walk'?20:9));JK.forEach(k=>n.cur[k]+=(P[k]-n.cur[k])*kp);
+  const c=n.cur,J=n.J;
+  J.spine.rotation.set(c.sx,0,c.sz);J.neck.rotation.set(c.nx,c.ny,0);
+  J.al.rotation.set(c.alx,0,c.alz);J.ar.rotation.set(c.arx,0,c.arz);J.el.rotation.x=c.elx;J.er.rotation.x=c.erx;
+  J.hl.rotation.x=c.hlx;J.hr.rotation.x=c.hrx;J.kl.rotation.x=c.klx;J.kr.rotation.x=c.krx;
+  n.book.visible=name==='read';
+  n.root.position.set(n.pos.x,n.y+c.yo,n.pos.z);
+  n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
+  // name tag above the head
+  n.head.getWorldPosition(hv);hv.y+=.3;hv.project(camera);
+  const show=hv.z<1&&Math.abs(hv.x)<1.1&&Math.abs(hv.y)<1.1;n.tag.hidden=!show;
+  if(show){n.tag.style.left=((hv.x+1)/2*canvas.clientWidth)+'px';n.tag.style.top=((1-hv.y)/2*canvas.clientHeight)+'px';
+    if(R)label=R.say;else if(n.phase==='at'&&n.act===n.want){const pr=progress(n);if(pr>=0)label+=' '+Math.min(99,Math.round(pr*100))+'%';}
+    const txt=n.o.name+' '+moodFace(n)+(label?' · '+label:'');if(txt!==n.tagText){n.tagText=txt;n.tag.textContent=txt;}}
+}
+// the people run the house: lamp on when it is dark and someone is up, TV on only while someone watches
+let wantLamp=null,wantTv=null,subText='';
+function autoHome(){
+  let awake=false,watching=false;const home=[];
+  for(const n of people){if(n.hidden)continue;home.push(n.o.name);if(!n.lie)awake=true;if(ACT[n.act].tv&&n.phase==='at')watching=true;}
+  const wl=dark>.5&&awake;
+  if(wl!==wantLamp){wantLamp=wl;if(S.lamp!==wl){S.lamp=wl;applySwitches();}}
+  if(watching!==wantTv){wantTv=watching;if(S.tv!==watching){S.tv=watching;applySwitches();}}
+  const txt='28 樓 · '+(home.length?'在家：'+home.join('、'):'沒有人在家');
+  if(txt!==subText){subText=txt;$('sub').textContent=txt;}
+  if(!$('minds').hidden)$('minds').textContent=people.map(n=>{const pr=progress(n);
+    return n.o.name+' '+moodFace(n)+'　目標：'+GOALS[n.goal.id].label+(pr>=0?' '+Math.round(pr*100)+'%':'')+(n.resume?'（之後回去'+GOALS[n.resume.id].label+'）':'')+
+      '\n　'+Object.keys(NEED_ZH).map(k=>NEED_ZH[k]+' '+String(Math.round(n.need[k]*100)).padStart(2,' ')).join('　');}).join('\n');
+}
