@@ -25,9 +25,18 @@ function buildWall(R,side,def){
       const s=F.span(a,b,-T/2-.01,-T/2+.01);pboxes.push([s[0],s[1],y0,y1,s[2],s[3]]);         // balls bounce off the glass
       [-1,1].forEach(k=>{for(let i=0;i<5;i++)box(.1,y1+.1-.05,.07,M.linen,o.u+k*(WX+.08+i*.085),(y1+.1+.05)/2,.1+(i%2)*.035,{r:.03});});   // curtains
       box(2*WX+1.1,.03,.03,M.brass,o.u,y1+.1,.1);
-    }else{                                                                                    // doorway: a wooden frame around the hole
+    }else{                                                                                    // door: a wooden frame, and a leaf on hinges
       [a-.03,b+.03].forEach(x=>box(.06,y1+.06,T+.04,M.walnut,x,(y1+.06)/2,-T/2));
       box(b-a+.12,.06,T+.04,M.walnut,o.u,y1+.03,-T/2);
+      const w=b-a-.02,hinge=new THREE.Group();hinge.position.set(b-.01,0,-T/2);cur.add(hinge);   // hinges on the +u side; it swings away from this room
+      const pv=cur;cur=hinge;
+      const leaf=box(w,y1-.02,.04,M.trim,-w/2,(y1-.02)/2+.01,0,{r:.008});
+      [-1,1].forEach(k=>{box(.13,.022,.022,M.brass,-w+.11,1.0,k*.05);box(.022,.022,.05,M.brass,-w+.055,1.0,k*.035);});   // handles
+      cur=pv;
+      const shut=F.span(a,b,-T,0),open=F.span(b-.05,b,-T/2-w,-T/2),mid=F.pt(o.u,-T/2);
+      const D={hinge,t:0,open:false,user:false,shut,openC:open,x:mid[0],z:mid[1],y1,pb:[shut[0],shut[1],0,y1,shut[2],shut[3]]};
+      pboxes.push(D.pb);doors.push(D);
+      leaf.userData={tip:'點一下：開門或關門',act:()=>{D.user=D.t<.5;}};interact.push(leaf);
     }}
   piece(u,u1,0,RH);
   cur=prev;
@@ -41,3 +50,18 @@ rooms.forEach(R=>{
   for(const side of['north','east','south','west'])if(W[side])buildWall(R,side,W[side]);
   R.furniture.forEach(it=>place(it,R));
 });
+
+// doors: you click them; people open them as they walk up and shut them behind themselves
+function doorArea(d){return d.open?d.openC:d.shut;}
+function updateDoors(dt){
+  for(const d of doors){
+    let walker=false,inWay=Math.hypot(pos.x-d.x,pos.z-d.z)<.85;                 // never shut a door on someone standing in it
+    for(const n of people){if(n.hidden)continue;const dist=Math.hypot(n.pos.x-d.x,n.pos.z-d.z);
+      if(dist<.85)inWay=true;if(dist<1.35&&n.phase==='go'&&n.path.length)walker=true;}
+    const want=(d.user||walker||(inWay&&d.t>.5))?1:0;
+    d.t=Math.max(0,Math.min(1,d.t+Math.sign(want-d.t)*dt*2.6));
+    const e=d.t*d.t*(3-2*d.t);d.hinge.rotation.y=-e*Math.PI/2;
+    const nowOpen=d.t>.5;
+    if(nowOpen!==d.open){d.open=nowOpen;const c=doorArea(d);d.pb[0]=c[0];d.pb[1]=c[1];d.pb[4]=c[2];d.pb[5]=c[3];}   // balls hit the leaf where it is now
+  }
+}

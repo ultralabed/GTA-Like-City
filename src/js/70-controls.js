@@ -6,6 +6,8 @@ const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PR=.3;
 function blocked(x,z){
   if(!roomAt(x,z))return true;
+  for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
+    if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
   for(const n of people){if(n.hidden||n.lie)continue; // people are solid, but you can always step away from them
     const d=Math.hypot(x-n.pos.x,z-n.pos.z);if(d<.5&&d<Math.hypot(pos.x-n.pos.x,pos.z-n.pos.z))return true;}

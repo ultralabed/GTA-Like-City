@@ -1,6 +1,7 @@
 /* ---------- people who live here ---------- */
 const NR=.2,GC=.1,GW=Math.round((HB.x1-HB.x0)/GC),GH=Math.round((HB.z1-HB.z0)/GC),grid=new Uint8Array(GW*GH);
 function nBlocked(x,z){if(!roomAt(x,z))return true;
+  for(const d of doors){const c=d.openC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;}   // people plan around where an open door will be
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
 for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(HB.x0+(i+.5)*GC,HB.z0+(j+.5)*GC)?1:0;
 const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-HB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-HB.z0)/GC)));

@@ -5,7 +5,7 @@
 // A room:  x,z = where its middle is in the house.  w,d = how wide and deep it is inside.
 // walls:   one entry per side. mat = material name. open = holes in that wall:
 //            {kind:'window', c, half, y0, y1}   c = where along the wall (in the room's own x or z)
-//            {kind:'door',   c, half, y1}       an open doorway you can walk through
+//            {kind:'door',   c, half, y1}       a real door: click it to open or shut it
 //          a side set to null has no wall of its own: the room next door already built it.
 // furniture: positions are measured from the middle of the room. rot = quarter turns (0, 1, 2, 3).
 const HOUSE={

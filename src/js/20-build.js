@@ -5,6 +5,7 @@ const pboxes=[];             // shapes balls bounce off               [x0,x1,y0,
 const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
 const dev={lamps:[],tvs:[],neons:[]};   // things the switches control
+const doors=[];              // doors that swing: each knows where it blocks when shut and when open
 let cur=scene;               // where new meshes go: the scene, or the piece of furniture being built
 function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
   for(let i=0;i<uv.count;i++){const f=dm[Math.floor(i/4)];uv.setXY(i,uv.getX(i)*f[0],uv.getY(i)*f[1]);}}

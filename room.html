@@ -260,7 +260,7 @@ const M={
 // A room:  x,z = where its middle is in the house.  w,d = how wide and deep it is inside.
 // walls:   one entry per side. mat = material name. open = holes in that wall:
 //            {kind:'window', c, half, y0, y1}   c = where along the wall (in the room's own x or z)
-//            {kind:'door',   c, half, y1}       an open doorway you can walk through
+//            {kind:'door',   c, half, y1}       a real door: click it to open or shut it
 //          a side set to null has no wall of its own: the room next door already built it.
 // furniture: positions are measured from the middle of the room. rot = quarter turns (0, 1, 2, 3).
 const HOUSE={
@@ -334,6 +334,7 @@ const pboxes=[];             // shapes balls bounce off               [x0,x1,y0,
 const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
 const dev={lamps:[],tvs:[],neons:[]};   // things the switches control
+const doors=[];              // doors that swing: each knows where it blocks when shut and when open
 let cur=scene;               // where new meshes go: the scene, or the piece of furniture being built
 function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
   for(let i=0;i<uv.count;i++){const f=dm[Math.floor(i/4)];uv.setXY(i,uv.getX(i)*f[0],uv.getY(i)*f[1]);}}
@@ -543,9 +544,18 @@ function buildWall(R,side,def){
       const s=F.span(a,b,-T/2-.01,-T/2+.01);pboxes.push([s[0],s[1],y0,y1,s[2],s[3]]);         // balls bounce off the glass
       [-1,1].forEach(k=>{for(let i=0;i<5;i++)box(.1,y1+.1-.05,.07,M.linen,o.u+k*(WX+.08+i*.085),(y1+.1+.05)/2,.1+(i%2)*.035,{r:.03});});   // curtains
       box(2*WX+1.1,.03,.03,M.brass,o.u,y1+.1,.1);
-    }else{                                                                                    // doorway: a wooden frame around the hole
+    }else{                                                                                    // door: a wooden frame, and a leaf on hinges
       [a-.03,b+.03].forEach(x=>box(.06,y1+.06,T+.04,M.walnut,x,(y1+.06)/2,-T/2));
       box(b-a+.12,.06,T+.04,M.walnut,o.u,y1+.03,-T/2);
+      const w=b-a-.02,hinge=new THREE.Group();hinge.position.set(b-.01,0,-T/2);cur.add(hinge);   // hinges on the +u side; it swings away from this room
+      const pv=cur;cur=hinge;
+      const leaf=box(w,y1-.02,.04,M.trim,-w/2,(y1-.02)/2+.01,0,{r:.008});
+      [-1,1].forEach(k=>{box(.13,.022,.022,M.brass,-w+.11,1.0,k*.05);box(.022,.022,.05,M.brass,-w+.055,1.0,k*.035);});   // handles
+      cur=pv;
+      const shut=F.span(a,b,-T,0),open=F.span(b-.05,b,-T/2-w,-T/2),mid=F.pt(o.u,-T/2);
+      const D={hinge,t:0,open:false,user:false,shut,openC:open,x:mid[0],z:mid[1],y1,pb:[shut[0],shut[1],0,y1,shut[2],shut[3]]};
+      pboxes.push(D.pb);doors.push(D);
+      leaf.userData={tip:'點一下：開門或關門',act:()=>{D.user=D.t<.5;}};interact.push(leaf);
     }}
   piece(u,u1,0,RH);
   cur=prev;
@@ -559,6 +569,21 @@ rooms.forEach(R=>{
   for(const side of['north','east','south','west'])if(W[side])buildWall(R,side,W[side]);
   R.furniture.forEach(it=>place(it,R));
 });
+
+// doors: you click them; people open them as they walk up and shut them behind themselves
+function doorArea(d){return d.open?d.openC:d.shut;}
+function updateDoors(dt){
+  for(const d of doors){
+    let walker=false,inWay=Math.hypot(pos.x-d.x,pos.z-d.z)<.85;                 // never shut a door on someone standing in it
+    for(const n of people){if(n.hidden)continue;const dist=Math.hypot(n.pos.x-d.x,n.pos.z-d.z);
+      if(dist<.85)inWay=true;if(dist<1.35&&n.phase==='go'&&n.path.length)walker=true;}
+    const want=(d.user||walker||(inWay&&d.t>.5))?1:0;
+    d.t=Math.max(0,Math.min(1,d.t+Math.sign(want-d.t)*dt*2.6));
+    const e=d.t*d.t*(3-2*d.t);d.hinge.rotation.y=-e*Math.PI/2;
+    const nowOpen=d.t>.5;
+    if(nowOpen!==d.open){d.open=nowOpen;const c=doorArea(d);d.pb[0]=c[0];d.pb[1]=c[1];d.pb[4]=c[2];d.pb[5]=c[3];}   // balls hit the leaf where it is now
+  }
+}
 
 /* ---------- outside ---------- */
 renderer.localClippingEnabled=true;
@@ -764,6 +789,7 @@ function syncBalls(dt){for(const b of bodies){
 /* ---------- people who live here ---------- */
 const NR=.2,GC=.1,GW=Math.round((HB.x1-HB.x0)/GC),GH=Math.round((HB.z1-HB.z0)/GC),grid=new Uint8Array(GW*GH);
 function nBlocked(x,z){if(!roomAt(x,z))return true;
+  for(const d of doors){const c=d.openC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;}   // people plan around where an open door will be
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
 for(let j=0;j<GH;j++)for(let i=0;i<GW;i++)grid[j*GW+i]=nBlocked(HB.x0+(i+.5)*GC,HB.z0+(j+.5)*GC)?1:0;
 const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-HB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-HB.z0)/GC)));
@@ -1083,6 +1109,8 @@ const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PR=.3;
 function blocked(x,z){
   if(!roomAt(x,z))return true;
+  for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
+    if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
   for(const n of people){if(n.hidden||n.lie)continue; // people are solid, but you can always step away from them
     const d=Math.hypot(x-n.pos.x,z-n.pos.z);if(d<.5&&d<Math.hypot(pos.x-n.pos.x,pos.z-n.pos.z))return true;}
@@ -1171,6 +1199,7 @@ function tick(now){
   camera.rotation.set(pitch,yaw,0);camera.updateMatrixWorld();
   // the people, then the physics in small fixed steps
   for(const n of people)updNPC(n,dt,t);
+  updateDoors(dt);
   autoT+=dt;if(autoT>.5){autoT=0;autoHome();}
   acc+=dt;let steps=0;while(acc>=PH&&steps<14){physStep(PH);acc-=PH;steps++;}if(steps===14)acc=0;
   syncBalls(dt);
@@ -1191,7 +1220,7 @@ function tick(now){
 }
 scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=.45;});
 applySwitches();applyTime();dev.tvs.forEach(d=>drawTV(d,0));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick,ACT,colliders,pboxes,rooms,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,S,notify,userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
