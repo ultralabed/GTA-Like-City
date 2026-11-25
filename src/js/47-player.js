@@ -136,6 +136,14 @@ function getOut(){const r=ride;if(!r)return;if(Math.abs(r.v)>1.5){say('先停下
   for(const side of[1,-1]){const x=r.x+fz*r.S.exit*side,z=r.z-fx*r.S.exit*side;                 // try the left side, then the right
     if(!blocked(x,z)){r.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();return;}}
   ride=r;say('兩邊都被擋住了，往前一點再下車。');}
+// the horn (a bell on the bicycle): people in front of you hear it, say something, and step aside if they can
+let hornAt=0,redAt=-99;
+function horn(){const r=ride;if(!r)return;const now=performance.now()/1000;if(now-hornAt<.6)return;hornAt=now;
+  if(r.kind==='bike'){tone(1760,.25,.2,'triangle');setTimeout(()=>tone(1760,.3,.18,'triangle'),160);}else sfxHonk(r.x,r.z);
+  const fx=Math.cos(r.h),fz=-Math.sin(r.h);
+  for(const n of people){if(n.hidden||n.lie)continue;const dx=n.pos.x-r.x,dz=n.pos.z-r.z,d=Math.hypot(dx,dz);
+    if(d<9&&d>.1&&(dx*fx+dz*fz)/d>.55&&!roomAt(n.pos.x,n.pos.z))notify(n,'honk',r);}
+  for(const d of pets)if(Math.hypot(d.x-r.x,d.z-r.z)<10)bark(d);}
 function rideStep(dt,f,s){
   const r=ride,S=r.S,a=Math.max(-1,Math.min(1,f)),st=-Math.max(-1,Math.min(1,s));
   r.v+=a*(a*r.v<0?14:a>0?S.acc:S.rev*.9)*dt;r.v*=Math.exp(-.5*dt);r.v=Math.max(-S.rev,Math.min(S.max,r.v));
@@ -146,6 +154,8 @@ function rideStep(dt,f,s){
   else{if(hit!==true){notify(hit,'car',r);r.v=0;}                                                // a person: stop dead, and they will tell you what they think
     else{if(Math.abs(r.v)>2.5&&r.bumped<=0){r.bumped=1;sfxBump();say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
   pos.x=r.x;pos.z=r.z;
+  if(sigCars==='r'&&onRoad(r.z)&&r.x>ZEBRA[0]&&r.x<ZEBRA[1]&&Math.abs(r.v)>2&&performance.now()/1000-redAt>20){redAt=performance.now()/1000;   // driving through on red
+    const g=people.find(n=>n.guard);if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<32){say('你闖紅燈，被巡邏員看到了！');addRep(-1);}else say('你闖紅燈了。這次巡邏員沒看到。');}
   r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;spinWheels(r,r.v,dt,st);
   if(r.g.userData.lamp){const k=Math.max(0,Math.min(1,(dark-.2)/.4));r.g.userData.lamp.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);}
   if(r.kind!=='car')r.g.rotation.x+=(-st*Math.min(1,Math.abs(r.v)/S.max)*.38*Math.sign(r.v||1)-r.g.rotation.x)*(1-Math.exp(-dt*6));   // lean into the turn
@@ -169,12 +179,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const KEY={horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const ACTS={horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -182,6 +192,7 @@ function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='
 function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
   if(ride)list.push('out');
+  if(ride)list.push('horn');
   if(ride&&ride.kind==='car')list.push('radio');
   else{if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
@@ -207,6 +218,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='Digit2')toggleItem('umbrella');
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
+  else if(e.code==='KeyH')horn();
   else if(e.code==='KeyR'&&ride&&ride.kind==='car')nextRadio();
 });
 showItems();

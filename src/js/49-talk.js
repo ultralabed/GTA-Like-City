@@ -23,6 +23,7 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
   rideQuest();parcelQuest();
+  $('speed').hidden=!ride;if(ride)$('speed').textContent=Math.round(Math.abs(ride.v)*3.6)+' km/h';
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
 let swimNote=0;
@@ -119,5 +120,6 @@ function parcelQuest(){const q=quest;if(!q||q.type!=='parcel')return;const left=
 const TIPS=['想跑步：按住 Shift，或按右下角的「跑」。','想開車：黃色的車就停在 1 號房子前面，走到旁邊按 F。粉紅色腳踏車在門的另一邊。','想睡覺：走進任何一間房子的臥室，在床邊按 Z。時間會快轉到早上。',
   '點一下人可以說話、接任務賺錢。點門可以開門。','按 V 可以看到自己。按 M 打開地圖。更多功能在左上角「設定」。'];
 let tipNo=0;
-function nextTip(){if(tipNo>=TIPS.length)return;say('小提示 '+(tipNo+1)+'/'+TIPS.length+'：'+TIPS[tipNo]);tipNo++;setTimeout(nextTip,9000);}
+function nextTip(){if(tipNo>=TIPS.length)return;if(!$('phys').hidden){setTimeout(nextTip,3000);return;}   // wait until the note area is free, so a tip never hides real news
+  say('小提示 '+(tipNo+1)+'/'+TIPS.length+'：'+TIPS[tipNo]);tipNo++;setTimeout(nextTip,9000);}
 setTimeout(nextTip,5000);

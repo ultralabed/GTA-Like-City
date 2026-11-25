@@ -55,6 +55,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 .bar button:focus-visible,.panel button:focus-visible,.panel input:focus-visible,.acts button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 .acts{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
 .acts button{pointer-events:auto;padding:12px 16px;font-size:14px}
+.speed{font:700 20px/1 var(--display);font-variant-numeric:tabular-nums;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
 .bag{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
 .bag button{padding:9px 12px;font-size:12px}
 .bag button::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25)}
@@ -121,7 +122,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
     <div id="phys" class="phys" hidden></div>
     <div id="minds" class="phys minds" hidden></div>
   </div>
-  <div class="acts"><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
+  <div class="acts"><output id="speed" class="speed" hidden>0 km/h</output><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
   <div id="talk" class="talk" hidden></div>
   <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>
@@ -1358,6 +1359,14 @@ function getOut(){const r=ride;if(!r)return;if(Math.abs(r.v)>1.5){say('先停下
   for(const side of[1,-1]){const x=r.x+fz*r.S.exit*side,z=r.z-fx*r.S.exit*side;                 // try the left side, then the right
     if(!blocked(x,z)){r.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();return;}}
   ride=r;say('兩邊都被擋住了，往前一點再下車。');}
+// the horn (a bell on the bicycle): people in front of you hear it, say something, and step aside if they can
+let hornAt=0,redAt=-99;
+function horn(){const r=ride;if(!r)return;const now=performance.now()/1000;if(now-hornAt<.6)return;hornAt=now;
+  if(r.kind==='bike'){tone(1760,.25,.2,'triangle');setTimeout(()=>tone(1760,.3,.18,'triangle'),160);}else sfxHonk(r.x,r.z);
+  const fx=Math.cos(r.h),fz=-Math.sin(r.h);
+  for(const n of people){if(n.hidden||n.lie)continue;const dx=n.pos.x-r.x,dz=n.pos.z-r.z,d=Math.hypot(dx,dz);
+    if(d<9&&d>.1&&(dx*fx+dz*fz)/d>.55&&!roomAt(n.pos.x,n.pos.z))notify(n,'honk',r);}
+  for(const d of pets)if(Math.hypot(d.x-r.x,d.z-r.z)<10)bark(d);}
 function rideStep(dt,f,s){
   const r=ride,S=r.S,a=Math.max(-1,Math.min(1,f)),st=-Math.max(-1,Math.min(1,s));
   r.v+=a*(a*r.v<0?14:a>0?S.acc:S.rev*.9)*dt;r.v*=Math.exp(-.5*dt);r.v=Math.max(-S.rev,Math.min(S.max,r.v));
@@ -1368,6 +1377,8 @@ function rideStep(dt,f,s){
   else{if(hit!==true){notify(hit,'car',r);r.v=0;}                                                // a person: stop dead, and they will tell you what they think
     else{if(Math.abs(r.v)>2.5&&r.bumped<=0){r.bumped=1;sfxBump();say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
   pos.x=r.x;pos.z=r.z;
+  if(sigCars==='r'&&onRoad(r.z)&&r.x>ZEBRA[0]&&r.x<ZEBRA[1]&&Math.abs(r.v)>2&&performance.now()/1000-redAt>20){redAt=performance.now()/1000;   // driving through on red
+    const g=people.find(n=>n.guard);if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<32){say('你闖紅燈，被巡邏員看到了！');addRep(-1);}else say('你闖紅燈了。這次巡邏員沒看到。');}
   r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;spinWheels(r,r.v,dt,st);
   if(r.g.userData.lamp){const k=Math.max(0,Math.min(1,(dark-.2)/.4));r.g.userData.lamp.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);}
   if(r.kind!=='car')r.g.rotation.x+=(-st*Math.min(1,Math.abs(r.v)/S.max)*.38*Math.sign(r.v||1)-r.g.rotation.x)*(1-Math.exp(-dt*6));   // lean into the turn
@@ -1391,12 +1402,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const KEY={horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const ACTS={horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -1404,6 +1415,7 @@ function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='
 function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
   if(ride)list.push('out');
+  if(ride)list.push('horn');
   if(ride&&ride.kind==='car')list.push('radio');
   else{if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
@@ -1429,6 +1441,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='Digit2')toggleItem('umbrella');
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
+  else if(e.code==='KeyH')horn();
   else if(e.code==='KeyR'&&ride&&ride.kind==='car')nextRadio();
 });
 showItems();
@@ -1575,6 +1588,7 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
   rideQuest();parcelQuest();
+  $('speed').hidden=!ride;if(ride)$('speed').textContent=Math.round(Math.abs(ride.v)*3.6)+' km/h';
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
 let swimNote=0;
@@ -1671,7 +1685,8 @@ function parcelQuest(){const q=quest;if(!q||q.type!=='parcel')return;const left=
 const TIPS=['想跑步：按住 Shift，或按右下角的「跑」。','想開車：黃色的車就停在 1 號房子前面，走到旁邊按 F。粉紅色腳踏車在門的另一邊。','想睡覺：走進任何一間房子的臥室，在床邊按 Z。時間會快轉到早上。',
   '點一下人可以說話、接任務賺錢。點門可以開門。','按 V 可以看到自己。按 M 打開地圖。更多功能在左上角「設定」。'];
 let tipNo=0;
-function nextTip(){if(tipNo>=TIPS.length)return;say('小提示 '+(tipNo+1)+'/'+TIPS.length+'：'+TIPS[tipNo]);tipNo++;setTimeout(nextTip,9000);}
+function nextTip(){if(tipNo>=TIPS.length)return;if(!$('phys').hidden){setTimeout(nextTip,3000);return;}   // wait until the note area is free, so a tip never hides real news
+  say('小提示 '+(tipNo+1)+'/'+TIPS.length+'：'+TIPS[tipNo]);tipNo++;setTimeout(nextTip,9000);}
 setTimeout(nextTip,5000);
 
 /* ---------- people who live here ---------- */
@@ -1883,6 +1898,10 @@ function notify(n,type,b){
   else if(type==='car'){n.cars=(now-(n.carAt||-99)<60?n.cars||0:0)+1;n.carAt=now;n.mood-=.1;      // nearly run over: a fright the first times, then real anger
     const vb=b&&b.S?b.S.verb:'開車';addRep(-1);n.like=Math.max(-5,n.like-2);
     react(n,n.cars<3?'哇！小心'+vb+'！':'你到底會不會'+vb+'！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
+  else if(type==='honk'){                                                   // a horn behind them: a word, and a step to the side
+    react(n,n.mood>.5?'好啦好啦，我讓一下。':'按什麼按啦！',1.3,n.mood>.5?null:'glare');n.mood-=.02;
+    if(n.phase==='go'&&b){const fx=Math.cos(b.h),fz=-Math.sin(b.h),side=((n.pos.x-b.x)*fz-(n.pos.z-b.z)*fx)>0?1:-1,tx=n.pos.x+fz*side*1.4,tz=n.pos.z-fx*side*1.4;
+      if(!nBlocked(tx,tz))n.path.unshift([tx,tz]);}}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
     if(n.brolly){react(n,'下雨了，還好我有帶傘。',1.6,null);return;}        // people with an umbrella just open it and carry on
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
@@ -2350,7 +2369,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,busAt,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,do:{lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,busAt,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,do:{horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

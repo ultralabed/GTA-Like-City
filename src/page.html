@@ -47,6 +47,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 .bar button:focus-visible,.panel button:focus-visible,.panel input:focus-visible,.acts button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 .acts{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
 .acts button{pointer-events:auto;padding:12px 16px;font-size:14px}
+.speed{font:700 20px/1 var(--display);font-variant-numeric:tabular-nums;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
 .bag{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
 .bag button{padding:9px 12px;font-size:12px}
 .bag button::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25)}
@@ -113,7 +114,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
     <div id="phys" class="phys" hidden></div>
     <div id="minds" class="phys minds" hidden></div>
   </div>
-  <div class="acts"><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
+  <div class="acts"><output id="speed" class="speed" hidden>0 km/h</output><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
   <div id="talk" class="talk" hidden></div>
   <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>

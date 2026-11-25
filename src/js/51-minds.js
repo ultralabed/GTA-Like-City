@@ -119,6 +119,10 @@ function notify(n,type,b){
   else if(type==='car'){n.cars=(now-(n.carAt||-99)<60?n.cars||0:0)+1;n.carAt=now;n.mood-=.1;      // nearly run over: a fright the first times, then real anger
     const vb=b&&b.S?b.S.verb:'開車';addRep(-1);n.like=Math.max(-5,n.like-2);
     react(n,n.cars<3?'哇！小心'+vb+'！':'你到底會不會'+vb+'！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
+  else if(type==='honk'){                                                   // a horn behind them: a word, and a step to the side
+    react(n,n.mood>.5?'好啦好啦，我讓一下。':'按什麼按啦！',1.3,n.mood>.5?null:'glare');n.mood-=.02;
+    if(n.phase==='go'&&b){const fx=Math.cos(b.h),fz=-Math.sin(b.h),side=((n.pos.x-b.x)*fz-(n.pos.z-b.z)*fx)>0?1:-1,tx=n.pos.x+fz*side*1.4,tz=n.pos.z-fx*side*1.4;
+      if(!nBlocked(tx,tz))n.path.unshift([tx,tz]);}}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
     if(n.brolly){react(n,'下雨了，還好我有帶傘。',1.6,null);return;}        // people with an umbrella just open it and carry on
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
