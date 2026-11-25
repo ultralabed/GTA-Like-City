@@ -14,8 +14,30 @@ function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[
   for(let i=0;i<uv.count;i++){const f=dm[Math.floor(i/4)];uv.setXY(i,uv.getX(i)*f[0],uv.getY(i)*f[1]);}}
 function add(m,shadow){m.castShadow=shadow!==false;m.receiveShadow=true;cur.add(m);return m;}
 function box(w,h,d,mat,x,y,z,o){o=o||{};
-  let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,4,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
+  let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,2,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
   const m=new THREE.Mesh(g,mat);m.position.set(x,y,z);if(o.ry)m.rotation.y=o.ry;if(o.rz)m.rotation.z=o.rz;return add(m,o.shadow);}
+// Many small boxes drawn as ONE thing (books on a shelf, goods on a rack). Each entry: [w,h,d, x,y,z, colour, lean].
+// Drawing a hundred separate books costs a hundred times more than drawing them as one batch.
+const unitBox=new THREE.BoxGeometry(1,1,1),batchMat=new THREE.MeshStandardMaterial({roughness:.7});
+function boxBatch(list){const im=new THREE.InstancedMesh(unitBox,batchMat,list.length),m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),p=new THREE.Vector3(),sc=new THREE.Vector3(),col=new THREE.Color();
+  list.forEach((b,i)=>{e.set(0,0,b[7]||0);q.setFromEuler(e);m4.compose(p.set(b[3],b[4],b[5]),q,sc.set(b[0],b[1],b[2]));im.setMatrixAt(i,m4);im.setColorAt(i,col.set(b[6]));});
+  im.castShadow=true;im.receiveShadow=true;im.frustumCulled=false;cur.add(im);return im;}
+// Weld everything in a group that never moves and shares a material into one piece per material.
+// A house shell is about 110 separate boxes; after this it is about a dozen pieces, which is far quicker to draw.
+// Left alone: anything you can click, anything inside a part marked dyn (door leaves, things you can pick up), and batches.
+function weldStatic(group){
+  group.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(group.matrixWorld).invert(),m4=new THREE.Matrix4(),by=new Map(),list=[];
+  const moving=o=>{for(let p=o;p&&p!==group;p=p.parent)if(p.userData.dyn)return true;return false;};
+  group.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&!o.userData.act&&o.visible&&o.material.visible!==false&&o.geometry.attributes.uv&&o.geometry.attributes.normal&&!moving(o))list.push(o);});
+  for(const o of list){const k=o.material.uuid+(o.castShadow?'c':'')+(o.receiveShadow?'r':'');if(!by.has(k))by.set(k,[]);by.get(k).push(o);}
+  for(const arr of by.values()){if(arr.length<2)continue;let n=0;
+    const gs=arr.map(o=>{const q=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();q.applyMatrix4(m4.multiplyMatrices(inv,o.matrixWorld));n+=q.attributes.position.count;return q;});
+    const P=new Float32Array(n*3),N=new Float32Array(n*3),U=new Float32Array(n*2);let at=0;
+    for(const q of gs){const c=q.attributes.position.count;P.set(q.attributes.position.array,at*3);N.set(q.attributes.normal.array,at*3);U.set(q.attributes.uv.array,at*2);at+=c;q.dispose();}
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(P,3));geo.setAttribute('normal',new THREE.BufferAttribute(N,3));geo.setAttribute('uv',new THREE.BufferAttribute(U,2));
+    const me=new THREE.Mesh(geo,arr[0].material);me.castShadow=arr[0].castShadow;me.receiveShadow=arr[0].receiveShadow;group.add(me);
+    for(const o of arr)o.parent.remove(o);}
+}
 // a flat sheet on the ground; tile = how many metres one copy of the texture covers
 function flat(w,d,mat,x,y,z,tile){const g=new THREE.PlaneGeometry(w,d);
   if(tile){const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/tile,uv.getY(i)*d/tile);}

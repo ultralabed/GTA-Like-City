@@ -245,10 +245,10 @@ let subText='';
 function autoHome(){
   const ah=curHouse();if(ah!==activeHouse){activeHouse=ah;applySwitches();}        // moved next to a different house: its lights become the real ones
   const home=[];let out=0;
-  for(const n of people){const r=roomAt(n.pos.x,n.pos.z);n.root.visible=!n.hidden&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<60;
+  for(const n of people){const r=roomAt(n.pos.x,n.pos.z);n.root.visible=!n.hidden&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<48;
     if(!n.hidden&&!r)out++;if(!n.hidden&&r&&r.house===ah)home.push(n.o.name);}
   for(const H of houses){let awake=false,watching=false;                           // each house looks after its own lamp and TV
-    H.inner.visible=houseDist(H,pos.x,pos.z)<26;                                   // far-away furniture is not drawn
+    H.inner.visible=houseDist(H,pos.x,pos.z)<6.5;                                  // furniture is only drawn for the house you are in or right next to (you cannot see it from further away anyway)
     for(const n of people){if(!inHouse(n,H))continue;if(!n.lie)awake=true;if(ACT[n.act].tv&&n.phase==='at')watching=true;}
     const wl=dark>.5&&awake;
     if(wl!==H.wantLamp){H.wantLamp=wl;if(H.S.lamp!==wl){H.S.lamp=wl;applySwitches();}}

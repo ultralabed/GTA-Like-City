@@ -1,6 +1,6 @@
 /* ---------- you, seen from outside ---------- */
 // Press V to step back and see your own character. The camera circles behind you and moves closer when a wall is in the way.
-const me=makePerson({name:'你',h:1.72,skin:0xe8b996,hair:0x3a2a1c,top:0xf2c23d,bottom:0x2b3a67,shoe:0xffffff,long:false});
+const me=makePerson({name:'你',h:1.72,skin:0xe8b996,hair:0x3a2a1c,top:0xf2c23d,bottom:0x2b3a67,shoe:0xffffff,long:false,sep:true});
 interact.pop();me.tag.remove();me.root.visible=false;                       // not a neighbour: no name tag, nothing to click
 let third=false,meYaw=0;
 const meQ=new THREE.Quaternion();

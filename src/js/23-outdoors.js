@@ -20,7 +20,7 @@
   flat(S.walk,SL-S.walk,M.concrete,JX0-S.walk/2,-.012,SZ+S.walk+(SL-S.walk)/2,1.5);flat(S.walk,SL-S.walk,M.concrete,JX1+S.walk/2,-.012,SZ+S.walk+(SL-S.walk)/2,1.5);
   for(let z=SZ+5;z<SZ+SL;z+=4)flat(.14,1.7,M.paint,(JX0+JX1)/2,-.004,z);
   flat(3,.3,M.paint,JX1-1.75,-.004,SZ+2.3);flat(.3,3,M.paint,JX0-2.3,-.008,S.z1-1.75);flat(.3,3,M.paint,JX1+2.3,-.008,S.z0+1.75);   // stop lines
-  WORLD.outdoor.forEach(it=>place(it,null));
+  const outG=new THREE.Group();scene.add(outG);root=outG;WORLD.outdoor.forEach(it=>place(it,null));root=scene;weldStatic(outG);   // trees, lamps, benches, big buildings: welded too
 })();
 // three real lights that jump to whichever street lamps are nearest to you, so the street can have any number of lamps
 const streetGlow=[0,1,2].map(()=>{const l=new THREE.PointLight(0xffc88a,0,15,2);scene.add(l);return l;});

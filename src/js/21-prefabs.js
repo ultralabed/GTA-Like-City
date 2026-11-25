@@ -56,11 +56,13 @@ PREFAB.bookshelf=()=>{
   box(.34,2.0,.03,M.walnut,bx,1.0,-.62);box(.34,2.0,.03,M.walnut,bx,1.0,.62);
   for(let i=0;i<5;i++)box(.34,.03,1.24,M.walnut,bx,.03+i*.49,0);
   box(.02,2.0,1.24,M.walnut,-.04,1.0,0);
+  const books=[];
   for(let s=0;s<4;s++){let z=-.58;const y0=.045+s*.49;
     while(z<.5){const w=rnd(.025,.06),hh=rnd(.24,.38),d=rnd(.18,.26);
       if(Math.random()<.14){z+=rnd(.1,.22);continue;}
-      box(d,hh,w,new THREE.MeshStandardMaterial({color:bookCols[Math.floor(rnd(0,8))],roughness:.75}),bx-.02,y0+hh/2,z+w/2,{rz:Math.random()<.1?.12:0});
+      books.push([d,hh,w,bx-.02,y0+hh/2,z+w/2,bookCols[Math.floor(rnd(0,8))],Math.random()<.1?.12:0]);
       z+=w+.004;}}
+  boxBatch(books);
   cyl(.09,.06,.16,M.terracotta,bx-.02,2.07,-.3,20);cyl(.07,.07,.2,M.brass,bx-.02,2.09,.3,20);
   return{solid:[[-.42,0,-.7,.7]],boxes:[[-.38,-.03,0,2.0,-.64,.64]],
     spots:[{type:'read',ap:[-.85,0],yaw:Math.PI/2,pose:'read',label:'看書'}]};
@@ -136,7 +138,7 @@ PREFAB.wardrobe=()=>{
 };
 
 // something small you can take and keep: a flashlight lying down, or a closed umbrella standing up
-PREFAB.item=o=>{const g=new THREE.Group();g.position.y=o.y||0;cur.add(g);const pv=cur;cur=g;
+PREFAB.item=o=>{const g=new THREE.Group();g.userData.dyn=true;g.position.y=o.y||0;cur.add(g);const pv=cur;cur=g;
   if(o.kind==='flashlight'){cyl(.022,.028,.17,M.steel,0,.03,0,12).rotation.x=Math.PI/2;cyl(.036,.03,.04,M.brass,0,.03,.1,12).rotation.x=Math.PI/2;}
   else{cyl(.035,.05,.78,M.teal,0,.43,0,10);cyl(.009,.009,.96,M.black,0,.5,0,6);}
   cur=pv;return{marks:[{kind:'item',x:0,z:0,item:o.kind,mesh:g}]};
@@ -154,7 +156,7 @@ PREFAB.counter=()=>{
 // a low double-sided shelf of goods. People stand in front of it to look.
 PREFAB.rack=()=>{
   box(1.6,1.2,.5,M.trim,0,.6,0);
-  for(let s=0;s<3;s++)for(let i=0;i<7;i++)[-1,1].forEach(k=>box(.16,rnd(.14,.24),.14,new THREE.MeshStandardMaterial({color:bookCols[Math.floor(rnd(0,8))],roughness:.6}),-.66+i*.22,.2+s*.4,k*.2));
+  const goods=[];for(let s=0;s<3;s++)for(let i=0;i<7;i++)[-1,1].forEach(k=>goods.push([.16,rnd(.14,.24),.14,-.66+i*.22,.2+s*.4,k*.2,bookCols[Math.floor(rnd(0,8))]]));boxBatch(goods);
   const look=(x,z,yaw)=>({type:'browse',ap:[x,z],yaw,pose:'read',label:'逛商店',pub:true});
   return{solid:[[-.82,.82,-.27,.27]],boxes:[[-.8,.8,0,1.2,-.25,.25]],spots:[look(-.3,.75,Math.PI),look(.3,-.75,0)]};
 };

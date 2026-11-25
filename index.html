@@ -501,8 +501,30 @@ function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[
   for(let i=0;i<uv.count;i++){const f=dm[Math.floor(i/4)];uv.setXY(i,uv.getX(i)*f[0],uv.getY(i)*f[1]);}}
 function add(m,shadow){m.castShadow=shadow!==false;m.receiveShadow=true;cur.add(m);return m;}
 function box(w,h,d,mat,x,y,z,o){o=o||{};
-  let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,4,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
+  let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,2,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
   const m=new THREE.Mesh(g,mat);m.position.set(x,y,z);if(o.ry)m.rotation.y=o.ry;if(o.rz)m.rotation.z=o.rz;return add(m,o.shadow);}
+// Many small boxes drawn as ONE thing (books on a shelf, goods on a rack). Each entry: [w,h,d, x,y,z, colour, lean].
+// Drawing a hundred separate books costs a hundred times more than drawing them as one batch.
+const unitBox=new THREE.BoxGeometry(1,1,1),batchMat=new THREE.MeshStandardMaterial({roughness:.7});
+function boxBatch(list){const im=new THREE.InstancedMesh(unitBox,batchMat,list.length),m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),p=new THREE.Vector3(),sc=new THREE.Vector3(),col=new THREE.Color();
+  list.forEach((b,i)=>{e.set(0,0,b[7]||0);q.setFromEuler(e);m4.compose(p.set(b[3],b[4],b[5]),q,sc.set(b[0],b[1],b[2]));im.setMatrixAt(i,m4);im.setColorAt(i,col.set(b[6]));});
+  im.castShadow=true;im.receiveShadow=true;im.frustumCulled=false;cur.add(im);return im;}
+// Weld everything in a group that never moves and shares a material into one piece per material.
+// A house shell is about 110 separate boxes; after this it is about a dozen pieces, which is far quicker to draw.
+// Left alone: anything you can click, anything inside a part marked dyn (door leaves, things you can pick up), and batches.
+function weldStatic(group){
+  group.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(group.matrixWorld).invert(),m4=new THREE.Matrix4(),by=new Map(),list=[];
+  const moving=o=>{for(let p=o;p&&p!==group;p=p.parent)if(p.userData.dyn)return true;return false;};
+  group.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&!o.userData.act&&o.visible&&o.material.visible!==false&&o.geometry.attributes.uv&&o.geometry.attributes.normal&&!moving(o))list.push(o);});
+  for(const o of list){const k=o.material.uuid+(o.castShadow?'c':'')+(o.receiveShadow?'r':'');if(!by.has(k))by.set(k,[]);by.get(k).push(o);}
+  for(const arr of by.values()){if(arr.length<2)continue;let n=0;
+    const gs=arr.map(o=>{const q=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();q.applyMatrix4(m4.multiplyMatrices(inv,o.matrixWorld));n+=q.attributes.position.count;return q;});
+    const P=new Float32Array(n*3),N=new Float32Array(n*3),U=new Float32Array(n*2);let at=0;
+    for(const q of gs){const c=q.attributes.position.count;P.set(q.attributes.position.array,at*3);N.set(q.attributes.normal.array,at*3);U.set(q.attributes.uv.array,at*2);at+=c;q.dispose();}
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(P,3));geo.setAttribute('normal',new THREE.BufferAttribute(N,3));geo.setAttribute('uv',new THREE.BufferAttribute(U,2));
+    const me=new THREE.Mesh(geo,arr[0].material);me.castShadow=arr[0].castShadow;me.receiveShadow=arr[0].receiveShadow;group.add(me);
+    for(const o of arr)o.parent.remove(o);}
+}
 // a flat sheet on the ground; tile = how many metres one copy of the texture covers
 function flat(w,d,mat,x,y,z,tile){const g=new THREE.PlaneGeometry(w,d);
   if(tile){const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/tile,uv.getY(i)*d/tile);}
@@ -599,11 +621,13 @@ PREFAB.bookshelf=()=>{
   box(.34,2.0,.03,M.walnut,bx,1.0,-.62);box(.34,2.0,.03,M.walnut,bx,1.0,.62);
   for(let i=0;i<5;i++)box(.34,.03,1.24,M.walnut,bx,.03+i*.49,0);
   box(.02,2.0,1.24,M.walnut,-.04,1.0,0);
+  const books=[];
   for(let s=0;s<4;s++){let z=-.58;const y0=.045+s*.49;
     while(z<.5){const w=rnd(.025,.06),hh=rnd(.24,.38),d=rnd(.18,.26);
       if(Math.random()<.14){z+=rnd(.1,.22);continue;}
-      box(d,hh,w,new THREE.MeshStandardMaterial({color:bookCols[Math.floor(rnd(0,8))],roughness:.75}),bx-.02,y0+hh/2,z+w/2,{rz:Math.random()<.1?.12:0});
+      books.push([d,hh,w,bx-.02,y0+hh/2,z+w/2,bookCols[Math.floor(rnd(0,8))],Math.random()<.1?.12:0]);
       z+=w+.004;}}
+  boxBatch(books);
   cyl(.09,.06,.16,M.terracotta,bx-.02,2.07,-.3,20);cyl(.07,.07,.2,M.brass,bx-.02,2.09,.3,20);
   return{solid:[[-.42,0,-.7,.7]],boxes:[[-.38,-.03,0,2.0,-.64,.64]],
     spots:[{type:'read',ap:[-.85,0],yaw:Math.PI/2,pose:'read',label:'看書'}]};
@@ -679,7 +703,7 @@ PREFAB.wardrobe=()=>{
 };
 
 // something small you can take and keep: a flashlight lying down, or a closed umbrella standing up
-PREFAB.item=o=>{const g=new THREE.Group();g.position.y=o.y||0;cur.add(g);const pv=cur;cur=g;
+PREFAB.item=o=>{const g=new THREE.Group();g.userData.dyn=true;g.position.y=o.y||0;cur.add(g);const pv=cur;cur=g;
   if(o.kind==='flashlight'){cyl(.022,.028,.17,M.steel,0,.03,0,12).rotation.x=Math.PI/2;cyl(.036,.03,.04,M.brass,0,.03,.1,12).rotation.x=Math.PI/2;}
   else{cyl(.035,.05,.78,M.teal,0,.43,0,10);cyl(.009,.009,.96,M.black,0,.5,0,6);}
   cur=pv;return{marks:[{kind:'item',x:0,z:0,item:o.kind,mesh:g}]};
@@ -697,7 +721,7 @@ PREFAB.counter=()=>{
 // a low double-sided shelf of goods. People stand in front of it to look.
 PREFAB.rack=()=>{
   box(1.6,1.2,.5,M.trim,0,.6,0);
-  for(let s=0;s<3;s++)for(let i=0;i<7;i++)[-1,1].forEach(k=>box(.16,rnd(.14,.24),.14,new THREE.MeshStandardMaterial({color:bookCols[Math.floor(rnd(0,8))],roughness:.6}),-.66+i*.22,.2+s*.4,k*.2));
+  const goods=[];for(let s=0;s<3;s++)for(let i=0;i<7;i++)[-1,1].forEach(k=>goods.push([.16,rnd(.14,.24),.14,-.66+i*.22,.2+s*.4,k*.2,bookCols[Math.floor(rnd(0,8))]]));boxBatch(goods);
   const look=(x,z,yaw)=>({type:'browse',ap:[x,z],yaw,pose:'read',label:'逛商店',pub:true});
   return{solid:[[-.82,.82,-.27,.27]],boxes:[[-.8,.8,0,1.2,-.25,.25]],spots:[look(-.3,.75,Math.PI),look(.3,-.75,0)]};
 };
@@ -804,7 +828,7 @@ function buildWall(R,side,def){
     }else{                                                                                    // door: a wooden frame, and a leaf on hinges
       [a-.03,b+.03].forEach(x=>box(.06,y1+.06,T+.1,M.walnut,x,(y1+.06)/2,-T/2));
       box(b-a+.12,.06,T+.1,M.walnut,o.u,y1+.03,-T/2);
-      const w=b-a-.02,hinge=new THREE.Group();hinge.position.set(b-.01,0,-T/2);cur.add(hinge);   // hinges on the +u side; it swings away from this room
+      const w=b-a-.02,hinge=new THREE.Group();hinge.userData.dyn=true;hinge.position.set(b-.01,0,-T/2);cur.add(hinge);   // hinges on the +u side; it swings away from this room
       const pv=cur;cur=hinge;
       const leaf=box(w,y1-.02,.04,o.front?hmat(H,'doorLeaf'):M.trim,-w/2,(y1-.02)/2+.01,0,{r:.008});
       [-1,1].forEach(k=>{box(.13,.022,.022,M.brass,-w+.11,1.0,k*.05);box(.022,.022,.05,M.brass,-w+.055,1.0,k*.035);});   // handles
@@ -845,6 +869,7 @@ houses.forEach(H=>{
   });
 });
 bH=null;dev=null;root=scene;cur=scene;
+for(const H of houses){weldStatic(H.shell);weldStatic(H.inner);}
 
 // doors: you click them; people open them as they walk up and shut them behind themselves
 function doorArea(d){return d.open?d.openC:d.shut;}
@@ -884,7 +909,7 @@ function updateDoors(dt){
   flat(S.walk,SL-S.walk,M.concrete,JX0-S.walk/2,-.012,SZ+S.walk+(SL-S.walk)/2,1.5);flat(S.walk,SL-S.walk,M.concrete,JX1+S.walk/2,-.012,SZ+S.walk+(SL-S.walk)/2,1.5);
   for(let z=SZ+5;z<SZ+SL;z+=4)flat(.14,1.7,M.paint,(JX0+JX1)/2,-.004,z);
   flat(3,.3,M.paint,JX1-1.75,-.004,SZ+2.3);flat(.3,3,M.paint,JX0-2.3,-.008,S.z1-1.75);flat(.3,3,M.paint,JX1+2.3,-.008,S.z0+1.75);   // stop lines
-  WORLD.outdoor.forEach(it=>place(it,null));
+  const outG=new THREE.Group();scene.add(outG);root=outG;WORLD.outdoor.forEach(it=>place(it,null));root=scene;weldStatic(outG);   // trees, lamps, benches, big buildings: welded too
 })();
 // three real lights that jump to whichever street lamps are nearest to you, so the street can have any number of lamps
 const streetGlow=[0,1,2].map(()=>{const l=new THREE.PointLight(0xffc88a,0,15,2);scene.add(l);return l;});
@@ -1862,13 +1887,25 @@ function findPath(x0,z0,x1,z1){
   return out;
 }
 const JK=['sx','sz','nx','ny','alx','alz','arx','arz','elx','erx','hlx','hrx','klx','krx','yo'];
+// A body is built from about 45 small shapes. Drawing each one separately is slow when there are many people,
+// so the shapes that move together (everything on the head, a forearm and its hand, a shin and its shoe ...)
+// are welded into one piece each, with the colours stored on the points. A person is then about 14 pieces.
+const bodyMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.85});
+function weld(g){const parts=g.userData.parts;if(!parts)return;let n=0;
+  const geos=parts.map(m=>{m.updateMatrix();const q=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();q.applyMatrix4(m.matrix);n+=q.attributes.position.count;return q;});
+  const P=new Float32Array(n*3),N=new Float32Array(n*3),C=new Float32Array(n*3);let at=0;
+  geos.forEach((q,i)=>{const cnt=q.attributes.position.count,c=parts[i].material.color;P.set(q.attributes.position.array,at*3);N.set(q.attributes.normal.array,at*3);
+    for(let k=0;k<cnt;k++){C[(at+k)*3]=c.r;C[(at+k)*3+1]=c.g;C[(at+k)*3+2]=c.b;}at+=cnt;q.dispose();});
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(P,3));geo.setAttribute('normal',new THREE.BufferAttribute(N,3));geo.setAttribute('color',new THREE.BufferAttribute(C,3));
+  const me=new THREE.Mesh(geo,bodyMat);me.castShadow=true;me.receiveShadow=true;g.add(me);delete g.userData.parts;}
 function makePerson(o){
   const s=o.h/1.75,root=new THREE.Group(),body=new THREE.Group();body.scale.setScalar(s);root.add(body);dyn.add(root);
   const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85});
   const skin=mat(o.skin),top=mat(o.top),bot=mat(o.bottom),shoe=mat(o.shoe),hair=mat(o.hair),eye=mat(0x1a1210);const mats={skin,top,bot,shoe,hair};
-  const mk=(geo,m,par,x,y,z)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;par.add(me);return me;};
+  const mk=(geo,m,par,x,y,z)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;
+    if(o.sep)par.add(me);else(par.userData.parts=par.userData.parts||[]).push(me);return me;};   // sep: keep the shapes separate (your own character, so its clothes can change colour)
   const jt=(par,x,y,z)=>{const g=new THREE.Group();g.position.set(x,y,z);par.add(g);return g;};
-  const cap=(r,l)=>new THREE.CapsuleGeometry(r,l,4,12),sph=r=>new THREE.SphereGeometry(r,18,12),J={};
+  const cap=(r,l)=>new THREE.CapsuleGeometry(r,l,3,10),sph=r=>new THREE.SphereGeometry(r,14,10),J={};
   mk(sph(.13),bot,body,0,0,0).scale.set(1.25,.8,.9);
   J.spine=jt(body,0,0,0);mk(cap(.125,.26),top,J.spine,0,.27,0).scale.set(1.15,1,.8);
   J.neck=jt(J.spine,0,.52,0);mk(new THREE.CylinderGeometry(.045,.05,.09,12),skin,J.neck,0,.03,0);
@@ -1882,7 +1919,8 @@ function makePerson(o){
     const el=J['e'+n]=jt(sh,0,-.28,0);mk(cap(.038,.19),skin,el,0,-.133,0);mk(sph(.045),skin,el,0,-.28,0);
     const hip=J['h'+n]=jt(body,k*.09,-.04,0);mk(cap(.07,.3),bot,hip,0,-.22,0);
     const kn=J['k'+n]=jt(hip,0,-.44,0);mk(cap(.055,.3),o.shorts?skin:bot,kn,0,-.205,0);mk(new THREE.BoxGeometry(.09,.06,.24),shoe,kn,0,-.41,.06);});
-  const book=mk(new THREE.BoxGeometry(.2,.03,.15),mat(o.top===0x1f6a6e?0xb5533a:0x1f5a5e),J.el,-.1,-.29,.02);book.rotation.x=.4;book.visible=false;
+  if(!o.sep)[body,J.spine,J.neck,head,J.al,J.ar,J.el,J.er,J.hl,J.hr,J.kl,J.kr].forEach(weld);
+  const book=new THREE.Mesh(new THREE.BoxGeometry(.2,.03,.15),mat(o.top===0x1f6a6e?0xb5533a:0x1f5a5e));book.position.set(-.1,-.29,.02);book.castShadow=true;J.el.add(book);book.rotation.x=.4;book.visible=false;
   const hit=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,1.75,8),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=-.02;body.add(hit);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
   const n={o,root,J,head,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
@@ -2151,10 +2189,10 @@ let subText='';
 function autoHome(){
   const ah=curHouse();if(ah!==activeHouse){activeHouse=ah;applySwitches();}        // moved next to a different house: its lights become the real ones
   const home=[];let out=0;
-  for(const n of people){const r=roomAt(n.pos.x,n.pos.z);n.root.visible=!n.hidden&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<60;
+  for(const n of people){const r=roomAt(n.pos.x,n.pos.z);n.root.visible=!n.hidden&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<48;
     if(!n.hidden&&!r)out++;if(!n.hidden&&r&&r.house===ah)home.push(n.o.name);}
   for(const H of houses){let awake=false,watching=false;                           // each house looks after its own lamp and TV
-    H.inner.visible=houseDist(H,pos.x,pos.z)<26;                                   // far-away furniture is not drawn
+    H.inner.visible=houseDist(H,pos.x,pos.z)<6.5;                                  // furniture is only drawn for the house you are in or right next to (you cannot see it from further away anyway)
     for(const n of people){if(!inHouse(n,H))continue;if(!n.lie)awake=true;if(ACT[n.act].tv&&n.phase==='at')watching=true;}
     const wl=dark>.5&&awake;
     if(wl!==H.wantLamp){H.wantLamp=wl;if(H.S.lamp!==wl){H.S.lamp=wl;applySwitches();}}
@@ -2265,7 +2303,7 @@ function updatePets(dt,t){
 
 /* ---------- you, seen from outside ---------- */
 // Press V to step back and see your own character. The camera circles behind you and moves closer when a wall is in the way.
-const me=makePerson({name:'你',h:1.72,skin:0xe8b996,hair:0x3a2a1c,top:0xf2c23d,bottom:0x2b3a67,shoe:0xffffff,long:false});
+const me=makePerson({name:'你',h:1.72,skin:0xe8b996,hair:0x3a2a1c,top:0xf2c23d,bottom:0x2b3a67,shoe:0xffffff,long:false,sep:true});
 interact.pop();me.tag.remove();me.root.visible=false;                       // not a neighbour: no name tag, nothing to click
 let third=false,meYaw=0;
 const meQ=new THREE.Quaternion();
@@ -2436,6 +2474,7 @@ function drawTV(d,t){
 }
 
 /* ---------- main loop ---------- */
+const prof={people:0,world:0,physics:0,steps:0,frames:0};
 let last=performance.now(),frame=0,slow=0,tipObj=null,acc=0,bakeAt=0,bakeClock=clock,autoT=1;
 function tick(now){
   requestAnimationFrame(tick);
@@ -2463,11 +2502,15 @@ function tick(now){
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY-waterDepth()+(waterDepth()>1?Math.sin(t*2.2)*.05:0);}
   camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);fishStep(dt,t);if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();if(frame%15===0){hudStats();updateAudio();}
   // the people, then the physics in small fixed steps
+  const p0=performance.now();
   for(const n of people)updNPC(n,dt,t);
+  const p1=performance.now();
   updateDoors(dt);updateCars(dt);updateWeather(dt);updatePets(dt,t);
   autoT+=dt;if(autoT>.5){autoT=0;autoHome();}
+  const p2=performance.now();
   acc+=dt;let steps=0;while(acc>=PH&&steps<14){physStep(PH);acc-=PH;steps++;}if(steps===14)acc=0;
   syncBalls(dt);
+  const p3=performance.now();prof.people+=p1-p0;prof.world+=p2-p1;prof.physics+=p3-p2;prof.steps+=steps;prof.frames++;   // where the time goes (read with __room.prof)
   // lights that live
   const AS=activeHouse.S,AD=activeHouse.dev,k=AS.neon?1:0;for(const d of AD.neons){d.l1.intensity=k*(.3+.2*dark);d.l2.intensity=k*(.18+.12*dark);}
   for(const d of AD.tvs){if(AS.tv){if(frame%3===0)drawTV(d,t);d.light.intensity=(.18+.12*dark)*(1+Math.sin(t*5.3)*.08+Math.sin(t*13.1)*.05);}else d.light.intensity=0;}
@@ -2498,7 +2541,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,prof,renderer,busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

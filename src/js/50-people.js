@@ -45,13 +45,25 @@ function findPath(x0,z0,x1,z1){
   return out;
 }
 const JK=['sx','sz','nx','ny','alx','alz','arx','arz','elx','erx','hlx','hrx','klx','krx','yo'];
+// A body is built from about 45 small shapes. Drawing each one separately is slow when there are many people,
+// so the shapes that move together (everything on the head, a forearm and its hand, a shin and its shoe ...)
+// are welded into one piece each, with the colours stored on the points. A person is then about 14 pieces.
+const bodyMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.85});
+function weld(g){const parts=g.userData.parts;if(!parts)return;let n=0;
+  const geos=parts.map(m=>{m.updateMatrix();const q=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();q.applyMatrix4(m.matrix);n+=q.attributes.position.count;return q;});
+  const P=new Float32Array(n*3),N=new Float32Array(n*3),C=new Float32Array(n*3);let at=0;
+  geos.forEach((q,i)=>{const cnt=q.attributes.position.count,c=parts[i].material.color;P.set(q.attributes.position.array,at*3);N.set(q.attributes.normal.array,at*3);
+    for(let k=0;k<cnt;k++){C[(at+k)*3]=c.r;C[(at+k)*3+1]=c.g;C[(at+k)*3+2]=c.b;}at+=cnt;q.dispose();});
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(P,3));geo.setAttribute('normal',new THREE.BufferAttribute(N,3));geo.setAttribute('color',new THREE.BufferAttribute(C,3));
+  const me=new THREE.Mesh(geo,bodyMat);me.castShadow=true;me.receiveShadow=true;g.add(me);delete g.userData.parts;}
 function makePerson(o){
   const s=o.h/1.75,root=new THREE.Group(),body=new THREE.Group();body.scale.setScalar(s);root.add(body);dyn.add(root);
   const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85});
   const skin=mat(o.skin),top=mat(o.top),bot=mat(o.bottom),shoe=mat(o.shoe),hair=mat(o.hair),eye=mat(0x1a1210);const mats={skin,top,bot,shoe,hair};
-  const mk=(geo,m,par,x,y,z)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;par.add(me);return me;};
+  const mk=(geo,m,par,x,y,z)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;
+    if(o.sep)par.add(me);else(par.userData.parts=par.userData.parts||[]).push(me);return me;};   // sep: keep the shapes separate (your own character, so its clothes can change colour)
   const jt=(par,x,y,z)=>{const g=new THREE.Group();g.position.set(x,y,z);par.add(g);return g;};
-  const cap=(r,l)=>new THREE.CapsuleGeometry(r,l,4,12),sph=r=>new THREE.SphereGeometry(r,18,12),J={};
+  const cap=(r,l)=>new THREE.CapsuleGeometry(r,l,3,10),sph=r=>new THREE.SphereGeometry(r,14,10),J={};
   mk(sph(.13),bot,body,0,0,0).scale.set(1.25,.8,.9);
   J.spine=jt(body,0,0,0);mk(cap(.125,.26),top,J.spine,0,.27,0).scale.set(1.15,1,.8);
   J.neck=jt(J.spine,0,.52,0);mk(new THREE.CylinderGeometry(.045,.05,.09,12),skin,J.neck,0,.03,0);
@@ -65,7 +77,8 @@ function makePerson(o){
     const el=J['e'+n]=jt(sh,0,-.28,0);mk(cap(.038,.19),skin,el,0,-.133,0);mk(sph(.045),skin,el,0,-.28,0);
     const hip=J['h'+n]=jt(body,k*.09,-.04,0);mk(cap(.07,.3),bot,hip,0,-.22,0);
     const kn=J['k'+n]=jt(hip,0,-.44,0);mk(cap(.055,.3),o.shorts?skin:bot,kn,0,-.205,0);mk(new THREE.BoxGeometry(.09,.06,.24),shoe,kn,0,-.41,.06);});
-  const book=mk(new THREE.BoxGeometry(.2,.03,.15),mat(o.top===0x1f6a6e?0xb5533a:0x1f5a5e),J.el,-.1,-.29,.02);book.rotation.x=.4;book.visible=false;
+  if(!o.sep)[body,J.spine,J.neck,head,J.al,J.ar,J.el,J.er,J.hl,J.hr,J.kl,J.kr].forEach(weld);
+  const book=new THREE.Mesh(new THREE.BoxGeometry(.2,.03,.15),mat(o.top===0x1f6a6e?0xb5533a:0x1f5a5e));book.position.set(-.1,-.29,.02);book.castShadow=true;J.el.add(book);book.rotation.x=.4;book.visible=false;
   const hit=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,1.75,8),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=-.02;body.add(hit);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
   const n={o,root,J,head,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,

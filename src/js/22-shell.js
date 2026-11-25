@@ -31,7 +31,7 @@ function buildWall(R,side,def){
     }else{                                                                                    // door: a wooden frame, and a leaf on hinges
       [a-.03,b+.03].forEach(x=>box(.06,y1+.06,T+.1,M.walnut,x,(y1+.06)/2,-T/2));
       box(b-a+.12,.06,T+.1,M.walnut,o.u,y1+.03,-T/2);
-      const w=b-a-.02,hinge=new THREE.Group();hinge.position.set(b-.01,0,-T/2);cur.add(hinge);   // hinges on the +u side; it swings away from this room
+      const w=b-a-.02,hinge=new THREE.Group();hinge.userData.dyn=true;hinge.position.set(b-.01,0,-T/2);cur.add(hinge);   // hinges on the +u side; it swings away from this room
       const pv=cur;cur=hinge;
       const leaf=box(w,y1-.02,.04,o.front?hmat(H,'doorLeaf'):M.trim,-w/2,(y1-.02)/2+.01,0,{r:.008});
       [-1,1].forEach(k=>{box(.13,.022,.022,M.brass,-w+.11,1.0,k*.05);box(.022,.022,.05,M.brass,-w+.055,1.0,k*.035);});   // handles
@@ -72,6 +72,7 @@ houses.forEach(H=>{
   });
 });
 bH=null;dev=null;root=scene;cur=scene;
+for(const H of houses){weldStatic(H.shell);weldStatic(H.inner);}
 
 // doors: you click them; people open them as they walk up and shut them behind themselves
 function doorArea(d){return d.open?d.openC:d.shut;}
