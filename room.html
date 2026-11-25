@@ -1190,34 +1190,35 @@ const ROUTES={
   eastSouth:[[-105,LN.e],[46.4,LN.e],[49.9,12.3],[LN.s,15.6],[LN.s,110]],            // along the main street, right into the side street
   westSouth:[[105,LN.w],[58.6,LN.w],[54.2,8.8],[51.7,11.6],[LN.s,16],[LN.s,110]]
 };
-// the junction light: main street green, then yellow, then the side street's turn
-let jMain='g',jSide='r';
-const JS={mr:new THREE.MeshBasicMaterial(),my:new THREE.MeshBasicMaterial(),mg:new THREE.MeshBasicMaterial(),sr:new THREE.MeshBasicMaterial(),sy:new THREE.MeshBasicMaterial(),sg:new THREE.MeshBasicMaterial()};
+// the junction lights. Four turns take the junction one after another, with everything red for a moment in between
+// so the middle can empty: eastbound and westbound together, then westbound plus its left turn, then the side street.
+let jE='g',jW='g',jWL='r',jS='r';
+const JS={};for(const k of['e','w','s'])for(const c of['r','y','g'])JS[k+c]=new THREE.MeshBasicMaterial();
 (function(){cur=scene;
   const head=(x,z,pre,ry)=>{cyl(.06,.08,3.4,M.steel,x,1.7,z,10);box(.3,.95,.3,M.black,x,3.6,z);
     [['r',3.9],['y',3.6],['g',3.3]].forEach(q=>[0,Math.PI].forEach(a=>{const m=new THREE.Mesh(new THREE.CircleGeometry(.1,16),JS[pre+q[0]]);m.rotation.y=ry+a;m.position.set(x+Math.sin(ry+a)*.152,q[1],z+Math.cos(ry+a)*.152);scene.add(m);}));
     colliders.push([x-.1,x+.1,z-.1,z+.1]);};
-  head(JX0-1.2,ST.z1+.4,'m',Math.PI/2);head(JX1+1.2,ST.z0-.4,'m',Math.PI/2);head(JX1+.5,ST.z1+2.4,'s',0);
+  head(JX0-1.2,ST.z1+.4,'e',Math.PI/2);head(JX1+1.2,ST.z0-.4,'w',Math.PI/2);head(JX1+.5,ST.z1+2.4,'s',0);
 })();
-function updateJunction(t){const u=(t+11)%40;
-  jMain=u<20?'g':u<23?'y':'r';jSide=u>=23&&u<37?'g':u>=37?'y':'r';
+function updateJunction(t){const u=(t+11)%52,ph=(a,g,y)=>u>=a&&u<g?'g':u>=g&&u<y?'y':'r';
+  jE=ph(0,17,20);jW=ph(0,31,34);jWL=ph(22.5,31,34);jS=ph(36.5,47,50);                // gaps (20-22.5, 34-36.5, 50-52) are all-red
   const lamp=(m,on,r,g,b)=>m.color.setRGB(on?r:.1,on?g:.04,on?b:.03);
-  lamp(JS.mr,jMain==='r',6,.02,.02);lamp(JS.my,jMain==='y',5,3.6,.02);lamp(JS.mg,jMain==='g',.02,5,1.6);
-  lamp(JS.sr,jSide==='r',6,.02,.02);lamp(JS.sy,jSide==='y',5,3.6,.02);lamp(JS.sg,jSide==='g',.02,5,1.6);}
+  for(const q of[['e',jE],['w',jW],['s',jS]]){lamp(JS[q[0]+'r'],q[1]==='r',6,.02,.02);lamp(JS[q[0]+'y'],q[1]==='y',5,3.6,.02);lamp(JS[q[0]+'g'],q[1]==='g',.02,5,1.6);}}
 // where each route has to stop, and which light it watches
 const zebraE={p:[ZEBRA[0]-.7,LN.e],st:()=>sigCars},zebraW={p:[ZEBRA[1]+.7,LN.w],st:()=>sigCars};
-const STOPS={east:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jMain}],eastSouth:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jMain}],
-  west:[{p:[JX1+2.6,LN.w],st:()=>jMain},zebraW],westSouth:[{p:[JX1+2.6,LN.w],st:()=>jMain}],
-  northLeft:[{p:[LN.n,ST.z1+2.6],st:()=>jSide},zebraW],northRight:[{p:[LN.n,ST.z1+2.6],st:()=>jSide}]};
+const STOPS={east:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jE}],eastSouth:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jE}],
+  west:[{p:[JX1+2.6,LN.w],st:()=>jW},zebraW],westSouth:[{p:[JX1+2.6,LN.w],st:()=>jWL}],
+  northLeft:[{p:[LN.n,ST.z1+2.6],st:()=>jS},zebraW],northRight:[{p:[LN.n,ST.z1+2.6],st:()=>jS}]};
 const onAnyRoad=(x,z)=>onRoad(z)||(x>JX0&&x<JX1&&z>=ST.z1);
 function startCar(c){
   const name=c.bus?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
   const R=ROUTES[name];if(cars.some(o=>o!==c&&o.on&&Math.hypot(o.x-R[0][0],o.z-R[0][1])<24))return false;
   c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=false;c.dwell=0;return true;
 }
+let carClock=0;
 const cv3=new THREE.Vector3();
 function updateCars(dt){
-  const now=performance.now()/1000;updateSignal(now);updateJunction(now);
+  carClock+=dt;const now=carClock;updateSignal(now);updateJunction(now);          // the lights run on game time, so they pause when the game does
   for(const c of cars){
     if(!c.on){c.t-=dt;if(c.t<=0&&!startCar(c))c.t=2;continue;}
     // steer toward the next point on the route
@@ -1231,7 +1232,10 @@ function updateCars(dt){
     else if(onAnyRoad(pos.x,pos.z))see(pos.x,pos.z,3.3);                              // you, on foot on the road
     for(const d of pets)if(onAnyRoad(d.x,d.z))see(d.x,d.z,3.3);                        // drivers stop for the dog too
     for(const n of people)if(!n.hidden&&onAnyRoad(n.pos.x,n.pos.z))see(n.pos.x,n.pos.z,3.3);
-    for(const o of cars){if(o===c||!o.on)continue;const ox=Math.cos(o.h),oz=-Math.sin(o.h);see(o.x-ox*o.hl,o.z-oz*o.hl,1.5);see(o.x,o.z,1.5);}
+    c.still=c.v<.1?(c.still||0)+dt:0;const me=cars.indexOf(c);
+    for(let k=0;k<cars.length;k++){const o=cars[k];if(o===c||!o.on)continue;
+      if(c.still>4&&o.v<.3&&me<k)continue;                                          // two cars each waiting for the other: the first one goes
+      const ox=Math.cos(o.h),oz=-Math.sin(o.h);for(const q of[-1,0,1])see(o.x+ox*o.hl*q,o.z+oz*o.hl*q,1.7);}
     for(const sp of c.stops){const st=sp.st();if(st==='g')continue;                     // red or yellow light: stop at the line (on yellow only if there is room to stop gently)
       const dx=sp.p[0]-px0,dz=sp.p[1]-pz0,d=dx*fx+dz*fz;if(d>(st==='y'?5:-.6)&&d<gap&&Math.abs(-dx*fz+dz*fx)<2)gap=d;}
     if(c.bus){const d=(c.stopX-px0)*c.busDir;                                          // a bus pulls up at its stop, waits with the doors open, then goes on
