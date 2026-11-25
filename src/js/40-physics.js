@@ -107,9 +107,9 @@ function physStep(dt){
       const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;if(d2>=r*r||d2<1e-10)continue;
       const d=Math.sqrt(d2),J=contact(b,dx/d,dy/d,dz/d,r-d,c.dir*c.v,0,1200);
       if(J/b.m>1)say('車子 ⇄ '+b.name+'：兩邊各被推 '+J.toFixed(1)+' 牛頓·秒。車子有 1200 公斤，所以幾乎沒變慢。',true);}
-    {const fx=Math.cos(drive.h),fz=-Math.sin(drive.h),vx=drive.on?fx*drive.v:0,vz=drive.on?fz*drive.v:0;     // your car, parked or moving
-      for(const k of[1.15,-1.15])hitPerson(b,drive.x+fx*k,drive.z+fz*k,.95,1.5,vx,vz,1200,'你的車');}
-    const hp=drive.on?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
+    for(const rd of rides){const fx=Math.cos(rd.h),fz=-Math.sin(rd.h),mv=rd===ride?rd.v:0;                   // your car and bike, parked or moving
+      for(const k of rd.S.pts)hitPerson(b,rd.x+fx*k,rd.z+fz*k,rd.S.R,1.5,fx*mv,fz*mv,rd.S.mass,'你的'+rd.S.name);}
+    const hp=ride?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
     for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption
       if(hitPerson(b,n.pos.x,n.pos.z,n.lie?.45:.2,n.lie?.85:n.sit?1.2:n.o.h,n.vx,n.vz,0,n.o.name)&&spd>1.5)notify(n,'hit',b);}

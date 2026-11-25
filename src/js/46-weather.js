@@ -21,7 +21,7 @@ function updateWeather(dt){
   rainPts.visible=rain>.03;if(!rainPts.visible)return;
   rainPts.material.opacity=.4*rain;rainPts.position.set(pos.x,0,pos.z);
   for(let i=0;i<RN;i++){const k=i*6;let x=rPos[k],y=rPos[k+1]-15*dt,z=rPos[k+2];
-    if(y<0||(y<RH+.3&&roomAt(pos.x+x,pos.z+z))){x=rnd(-16,16);y=rnd(8,12);z=rnd(-16,16);}   // roofs keep the rain out
+    if(y<0||(use.umbrella&&!ride&&y<2.4&&Math.hypot(x,z)<1.15)||(y<RH+.3&&roomAt(pos.x+x,pos.z+z))){x=rnd(-16,16);y=rnd(8,12);z=rnd(-16,16);}   // your umbrella and the roofs keep the rain out
     rPos[k]=x;rPos[k+1]=y;rPos[k+2]=z;rPos[k+3]=x+.03;rPos[k+4]=y+.45;rPos[k+5]=z;}
   rGeo.attributes.position.needsUpdate=true;
 }

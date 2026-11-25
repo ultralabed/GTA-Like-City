@@ -133,6 +133,13 @@ PREFAB.wardrobe=()=>{
   return{solid:[[-.72,.72,-.58,0]],boxes:[[-.7,.7,0,2.1,-.55,0]]};
 };
 
+// something small you can take and keep: a flashlight lying down, or a closed umbrella standing up
+PREFAB.item=o=>{const g=new THREE.Group();g.position.y=o.y||0;cur.add(g);const pv=cur;cur=g;
+  if(o.kind==='flashlight'){cyl(.022,.028,.17,M.steel,0,.03,0,12).rotation.x=Math.PI/2;cyl(.036,.03,.04,M.brass,0,.03,.1,12).rotation.x=Math.PI/2;}
+  else{cyl(.035,.05,.78,M.teal,0,.43,0,10);cyl(.009,.009,.96,M.black,0,.5,0,6);}
+  cur=pv;return{marks:[{kind:'item',x:0,z:0,item:o.kind,mesh:g}]};
+};
+
 /* ----- things that stand outside ----- */
 const icoG=new THREE.IcosahedronGeometry(1,1);
 PREFAB.tree=o=>{const s=o.s||1;

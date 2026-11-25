@@ -29,6 +29,8 @@ const TEMPLATES={
           {type:'plant',x:-2.4,z:-1.9},
           {type:'lampCorner',x:-2.45,z:1.95},
           {type:'neon',x:3,z:1.3},
+          {type:'item',kind:'flashlight',x:-2.72,y:.545,z:.15},        // things you can take and use
+          {type:'item',kind:'umbrella',x:2.78,z:2.28},
           // places on the open floor where people do things
           {type:'spot',kind:'window',x:-.5,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
           {type:'spot',kind:'window',x:.6,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
@@ -56,7 +58,7 @@ const TEMPLATES={
       {kind:'basket',x:1.7,z:-1.9},{kind:'tennis',x:4.2,z:.6},
       {kind:'beach',x:-1.6,z:1.3},{kind:'bowl',x:2.3,z:.4},
       {kind:'tennis',x:-1.9,z:-.6},{kind:'tennis',x:-1.7,z:-.95},{kind:'tennis',x:-.85,y:.445,z:.75},
-      {kind:'orb',x:2.6,z:2.0}
+      {kind:'orb',x:2.55,z:1.3}
     ]}
 };
 // a person: looks, working hours (shift, or null for none), bedtime, and character
@@ -68,7 +70,7 @@ const WORLD={
   bounds:{x0:-24,x1:28,z0:-9,z1:26},                               // as far as anyone can walk
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
-  car:{x:-20,z:2.4,h:-Math.PI/2},                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
+  rides:[{kind:'car',x:-20,z:2.4,h:-Math.PI/2},{kind:'bike',x:.2,z:3.3,h:-Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
   lots:[
     {no:1,tpl:'cottage',x:0,z:0,ext:0xe9dccb,accent:0x1c4a50,roof:0x3a3140,door:0xd9623f,balls:'all',people:[
       person('小美',1.64,0xe8b996,0x2a1a16,0xd9623f,0xe9dfcf,0xf4f0e8,true,[9,17],[22,8],.8,.4,{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}),

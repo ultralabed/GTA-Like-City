@@ -9,8 +9,8 @@ function blocked(x,z){
   for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
     if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
-  if(!drive.on){const fx=Math.cos(drive.h),fz=-Math.sin(drive.h);                          // your parked car is solid
-    for(const k of[1.15,-1.15]){const cx=drive.x+fx*k,cz=drive.z+fz*k,R=.95+PR;if(Math.hypot(x-cx,z-cz)<R&&Math.hypot(pos.x-cx,pos.z-cz)>=Math.hypot(x-cx,z-cz))return true;}}
+  for(const rd of rides){if(rd===ride)continue;const fx=Math.cos(rd.h),fz=-Math.sin(rd.h);        // parked vehicles are solid
+    for(const k of rd.S.pts){const cx=rd.x+fx*k,cz=rd.z+fz*k,d=Math.hypot(x-cx,z-cz);if(d<rd.S.R+PR&&Math.hypot(pos.x-cx,pos.z-cz)>=d)return true;}}
   for(const c of cars){if(!c.on)continue;const q=c.box,hit=(a,b)=>a>q[0]-PR&&a<q[1]+PR&&b>q[2]-PR&&b<q[3]+PR;if(hit(x,z)&&!hit(pos.x,pos.z))return true;}   // cars are solid too
   for(const n of people){if(n.hidden||n.lie)continue; // people are solid, but you can always step away from them
     const d=Math.hypot(x-n.pos.x,z-n.pos.z);if(d<.5&&d<Math.hypot(pos.x-n.pos.x,pos.z-n.pos.z))return true;}

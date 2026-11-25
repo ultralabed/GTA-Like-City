@@ -39,7 +39,7 @@ function updateCars(dt){
       continue;}
     const front=c.x+c.dir*2.1;let gap=1e9;
     const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
-    see(pos.x-(drive.on?c.dir*2.4:0),pos.z);                                   // you, or the back of the car you are driving
+    see(pos.x-(ride?c.dir*ride.S.len:0),pos.z);                                   // you, or the back of the car you are driving
     for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);
       if(n.atCurb&&n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;if(d>-.6&&d<gap)gap=d;}}   // someone waiting at the zebra: stop before it
     for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}

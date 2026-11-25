@@ -47,6 +47,14 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 .bar button:focus-visible,.panel button:focus-visible,.panel input:focus-visible,.acts button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 .acts{position:absolute;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(84px + env(safe-area-inset-bottom, 0px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
 .acts button{pointer-events:auto;padding:12px 16px;font-size:14px}
+.bag{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.bag button{padding:9px 12px;font-size:12px}
+.bag button::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25)}
+.bag button[aria-pressed="true"]::before{background:var(--neon);box-shadow:0 0 10px var(--neon)}
+.actcol{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.map{position:absolute;top:calc(14px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none;line-height:0}
+.map canvas{width:min(208px,46vw);height:auto;display:block}
 .acts kbd{font:600 11px/1 var(--body);color:var(--sun);border:1px solid var(--line);border-radius:5px;padding:3px 5px}
 .hint{align-self:center;text-align:center;font-size:13px;line-height:1.5;color:var(--text);background:var(--glass);
   border:1px solid var(--line);border-radius:12px;padding:8px 14px;max-width:100%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -92,7 +100,8 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
     <div id="phys" class="phys" hidden></div>
     <div id="minds" class="phys minds" hidden></div>
   </div>
-  <div id="acts" class="acts"></div>
+  <div class="acts"><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
+  <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>
 </div>
 <div id="err" hidden></div>
@@ -111,8 +120,8 @@ const $=id=>document.getElementById(id);
 const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
-  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕：跳、撿、坐、開車'
-  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>點</b>門、球、人　<b>Esc</b> 放開滑鼠';
+  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕：跳、撿、坐、開車、騎車、手電筒、雨傘、地圖'
+  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>點</b>門、球、人　<b>Esc</b> 放開滑鼠';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}
 
@@ -131,7 +140,7 @@ THREE.ShaderChunk.output_fragment+='\nif(!(gl_FragColor.r>=0.0&&gl_FragColor.g>=
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x05030a);
 const camera=new THREE.PerspectiveCamera(68,1,0.08,800);
-camera.rotation.order='YXZ';
+camera.rotation.order='YXZ';scene.add(camera);                           // in the scene so things can be held in front of it
 // the help line shows for a while, then gets out of the way; "操作說明" in the settings brings it back
 let hintTimer=0;function showHint(){$('hint').hidden=false;clearTimeout(hintTimer);hintTimer=setTimeout(()=>{$('hint').hidden=true;},14000);}
 showHint();$('bHelp').onclick=showHint;
@@ -286,6 +295,8 @@ const TEMPLATES={
           {type:'plant',x:-2.4,z:-1.9},
           {type:'lampCorner',x:-2.45,z:1.95},
           {type:'neon',x:3,z:1.3},
+          {type:'item',kind:'flashlight',x:-2.72,y:.545,z:.15},        // things you can take and use
+          {type:'item',kind:'umbrella',x:2.78,z:2.28},
           // places on the open floor where people do things
           {type:'spot',kind:'window',x:-.5,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
           {type:'spot',kind:'window',x:.6,z:-1.95,yaw:Math.PI,pose:'window',label:'看海'},
@@ -313,7 +324,7 @@ const TEMPLATES={
       {kind:'basket',x:1.7,z:-1.9},{kind:'tennis',x:4.2,z:.6},
       {kind:'beach',x:-1.6,z:1.3},{kind:'bowl',x:2.3,z:.4},
       {kind:'tennis',x:-1.9,z:-.6},{kind:'tennis',x:-1.7,z:-.95},{kind:'tennis',x:-.85,y:.445,z:.75},
-      {kind:'orb',x:2.6,z:2.0}
+      {kind:'orb',x:2.55,z:1.3}
     ]}
 };
 // a person: looks, working hours (shift, or null for none), bedtime, and character
@@ -325,7 +336,7 @@ const WORLD={
   bounds:{x0:-24,x1:28,z0:-9,z1:26},                               // as far as anyone can walk
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
-  car:{x:-20,z:2.4,h:-Math.PI/2},                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
+  rides:[{kind:'car',x:-20,z:2.4,h:-Math.PI/2},{kind:'bike',x:.2,z:3.3,h:-Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
   lots:[
     {no:1,tpl:'cottage',x:0,z:0,ext:0xe9dccb,accent:0x1c4a50,roof:0x3a3140,door:0xd9623f,balls:'all',people:[
       person('小美',1.64,0xe8b996,0x2a1a16,0xd9623f,0xe9dfcf,0xf4f0e8,true,[9,17],[22,8],.8,.4,{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}),
@@ -399,7 +410,7 @@ const ACT={};                // places a person can do something, by name (tv1, 
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
 let root=scene;              // where new furniture groups go
-const marks={streetLamp:[]}; // special points furniture reports back, by kind
+const marks={streetLamp:[],item:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
 let cur=scene;               // where new meshes go: the scene, or the piece of furniture being built
 function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
@@ -579,6 +590,13 @@ PREFAB.wardrobe=()=>{
   box(1.4,2.1,.55,M.walnut,0,1.05,-.275,{r:.012});
   [-.35,.35].forEach(x=>{box(.66,1.98,.02,M.trim,x,1.06,-.56);cyl(.012,.012,.3,M.brass,x<0?x+.27:x-.27,1.05,-.585,10);});
   return{solid:[[-.72,.72,-.58,0]],boxes:[[-.7,.7,0,2.1,-.55,0]]};
+};
+
+// something small you can take and keep: a flashlight lying down, or a closed umbrella standing up
+PREFAB.item=o=>{const g=new THREE.Group();g.position.y=o.y||0;cur.add(g);const pv=cur;cur=g;
+  if(o.kind==='flashlight'){cyl(.022,.028,.17,M.steel,0,.03,0,12).rotation.x=Math.PI/2;cyl(.036,.03,.04,M.brass,0,.03,.1,12).rotation.x=Math.PI/2;}
+  else{cyl(.035,.05,.78,M.teal,0,.43,0,10);cyl(.009,.009,.96,M.black,0,.5,0,6);}
+  cur=pv;return{marks:[{kind:'item',x:0,z:0,item:o.kind,mesh:g}]};
 };
 
 /* ----- things that stand outside ----- */
@@ -945,9 +963,9 @@ function physStep(dt){
       const dx=b.p.x-cx,dy=b.p.y-cy,dz=b.p.z-cz,d2=dx*dx+dy*dy+dz*dz;if(d2>=r*r||d2<1e-10)continue;
       const d=Math.sqrt(d2),J=contact(b,dx/d,dy/d,dz/d,r-d,c.dir*c.v,0,1200);
       if(J/b.m>1)say('車子 ⇄ '+b.name+'：兩邊各被推 '+J.toFixed(1)+' 牛頓·秒。車子有 1200 公斤，所以幾乎沒變慢。',true);}
-    {const fx=Math.cos(drive.h),fz=-Math.sin(drive.h),vx=drive.on?fx*drive.v:0,vz=drive.on?fz*drive.v:0;     // your car, parked or moving
-      for(const k of[1.15,-1.15])hitPerson(b,drive.x+fx*k,drive.z+fz*k,.95,1.5,vx,vz,1200,'你的車');}
-    const hp=drive.on?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
+    for(const rd of rides){const fx=Math.cos(rd.h),fz=-Math.sin(rd.h),mv=rd===ride?rd.v:0;                   // your car and bike, parked or moving
+      for(const k of rd.S.pts)hitPerson(b,rd.x+fx*k,rd.z+fz*k,rd.S.R,1.5,fx*mv,fz*mv,rd.S.mass,'你的'+rd.S.name);}
+    const hp=ride?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
     for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption
       if(hitPerson(b,n.pos.x,n.pos.z,n.lie?.45:.2,n.lie?.85:n.sit?1.2:n.o.h,n.vx,n.vz,0,n.o.name)&&spd>1.5)notify(n,'hit',b);}
@@ -1002,7 +1020,7 @@ function updateCars(dt){
       continue;}
     const front=c.x+c.dir*2.1;let gap=1e9;
     const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
-    see(pos.x-(drive.on?c.dir*2.4:0),pos.z);                                   // you, or the back of the car you are driving
+    see(pos.x-(ride?c.dir*ride.S.len:0),pos.z);                                   // you, or the back of the car you are driving
     for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);
       if(n.atCurb&&n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;if(d>-.6&&d<gap)gap=d;}}   // someone waiting at the zebra: stop before it
     for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
@@ -1042,25 +1060,70 @@ function updateWeather(dt){
   rainPts.visible=rain>.03;if(!rainPts.visible)return;
   rainPts.material.opacity=.4*rain;rainPts.position.set(pos.x,0,pos.z);
   for(let i=0;i<RN;i++){const k=i*6;let x=rPos[k],y=rPos[k+1]-15*dt,z=rPos[k+2];
-    if(y<0||(y<RH+.3&&roomAt(pos.x+x,pos.z+z))){x=rnd(-16,16);y=rnd(8,12);z=rnd(-16,16);}   // roofs keep the rain out
+    if(y<0||(use.umbrella&&!ride&&y<2.4&&Math.hypot(x,z)<1.15)||(y<RH+.3&&roomAt(pos.x+x,pos.z+z))){x=rnd(-16,16);y=rnd(8,12);z=rnd(-16,16);}   // your umbrella and the roofs keep the rain out
     rPos[k]=x;rPos[k+1]=y;rPos[k+2]=z;rPos[k+3]=x+.03;rPos[k+4]=y+.45;rPos[k+5]=z;}
   rGeo.attributes.position.needsUpdate=true;
 }
 
-/* ---------- things you can do: jump, carry and throw, sit, drive ---------- */
+/* ---------- things you can do: jump, carry and throw, sit, ride, use items ---------- */
 // The buttons at the bottom right change with what is possible right now, so you never have to remember a key.
-let jumpY=0,jumpV=0,held=null,seat=null;
-const drive={on:false,x:WORLD.car.x,z:WORLD.car.z,h:WORLD.car.h,v:0,bumped:0};
-const pcar=carMesh(0xf2c23d);                                               // your car: the yellow one
-(function(){cur=scene;flat(2.8,5.6,M.concrete,drive.x,-.012,drive.z,1.4);pcar.g.position.set(drive.x,0,drive.z);pcar.g.rotation.y=drive.h;})();
+let jumpY=0,jumpV=0,held=null,seat=null,ride=null;
 const camDir=new THREE.Vector3(),camGoal=new THREE.Vector3();
 
 // --- jumping ---
-function jump(){if(jumpY===0&&!drive.on&&!seat)jumpV=4.2;}
+function jump(){if(jumpY===0&&!ride&&!seat)jumpV=4.2;}
+
+// --- things you keep in your bag and use ---
+// flashlight and umbrella go in your hand (one at a time); the phone shows a map.
+const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'}};
+const bag={phone:true},use={flashlight:false,umbrella:false,phone:false};
+const hand=new THREE.Group();camera.add(hand);
+const torch=new THREE.SpotLight(0xfff0d0,0,22,.5,.55,1.2);torch.position.set(.25,-.2,0);camera.add(torch);torch.target.position.set(0,-.08,-1);camera.add(torch.target);
+const handTorch=new THREE.Group(),handBrolly=new THREE.Group();hand.add(handTorch,handBrolly);
+(function(){
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.022,.028,.2,12),M.steel);body.rotation.x=Math.PI/2;
+  const lens=new THREE.Mesh(new THREE.CylinderGeometry(.036,.03,.05,12),new THREE.MeshBasicMaterial({color:0xfff2cc}));lens.rotation.x=Math.PI/2;lens.position.z=-.12;
+  handTorch.add(body,lens);handTorch.position.set(.3,-.27,-.5);
+  const cloth=new THREE.MeshStandardMaterial({color:0x1f6a6e,roughness:.8,side:THREE.DoubleSide});
+  const top=new THREE.Mesh(new THREE.ConeGeometry(1.15,.36,10,1,true),cloth);top.position.set(.1,.62,-.1);
+  const stick=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,1.1,6),M.black);stick.position.set(.3,.1,-.42);stick.rotation.z=.18;
+  handBrolly.add(top,stick);
+})();
+function showItems(){torch.intensity=use.flashlight&&!ride?1.7:0;handTorch.visible=use.flashlight&&!ride;handBrolly.visible=use.umbrella&&!ride;$('map').hidden=!use.phone;actKey='';}
+function toggleItem(k){if(!bag[k])return;
+  if(k==='phone')use.phone=!use.phone;
+  else{const on=!use[k];use.flashlight=use.umbrella=false;use[k]=on;if(on&&held)putDown();
+    if(on)say(k==='umbrella'?'你撐開了雨傘：雨不會落在你身上。':'你打開了手電筒。');}
+  showItems();}
+const nearItem=()=>{let best=null,bd=1.7;const r=roomAt(pos.x,pos.z);
+  for(const it of marks.item){if(it.taken||roomAt(it.x,it.z)!==r)continue;const d=Math.hypot(it.x-pos.x,it.z-pos.z);if(d<bd){bd=d;best=it;}}return best;};
+function takeItem(it){it.taken=true;it.mesh.visible=false;
+  if(bag[it.item]){say('你已經有'+ITEM[it.item].name+'了，這個就留著吧。');it.taken=false;it.mesh.visible=true;return;}
+  bag[it.item]=true;say('你拿到了'+ITEM[it.item].name+'，放進背包了。按右下角的「'+ITEM[it.item].name+'」來用它。');actKey='';}
+// the phone map: the whole street from above
+function drawMap(){
+  const c=$('mapc'),g=c.getContext('2d'),k=c.width/(WB.x1-WB.x0),X=x=>(x-WB.x0)*k,Y=z=>(z-WB.z0)*k,S=WORLD.street;
+  g.fillStyle='#3d5a34';g.fillRect(0,0,c.width,c.height);
+  g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WB.z0+1.2));g.fillStyle='#cdbb92';g.fillRect(0,Y(WB.z0+1.2),c.width,k*1.2);
+  g.fillStyle='#9b958c';g.fillRect(0,Y(S.z0-S.walk),c.width,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(0,Y(S.z0),c.width,k*(S.z1-S.z0));
+  g.fillStyle='#e8e4d8';for(let i=0;i<7;i++)g.fillRect(X(-1.1+i)-k*.25,Y(S.z0)+2,k*.5,k*(S.z1-S.z0)-4);
+  g.font='bold '+Math.round(k*2.2)+'px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
+  for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
+    g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}
+  const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
+  for(const c2 of cars)if(c2.on&&c2.x>WB.x0&&c2.x<WB.x1){g.fillStyle='#d9d3c8';g.fillRect(X(c2.x)-k*2.1,Y(c2.z)-k*.9,k*4.2,k*1.8);}
+  for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
+  for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
+  g.save();g.translate(X(pos.x),Y(pos.z));g.rotate(-yaw);g.fillStyle='#fff';g.strokeStyle='#111';g.lineWidth=2;      // you: an arrow showing which way you face
+  g.beginPath();g.moveTo(0,-k*1.5);g.lineTo(k*.95,k*1.1);g.lineTo(0,k*.5);g.lineTo(-k*.95,k*1.1);g.closePath();g.fill();g.stroke();g.restore();
+}
+
 // --- carrying and throwing ---
 function nearBall(){let best=null,bd=1.7;for(const b of bodies){if(b.held)continue;const d=Math.hypot(b.p.x-pos.x,b.p.z-pos.z);if(d<bd&&b.p.y<2){bd=d;best=b;}}return best;}
-function pickUp(){const b=nearBall();if(!b)return;
+function pickUp(){const it=nearItem();if(it){takeItem(it);return;}
+  const b=nearBall();if(!b)return;
   if(b.m>8){say(b.name+'有 '+b.m+' 公斤，太重了，搬不動。');return;}
+  use.flashlight=use.umbrella=false;showItems();                             // your hands are full now
   held=b;b.held=true;say('你撿起了'+b.name+'（'+b.m+' 公斤）。點一下畫面丟出去，或按「放下」。');}
 function putDown(){if(!held)return;held.held=false;held.v.set(vel.x,0,vel.z);held=null;}
 function throwHeld(){if(!held)return;const b=held;camera.getWorldDirection(camDir);camDir.y+=.18;camDir.normalize();
@@ -1070,6 +1133,7 @@ function throwHeld(){if(!held)return;const b=held;camera.getWorldDirection(camDi
   say('你把'+b.name+'丟出去：球被推 '+J.toFixed(1)+' 牛頓·秒，速度每秒 '+(J/b.m).toFixed(1)+' 公尺；你也被往後推一樣多。');}
 function carryHeld(){if(!held)return;camera.getWorldDirection(camDir);
   held.p.set(camera.position.x+camDir.x*.55,camera.position.y-.32+camDir.y*.4,camera.position.z+camDir.z*.55);held.v.set(vel.x,0,vel.z);held.mesh.position.copy(held.p);}
+
 // --- sitting ---
 function nearSeat(){let best=null,bd=1.5;
   for(const k in ACT){const A=ACT[k];if(A.pose!=='sit'||!A.an)continue;if(people.some(n=>n.want===k))continue;
@@ -1077,79 +1141,112 @@ function nearSeat(){let best=null,bd=1.5;
   return best;}
 function sitDown(){const k=nearSeat();if(!k)return;seat={k,A:ACT[k]};vel.x=vel.z=0;yaw=seat.A.yaw+Math.PI;pitch=-.05;}   // face the way the seat faces
 function standUp(){if(!seat)return;pos.x=seat.A.ap[0];pos.z=seat.A.ap[1];seat=null;}
-// --- driving ---
-// the car is two circles, front and back, for bumping into things
-function carHit(x,z,h){
-  const fx=Math.cos(h),fz=-Math.sin(h),R=.95;
-  for(const k of[1.15,-1.15]){const cx=x+fx*k,cz=z+fz*k;
+
+// --- riding: a car and a bicycle ---
+// For bumping into things, a vehicle is a row of circles (pts = where along its length, R = how big).
+const SPEC={
+  car:{name:'車',verb:'開車',max:13,acc:5.5,rev:4,turn:1.5,pts:[1.15,-1.15],R:.95,back:6.4,up:3.2,mass:1200,len:2.4,exit:1.75},
+  bike:{name:'腳踏車',verb:'騎車',max:6.5,acc:3.6,rev:1.5,turn:2.6,pts:[.42,-.42],R:.36,back:4.4,up:2.3,mass:95,len:.9,exit:.85}
+};
+function bikeMesh(){
+  const g=new THREE.Group();scene.add(g);cur=g;
+  const paint=new THREE.MeshStandardMaterial({color:0xff5fa8,roughness:.4,metalness:.5});
+  const wheels=[-.52,.52].map(x=>{const w=cyl(.34,.34,.045,carTyre,x,.34,0,20);w.rotation.x=Math.PI/2;return w;});
+  box(.95,.045,.045,paint,0,.66,0);box(.045,.5,.045,paint,-.25,.62,0);box(.6,.045,.045,paint,-.05,.42,0,{rz:.5});
+  box(.045,.66,.045,paint,.5,.66,0,{rz:.18});box(.045,.045,.52,M.steel,.44,.98,0);box(.26,.05,.15,M.black,-.27,.9,0,{r:.02});
+  // a simple rider, only shown while you ride
+  const rider=new THREE.Group();g.add(rider);cur=rider;
+  const skin=new THREE.MeshStandardMaterial({color:0xe8b996,roughness:.85}),top=new THREE.MeshStandardMaterial({color:0x2b3a67,roughness:.85}),leg=new THREE.MeshStandardMaterial({color:0x3a3a3a,roughness:.85});
+  const cap=(r,l,m,x,y,z,rz)=>{const me=new THREE.Mesh(new THREE.CapsuleGeometry(r,l,4,10),m);me.position.set(x,y,z);me.rotation.z=rz||0;add(me);return me;};
+  cap(.13,.3,top,-.12,1.28,0,-.35);add(new THREE.Mesh(new THREE.SphereGeometry(.105,16,12),skin)).position.set(.06,1.68,0);
+  [-.17,.17].forEach(z=>{cap(.04,.42,top,.18,1.22,z,-1.15);cap(.06,.36,leg,-.1,.78,z*.6,-.5);cap(.05,.34,leg,.02,.46,z*.6,.15);});
+  rider.visible=false;cur=scene;g.rotation.order='YXZ';
+  return{g,wheels,rider};
+}
+const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):bikeMesh();          // your car is the yellow one
+  m.g.rotation.order='YXZ';m.g.position.set(o.x,0,o.z);m.g.rotation.y=o.h;
+  if(o.kind==='car'){cur=scene;flat(2.8,5.6,M.concrete,o.x,-.012,o.z,1.4);}
+  return Object.assign(m,{kind:o.kind,S:SPEC[o.kind],x:o.x,z:o.z,h:o.h,v:0,bumped:0});});
+function rideHit(r,x,z,h){
+  const fx=Math.cos(h),fz=-Math.sin(h),R=r.S.R;
+  for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k;
     if(!inWorld(cx,cz,R))return true;
     for(const c of colliders)if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;
     for(const d of doors){const c=doorArea(d);if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;}
     for(const c of cars)if(c.on&&cx>c.box[0]-R&&cx<c.box[1]+R&&cz>c.box[2]-R&&cz<c.box[3]+R)return true;
+    for(const o of rides)if(o!==r)for(const j of o.S.pts)if(Math.hypot(o.x+Math.cos(o.h)*j-cx,o.z-Math.sin(o.h)*j-cz)<R+o.S.R)return true;
     for(const n of people)if(!n.hidden&&Math.hypot(n.pos.x-cx,n.pos.z-cz)<R+.3)return n;}
   return false;
 }
-const nearCar=()=>!drive.on&&Math.hypot(drive.x-pos.x,drive.z-pos.z)<3;
-function getIn(){if(!nearCar())return;putDown();standUp();drive.on=true;drive.v=0;vel.x=vel.z=0;jumpY=jumpV=0;
-  say('你上車了。W 或往前推是油門，S 是煞車和倒車，A D 是方向盤。');}
-function getOut(){if(!drive.on||Math.abs(drive.v)>1.5){if(drive.on)say('先停車再下車。');return;}
-  const fx=Math.cos(drive.h),fz=-Math.sin(drive.h);
-  for(const side of[1,-1]){const x=drive.x+fz*1.75*side,z=drive.z-fx*1.75*side;                 // try the left side, then the right
-    if(!blocked(x,z)){drive.on=false;drive.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;return;}}
-  say('兩邊都被擋住了，往前開一點再下車。');}
-function driveStep(dt,f,s){
-  const a=Math.max(-1,Math.min(1,f)),st=-Math.max(-1,Math.min(1,s));
-  drive.v+=a*(a*drive.v<0?14:a>0?5.5:3.5)*dt;drive.v*=Math.exp(-.5*dt);drive.v=Math.max(-4,Math.min(13,drive.v));
-  if(Math.abs(a)<.05&&Math.abs(drive.v)<.2)drive.v=0;
-  const nh=drive.h+st*Math.max(-1,Math.min(1,drive.v/4))*1.5*dt,nx=drive.x+Math.cos(nh)*drive.v*dt,nz=drive.z-Math.sin(nh)*drive.v*dt;
-  const hit=drive.v?carHit(nx,nz,nh):false;drive.bumped-=dt;
-  if(!hit){drive.x=nx;drive.z=nz;drive.h=nh;}
-  else{if(hit!==true){notify(hit,'car');drive.v=0;}                                              // a person: stop dead, and they will tell you what they think
-    else{if(Math.abs(drive.v)>2.5&&drive.bumped<=0){drive.bumped=1;say('碰！車子撞到東西，東西也用一樣大的力把車子推回來，所以車子彈了一下。');}drive.v*=-.2;}}
-  pos.x=drive.x;pos.z=drive.z;
-  pcar.g.position.set(drive.x,0,drive.z);pcar.g.rotation.y=drive.h;for(const w of pcar.wheels)w.rotation.z-=drive.v*dt/.33;
+function nearRide(){let best=null,bd=1e9;for(const r of rides){const d=Math.hypot(r.x-pos.x,r.z-pos.z)-r.S.R;if(d<2&&d<bd){bd=d;best=r;}}return best;}
+function getIn(){const r=nearRide();if(!r||ride)return;putDown();standUp();ride=r;r.v=0;vel.x=vel.z=0;jumpY=jumpV=0;if(r.rider)r.rider.visible=true;showItems();
+  say(r.kind==='car'?'你上車了。W 或往前推是油門，S 是煞車和倒車，A D 是方向盤。':'你騎上腳踏車了。W 踩踏板，S 煞車，A D 轉彎。腳踏車可以騎上人行道。');}
+function getOut(){const r=ride;if(!r)return;if(Math.abs(r.v)>1.5){say('先停下來再下車。');return;}
+  const fx=Math.cos(r.h),fz=-Math.sin(r.h);ride=null;                                          // (blocked() treats the vehicle as parked from here on)
+  for(const side of[1,-1]){const x=r.x+fz*r.S.exit*side,z=r.z-fx*r.S.exit*side;                 // try the left side, then the right
+    if(!blocked(x,z)){r.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();return;}}
+  ride=r;say('兩邊都被擋住了，往前一點再下車。');}
+function rideStep(dt,f,s){
+  const r=ride,S=r.S,a=Math.max(-1,Math.min(1,f)),st=-Math.max(-1,Math.min(1,s));
+  r.v+=a*(a*r.v<0?14:a>0?S.acc:S.rev*.9)*dt;r.v*=Math.exp(-.5*dt);r.v=Math.max(-S.rev,Math.min(S.max,r.v));
+  if(Math.abs(a)<.05&&Math.abs(r.v)<.2)r.v=0;
+  const nh=r.h+st*Math.max(-1,Math.min(1,r.v/4))*S.turn*dt,nx=r.x+Math.cos(nh)*r.v*dt,nz=r.z-Math.sin(nh)*r.v*dt;
+  const hit=r.v?rideHit(r,nx,nz,nh):false;r.bumped-=dt;
+  if(!hit){r.x=nx;r.z=nz;r.h=nh;}
+  else{if(hit!==true){notify(hit,'car',r);r.v=0;}                                                // a person: stop dead, and they will tell you what they think
+    else{if(Math.abs(r.v)>2.5&&r.bumped<=0){r.bumped=1;say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
+  pos.x=r.x;pos.z=r.z;
+  r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;for(const w of r.wheels)w.rotation.z-=r.v*dt/.33;
+  if(r.kind==='bike')r.g.rotation.x+=(-st*Math.min(1,Math.abs(r.v)/S.max)*.38*Math.sign(r.v||1)-r.g.rotation.x)*(1-Math.exp(-dt*6));   // lean into the turn
   // the camera follows behind and above
-  const fx=Math.cos(drive.h),fz=-Math.sin(drive.h);
-  camGoal.set(drive.x-fx*6.4,3.2,drive.z-fz*6.4);camera.position.lerp(camGoal,1-Math.exp(-dt*5));
-  camera.lookAt(drive.x+fx*2.5,1.1,drive.z+fz*2.5);
+  const fx=Math.cos(r.h),fz=-Math.sin(r.h);
+  camGoal.set(r.x-fx*S.back,S.up,r.z-fz*S.back);camera.position.lerp(camGoal,1-Math.exp(-dt*5));
+  camera.lookAt(r.x+fx*2.5,1.1,r.z+fz*2.5);
   yaw=Math.atan2(-fx,-fz);
 }
-// --- one step of you. Returns true when it has already placed the camera (driving or sitting) ---
+// --- one step of you. Returns true when it has already placed the camera (riding or sitting) ---
 function playerStep(dt,f,s){
   const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
   if(jumpY>0||jumpV>0){jumpV-=g*dt;jumpY+=jumpV*dt;const top=roomAt(pos.x,pos.z)?RH-1.78:7;
     if(jumpY>top){jumpY=top;jumpV=Math.min(0,jumpV);}if(jumpY<=0){jumpY=0;jumpV=0;}}
-  carLights(pcar,drive.on&&f<-.1);
-  if(drive.on){driveStep(dt,f,s);return true;}
+  for(const r of rides)if(r.kind==='car')carLights(r,ride===r&&f<-.1);
+  if(ride){rideStep(dt,f,s);return true;}
   if(seat){if(Math.abs(f)+Math.abs(s)>.4){standUp();return false;}
     const A=seat.A;pos.x=A.an[0];pos.z=A.an[2];camera.position.set(A.an[0],A.an[1]+.62,A.an[2]);camera.rotation.set(pitch,yaw,0);return true;}
   return false;
 }
 // --- the action buttons ---
-const KEY={jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',car:'F'};
-const ACTS={jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['上車',getIn],out:['下車',getOut]};
-let actKey='';
+const KEY={jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const ACTS={jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+let actKey='x';
+function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
+  if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
+  b.onclick=()=>{fn();actKey='';updateActs();canvas.focus({preventScroll:true});};return b;}
 function updateActs(){
-  const list=[];
-  if(drive.on)list.push('out');
-  else{if(nearCar())list.push('in');
+  const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
+  if(ride)list.push('out');
+  else{if(nr)list.push('in');
     if(seat)list.push('stand');else if(nearSeat())list.push('sit');
-    if(held)list.push('throw','drop');else{const b=nearBall();if(b)list.push('pick');}
+    if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat)list.push('jump');}
-  const key=list.join(',')+(held?held.name:'')+((!held&&list.includes('pick'))?nearBall().name:'');
+  const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use);
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list){const b=document.createElement('button');b.type='button';
-    b.textContent=ACTS[id][0]+(id==='pick'?nearBall().name:id==='throw'||id==='drop'?held.name:'');
-    if(!isTouch){const k=document.createElement('kbd');k.textContent=KEY[id==='in'||id==='out'?'car':id];b.appendChild(k);}
-    b.onclick=()=>{ACTS[id][1]();actKey='';updateActs();canvas.focus({preventScroll:true});};el.appendChild(b);}
+  for(const id of list)el.appendChild(mkBtn(id==='in'?(nr.kind==='car'?'上車':'騎腳踏車'):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  const bg=$('bag');bg.textContent='';
+  for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
 }
 addEventListener('keydown',e=>{if(e.repeat)return;
   if(e.code==='Space')jump();
-  else if(e.code==='KeyE'){if(held)putDown();else if(nearBall())pickUp();}
-  else if(e.code==='KeyF'){if(drive.on)getOut();else getIn();}
+  else if(e.code==='KeyE'){if(held)putDown();else pickUp();}
+  else if(e.code==='KeyF'){if(ride)getOut();else getIn();}
   else if(e.code==='KeyQ'){if(seat)standUp();else sitDown();}
+  else if(e.code==='Digit1')toggleItem('flashlight');
+  else if(e.code==='Digit2')toggleItem('umbrella');
+  else if(e.code==='KeyM')toggleItem('phone');
 });
+showItems();
 
 /* ---------- people who live here ---------- */
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
@@ -1335,7 +1432,8 @@ function notify(n,type,b){
     else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
   else if(type==='car'){n.cars=(now-(n.carAt||-99)<60?n.cars||0:0)+1;n.carAt=now;n.mood-=.1;      // nearly run over: a fright the first times, then real anger
-    react(n,n.cars<3?'哇！小心開車！':'你到底會不會開車！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
+    const vb=b&&b.S?b.S.verb:'開車';
+    react(n,n.cars<3?'哇！小心'+vb+'！':'你到底會不會'+vb+'！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
   else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
@@ -1523,8 +1621,8 @@ function blocked(x,z){
   for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
     if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
-  if(!drive.on){const fx=Math.cos(drive.h),fz=-Math.sin(drive.h);                          // your parked car is solid
-    for(const k of[1.15,-1.15]){const cx=drive.x+fx*k,cz=drive.z+fz*k,R=.95+PR;if(Math.hypot(x-cx,z-cz)<R&&Math.hypot(pos.x-cx,pos.z-cz)>=Math.hypot(x-cx,z-cz))return true;}}
+  for(const rd of rides){if(rd===ride)continue;const fx=Math.cos(rd.h),fz=-Math.sin(rd.h);        // parked vehicles are solid
+    for(const k of rd.S.pts){const cx=rd.x+fx*k,cz=rd.z+fz*k,d=Math.hypot(x-cx,z-cz);if(d<rd.S.R+PR&&Math.hypot(pos.x-cx,pos.z-cz)>=d)return true;}}
   for(const c of cars){if(!c.on)continue;const q=c.box,hit=(a,b)=>a>q[0]-PR&&a<q[1]+PR&&b>q[2]-PR&&b<q[3]+PR;if(hit(x,z)&&!hit(pos.x,pos.z))return true;}   // cars are solid too
   for(const n of people){if(n.hidden||n.lie)continue; // people are solid, but you can always step away from them
     const d=Math.hypot(x-n.pos.x,z-n.pos.z);if(d<.5&&d<Math.hypot(pos.x-n.pos.x,pos.z-n.pos.z))return true;}
@@ -1613,7 +1711,7 @@ function tick(now){
   const v=Math.hypot(vel.x,vel.z);bob+=v*dt*3.6;
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY;}
-  camera.updateMatrixWorld();carryHeld();if(frame%8===0)updateActs();
+  camera.updateMatrixWorld();carryHeld();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();
   // the people, then the physics in small fixed steps
   for(const n of people)updNPC(n,dt,t);
   updateDoors(dt);updateCars(dt);updateWeather(dt);
@@ -1640,7 +1738,7 @@ scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.env
 [M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
 M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,drive,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

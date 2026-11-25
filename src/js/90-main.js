@@ -22,7 +22,7 @@ function tick(now){
   const v=Math.hypot(vel.x,vel.z);bob+=v*dt*3.6;
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY;}
-  camera.updateMatrixWorld();carryHeld();if(frame%8===0)updateActs();
+  camera.updateMatrixWorld();carryHeld();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();
   // the people, then the physics in small fixed steps
   for(const n of people)updNPC(n,dt,t);
   updateDoors(dt);updateCars(dt);updateWeather(dt);
@@ -49,5 +49,5 @@ scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.env
 [M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
 M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,drive,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
