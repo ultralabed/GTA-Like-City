@@ -110,7 +110,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bRadar" type="button" class="plain">小地圖：開</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bView" type="button" class="plain">視角：第一人稱</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bRadar" type="button" class="plain">小地圖：開</button><button id="bStats" type="button" class="plain">我的紀錄</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bView" type="button" class="plain">視角：第一人稱</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
     <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
@@ -1850,19 +1850,38 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
+// --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
+const stats={walk:0,drive:0,jobs:0,earned:0,done:{}};let stLast=null,stCash=null,stQuest=null;
+const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺',20],['walk2',()=>stats.walk>=3000,'健走高手：走了 3 公里',60],
+  ['drive1',()=>stats.drive>=1000,'新手駕駛：開（騎）了 1 公里',20],['drive2',()=>stats.drive>=8000,'老司機：開（騎）了 8 公里',80],
+  ['job1',()=>stats.jobs>=1,'熱心鄰居：完成第 1 個任務',10],['job5',()=>stats.jobs>=5,'街上的好幫手：完成 5 個任務',50],['job15',()=>stats.jobs>=15,'夕陽街之星：完成 15 個任務',150],
+  ['bus',()=>busTrips>=1,'搭過公車了',5],['taxi',()=>taxiTrips>=1,'搭過計程車了',5],['fish',()=>fishCount>=5,'釣魚達人：釣到 5 次',30],['hoop',()=>baskets>=3,'神射手：投進 3 球',30],
+  ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
+function trackStats(){
+  if(stLast){const d=Math.hypot(pos.x-stLast[0],pos.z-stLast[1]);if(d<12){if(ride)stats.drive+=d;else if(!onBus)stats.walk+=d;}}stLast=[pos.x,pos.z];
+  if(stCash!=null&&cash>stCash){stats.earned+=cash-stCash;if(stQuest&&!quest)stats.jobs++;}stCash=cash;stQuest=quest;
+  for(const B of BADGES)if(!stats.done[B[0]]&&B[1]()){stats.done[B[0]]=1;cash+=B[3];stCash=cash;sfxCoin();say('🏅 成就：'+B[2]+(B[3]?'！獎金 $'+B[3]+'。':'！'));break;}}
+function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
+  const h=document.createElement('strong');h.textContent='我的紀錄（第 '+day+' 天）';el.appendChild(h);
+  const box=document.createElement('div');box.style.cssText='max-height:38vh;overflow:auto;margin:6px 0;flex:1 1 100%;width:100%';el.appendChild(box);
+  const km=m=>m<1000?Math.round(m)+' 公尺':(m/1000).toFixed(1)+' 公里',n=BADGES.filter(B=>stats.done[B[0]]).length;
+  for(const t of['走路：'+km(stats.walk),'開車和騎車：'+km(stats.drive),'完成任務：'+stats.jobs+' 個','總共賺到：$'+stats.earned,'搭公車 '+busTrips+' 次、計程車 '+taxiTrips+' 次','釣到 '+fishCount+' 次、投進 '+baskets+' 球','成就：'+n+' / '+BADGES.length]){const p=document.createElement('p');p.textContent=t;p.style.margin='2px 0';box.appendChild(p);}
+  for(const B of BADGES){const p=document.createElement('p');p.textContent=(stats.done[B[0]]?'🏅 ':'⬜ ')+B[2];p.style.opacity=stats.done[B[0]]?1:.6;p.style.margin='2px 0';box.appendChild(p);}
+  const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
+$('bStats').onclick=showStats;
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
 function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100)+(heat?'　'+'★'.repeat(heat):'');
   if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
-  rideQuest();parcelQuest();dogQuest();
+  rideQuest();parcelQuest();dogQuest();trackStats();
   $('speed').hidden=!ride;if(ride)$('speed').textContent=Math.round(Math.abs(ride.v)*3.6)+' km/h'+(ride.S.tank?'　油 '+Math.round(ride.fuel*100)+'%'+(ride.fuel<=.15?' ⚠':''):'');
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
@@ -2696,7 +2715,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,refuel,atPump,PUMP,getIn,rideStep,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,rideStep,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
