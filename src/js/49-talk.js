@@ -22,7 +22,7 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
-  rideQuest();parcelQuest();
+  rideQuest();parcelQuest();dogQuest();
   $('speed').hidden=!ride;if(ride)$('speed').textContent=Math.round(Math.abs(ride.v)*3.6)+' km/h';
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
@@ -47,6 +47,10 @@ function offer(n){                                                          // t
     return{type:'letter',from:n,to,reward:50,text:'把'+n.o.name+'的信拿給 '+houses[to.home].no+' 號的'+to.o.name,ask:'可以幫我把這封信拿給 '+houses[to.home].no+' 號的'+to.o.name+'嗎？'};}
   if(Math.random()<.5){const D=[['公園',19.5,11.3],['夕陽商店',36.5,11.3],['街的西邊',-30,7.8],['街的東邊',41,11.3]].filter(d=>Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z)>14),d=D[Math.floor(Math.random()*D.length)];
     return{type:'ride',from:n,dest:d,reward:60,text:'開車載'+n.o.name+'去'+d[0]+'（他會走到你的黃色車旁邊等你，上車後他就會坐進來）',ask:'你有車對吧？可以載我去'+d[0]+'嗎？我走去你的車那邊等你。'};}
+  const dg=pets[0];
+  if(dg&&dg.owner===n&&!dg.carry&&dark<.7&&Math.random()<.7){const S=LOST_AT.filter(d=>!blocked(d[1],d[2])&&Math.hypot(d[1]-dg.home[0],d[2]-dg.home[1])>14),d=S[Math.floor(Math.random()*S.length)];
+    if(d)return{type:'dog',from:n,at:d,reward:70,text:'找走丟的小黃：有人看到牠在'+d[0]+'（找到牠，牠會跟著你走回來）',ask:'小黃跑不見了！有人說看到牠在'+d[0]+'。可以幫我把牠帶回來嗎？',
+      start(){dg.x=d[1];dg.z=d[2];dg.path=[];dg.think=0;dg.lost=[d[1],d[2]];dg.lead=false;}};}
   if(Math.random()<.5){const S=LOST_AT.filter(d=>!blocked(d[1],d[2])&&Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z)>8),d=S[Math.floor(Math.random()*S.length)],thing=['鑰匙','錢包','手錶'][Math.floor(Math.random()*3)];
     if(d)return{type:'find',from:n,at:d,thing,reward:55,text:'幫'+n.o.name+'找'+thing+'：好像掉在'+d[0]+'（走過去找會發亮的小東西）',ask:'我的'+thing+'不見了，好像掉在'+d[0]+'。可以幫我找嗎？'};}
   const kind=Math.random()<.5?'tennis':'basket',name=BALLS[kind][0];
@@ -59,6 +63,12 @@ const lostG=new THREE.Group();lostG.visible=false;scene.add(lostG);
 function findQuest(){const q=quest,on=!!q&&q.type==='find'&&!q.got;lostG.visible=on;if(!on)return;
   const t=performance.now()/1000,sp=lostG.userData.sp;lostG.position.set(q.at[1],0,q.at[2]);sp.position.y=.45+Math.sin(t*3)*.08;sp.rotation.y=t*2;
   if(!ride&&!onBus&&Math.hypot(pos.x-q.at[1],pos.z-q.at[2])<1.5){q.got=true;lostG.visible=false;sfxCoin();q.text='把'+q.thing+'拿回去給'+q.from.o.name;say('你找到'+q.from.o.name+'的'+q.thing+'了！拿回去給他。');}}
+// --- the dog has run off: find him, he follows you, walk him back to his owner or his own front door ---
+function dogQuest(){const q=quest;if(!q||q.type!=='dog')return;const d=pets[0],n=q.from;
+  if(!q.got){if(!ride&&!onBus&&Math.hypot(pos.x-d.x,pos.z-d.z)<2.6){q.got=true;d.lost=null;d.lead=true;d.think=0;d.happy=2.5;bark(d);q.text='帶小黃回去找'+n.o.name+'（牠會跟著你；走到'+n.o.name+'旁邊或牠家門口）';say('你找到小黃了！牠搖著尾巴跟著你。帶牠回家吧。');}return;}
+  const atOwner=!n.hidden&&Math.hypot(d.x-n.pos.x,d.z-n.pos.z)<3.5,atHome=Math.hypot(d.x-d.home[0],d.z-d.home[1])<3;
+  if(atOwner||atHome){d.lead=false;d.happy=3;bark(d);
+    if(atOwner)finishQuest(n,'小黃！你跑去哪裡了！謝謝你把牠帶回來！');else{quest=null;cash+=q.reward;addRep(2);n.like=Math.min(5,n.like+2);sfxCoin();say('小黃回到家門口了！任務完成，'+n.o.name+'留了 $'+q.reward+' 謝謝你。');}}}
 function ballFor(q){return bodies.find(b=>b.kind===q.kind&&(b===held||Math.hypot(b.p.x-q.from.pos.x,b.p.z-q.from.pos.z)<2.2));}
 function finishQuest(n,line){const q=quest;quest=null;q.from.like=Math.min(5,q.from.like+2);if(n!==q.from)n.like=Math.min(5,n.like+1);cash+=q.reward;addRep(2);n.mood=Math.min(1,n.mood+.2);sfxCoin();
   say('任務完成！你拿到 $'+q.reward+'，名聲變好了。');showTalk(n,line);}
@@ -79,8 +89,9 @@ function showTalk(n,line,opts){
   else if(quest&&quest.type==='find'&&quest.from===n){
     if(quest.got)add('你的'+quest.thing+'我找到了',()=>finishQuest(n,'你找到了！太感謝你了！'));
     else add('你的'+quest.thing+'掉在哪裡？',()=>showTalk(n,'好像掉在'+quest.at[0]+'。它會亮亮的，走近就看得到。'));}
+  else if(quest&&quest.type==='dog'&&quest.from===n)add('小黃在哪裡？',()=>showTalk(n,quest.got?'牠不是跟著你嗎？帶牠過來就好。':'有人說看到牠在'+quest.at[0]+'。'));
   else if(!quest)add('需要幫忙嗎？',()=>{if(n.mood<.35||n.like<=-2){showTalk(n,'現在不用，謝謝。');return;}const q=offer(n);
-    showTalk(n,q.ask,[['好，我幫你',()=>{quest=q;showTalk(n,'謝謝！做完我給你 $'+q.reward+'。');}],['下次吧',()=>showTalk(n,'沒關係。')]]);});
+    showTalk(n,q.ask,[['好，我幫你',()=>{quest=q;if(q.start)q.start();showTalk(n,'謝謝！做完我給你 $'+q.reward+'。');}],['下次吧',()=>showTalk(n,'沒關係。')]]);});
   if(drinks)add('請你喝飲料',()=>{if(!drinks){showTalk(n,'咦，你的飲料呢？');return;}drinks--;actKey='';n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);n.need.fun=Math.min(1,n.need.fun+.2);addRep(1);showTalk(n,'哇，謝謝！你人真好。');});
   add('再見',closeTalk);
 }

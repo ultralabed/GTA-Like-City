@@ -55,7 +55,7 @@ function drawMap(){
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
   if(quest&&quest.type==='ride'&&quest.in){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(quest.dest[1]),Y(quest.dest[2]),k*2.2,0,7);g.stroke();}
   else if(quest&&quest.type==='parcel'){const f=quest.house.front;g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(f.x),Y(f.z),k*2,0,7);g.stroke();}
-  else if(quest&&quest.type==='find'&&!quest.got){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.setLineDash([4,3]);g.beginPath();g.arc(X(quest.at[1]),Y(quest.at[2]),k*5,0,7);g.stroke();g.setLineDash([]);}   // roughly where the lost thing is
+  else if(quest&&(quest.type==='find'||quest.type==='dog')&&!quest.got){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.setLineDash([4,3]);g.beginPath();g.arc(X(quest.at[1]),Y(quest.at[2]),k*5,0,7);g.stroke();g.setLineDash([]);}   // roughly where the lost thing is
   else if(quest){const n=quest.type==='letter'?quest.to:quest.from;if(!n.hidden){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(n.pos.x),Y(n.pos.z),k*1.6,0,7);g.stroke();}}   // where your job is
   g.save();g.translate(X(pos.x),Y(pos.z));g.rotate(-yaw);g.fillStyle='#fff';g.strokeStyle='#111';g.lineWidth=2;      // you: an arrow showing which way you face
   g.beginPath();g.moveTo(0,-k*1.5);g.lineTo(k*.95,k*1.1);g.lineTo(0,k*.5);g.lineTo(-k*.95,k*1.1);g.closePath();g.fill();g.stroke();g.restore();

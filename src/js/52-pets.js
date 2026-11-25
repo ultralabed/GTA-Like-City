@@ -27,7 +27,9 @@ function updatePets(dt,t){
     if(d.carry){const b=d.carry;b.p.set(d.x+Math.cos(d.h)*.45,.5,d.z-Math.sin(d.h)*.45);b.v.set(0,0,0);b.mesh.position.copy(b.p);
       if(Math.hypot(pos.x-d.x,pos.z-d.z)<1.7||ride||b===held){b.held=b===held;b.kickBy=d.name;d.carry=null;d.happy=2;d.rest=3;bark(d);say('小黃把'+b.name+'撿回來給你了！');}}
     if(d.think<=0){d.think=.6;let tx=d.home[0],tz=d.home[1],near=.4;d.mood=night?'睡覺 💤':'在門口等';d.tgt=null;
-      if(d.carry){tx=pos.x;tz=pos.z;near=1.4;d.mood='把球撿回來給你';d.near=near;d.path=findPath(d.x,d.z,tx,tz)||[];}
+      if(d.lost){tx=d.lost[0];tz=d.lost[1];near=.5;d.mood='迷路了，嗚…';}                    // ran off and cannot find the way home (a job for you)
+      else if(d.lead){tx=pos.x;tz=pos.z;near=1.5;d.mood='跟著你回家';}
+      else if(d.carry){tx=pos.x;tz=pos.z;near=1.4;d.mood='把球撿回來給你';d.near=near;d.path=findPath(d.x,d.z,tx,tz)||[];}
       else
       if(!night){
         let ball=null,bd=9;if(d.rest<=0)for(const b of bodies){if(b.held||roomAt(b.p.x,b.p.z)||b.m>3)continue;const q=Math.hypot(b.p.x-d.x,b.p.z-d.z),sp=Math.hypot(b.v.x,b.v.z);if(q<bd&&(sp>.5||q<3.5)){bd=q;ball=b;}}
