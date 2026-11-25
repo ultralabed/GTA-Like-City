@@ -67,6 +67,14 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   background:rgba(255,255,255,.06);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,154,77,.55)}
 .minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
+.quest{color:var(--text);border-color:var(--sun)}
+.talk{position:absolute;left:50%;bottom:calc(86px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);width:min(calc(100% - 32px),26rem);pointer-events:auto;
+  background:var(--glass);border:1px solid var(--sun);border-radius:14px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.talk strong{flex:1 0 100%;font:700 14px/1.2 var(--display)}
+.talk p{flex:1 0 100%;margin:0;font-size:14px;line-height:1.5}
+.talk button{font:600 13px/1 var(--body);color:var(--text);background:rgba(255,255,255,.08);border:1px solid var(--line);padding:10px 13px;border-radius:999px;cursor:pointer}
+.talk button:hover{border-color:var(--sun)}
+.talk button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 .phys{font-size:12px;line-height:1.45;color:var(--muted);background:var(--glass);border:1px solid var(--line);border-radius:10px;
   padding:6px 10px;max-width:min(100%,30em);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .tag{position:absolute;transform:translate(-50%,-100%);font-size:12px;font-weight:600;white-space:nowrap;pointer-events:none;
@@ -84,6 +92,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
     <div class="bar">
       <h1>夕陽街<small id="sub">海邊的一條小街</small></h1>
       <output id="clk" for="time">17:24</output>
+      <output id="cash">$60</output>
       <button id="bSet" type="button" aria-expanded="false" aria-controls="panel">設定</button>
     </div>
     <div id="panel" class="panel" hidden>
@@ -95,12 +104,14 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
+    <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
     <div id="minds" class="phys minds" hidden></div>
   </div>
   <div class="acts"><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
+  <div id="talk" class="talk" hidden></div>
   <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>
 </div>

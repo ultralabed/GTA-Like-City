@@ -72,7 +72,7 @@ function makePerson(o){
     need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
   JK.forEach(k=>n.cur[k]=0);
-  hit.userData={npc:n,tip:'點一下：跟'+o.name+'打招呼',act:()=>notify(n,'greet')};interact.push(hit);
+  hit.userData={npc:n,tip:'點一下：跟'+o.name+'說話',act:()=>talk(n)};interact.push(hit);
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);

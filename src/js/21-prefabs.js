@@ -161,3 +161,12 @@ PREFAB.bench=()=>{
   const sit=x=>({type:'bench',ap:[x,.62],an:[x,.56,.04],yaw:0,pose:'sit',label:'坐在長椅上'});
   return{solid:[[-.78,.78,-.28,.25]],boxes:[[-.75,.75,0,.48,-.23,.23],[-.75,.75,.48,.98,-.26,-.19]],spots:[sit(-.38),sit(.38)]};
 };
+// drinks machine. The front faces +z; click it to buy.
+PREFAB.vending=()=>{
+  box(1,1.9,.7,M.coral,0,.95,0,{r:.03});
+  const front=new THREE.Mesh(new THREE.PlaneGeometry(.8,1.1),new THREE.MeshBasicMaterial({color:0xbfe8ff}));front.position.set(0,1.2,.356);cur.add(front);
+  [-.25,0,.25].forEach((x,i)=>cyl(.05,.05,.16,[M.teal,M.brass,M.ceramic][i],x,1.25,.33,10));
+  box(.6,.12,.02,M.black,0,.35,.36);
+  front.userData={tip:'點一下：買飲料（$20）',act:buyDrink};interact.push(front);
+  return{solid:[[-.52,.52,-.37,.37]],boxes:[[-.5,.5,0,1.9,-.35,.35]]};
+};

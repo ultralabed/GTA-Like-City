@@ -57,6 +57,7 @@ function contact(b,nx,ny,nz,pen,svx,svz,M){
   b.v.x+=nx*J/b.m;b.v.y+=ny*J/b.m;b.v.z+=nz*J/b.m;
   if(bounce){const tx=rx-vn*nx,ty=ry-vn*ny,tz=rz-vn*nz,tl=Math.hypot(tx,ty,tz);
     if(tl>1e-4){const Jt=Math.min(.25*J,tl/invM)/b.m/tl;b.v.x-=tx*Jt;b.v.y-=ty*Jt;b.v.z-=tz*Jt;}}
+  if(J/b.m>1.3)sfxBounce(b,J);
   return J;
 }
 function hitPerson(b,px,pz,rad,top,svx,svz,M,who){

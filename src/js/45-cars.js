@@ -45,7 +45,7 @@ function updateCars(dt){
     for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
     const want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;
-    if(c.v<.2&&gap<4){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
+    if(c.v<.2&&gap<4){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
     c.honk-=dt;
     if(c.x*c.dir>85){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
     c.g.position.set(c.x,0,c.z);for(const w of c.wheels)w.rotation.z-=c.v*dt/.33;

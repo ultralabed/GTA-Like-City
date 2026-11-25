@@ -75,6 +75,14 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   background:rgba(255,255,255,.06);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,154,77,.55)}
 .minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
+.quest{color:var(--text);border-color:var(--sun)}
+.talk{position:absolute;left:50%;bottom:calc(86px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);width:min(calc(100% - 32px),26rem);pointer-events:auto;
+  background:var(--glass);border:1px solid var(--sun);border-radius:14px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.talk strong{flex:1 0 100%;font:700 14px/1.2 var(--display)}
+.talk p{flex:1 0 100%;margin:0;font-size:14px;line-height:1.5}
+.talk button{font:600 13px/1 var(--body);color:var(--text);background:rgba(255,255,255,.08);border:1px solid var(--line);padding:10px 13px;border-radius:999px;cursor:pointer}
+.talk button:hover{border-color:var(--sun)}
+.talk button:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
 .phys{font-size:12px;line-height:1.45;color:var(--muted);background:var(--glass);border:1px solid var(--line);border-radius:10px;
   padding:6px 10px;max-width:min(100%,30em);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .tag{position:absolute;transform:translate(-50%,-100%);font-size:12px;font-weight:600;white-space:nowrap;pointer-events:none;
@@ -92,6 +100,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
     <div class="bar">
       <h1>夕陽街<small id="sub">海邊的一條小街</small></h1>
       <output id="clk" for="time">17:24</output>
+      <output id="cash">$60</output>
       <button id="bSet" type="button" aria-expanded="false" aria-controls="panel">設定</button>
     </div>
     <div id="panel" class="panel" hidden>
@@ -103,12 +112,14 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
+    <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
     <div id="minds" class="phys minds" hidden></div>
   </div>
   <div class="acts"><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
+  <div id="talk" class="talk" hidden></div>
   <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>
 </div>
@@ -129,7 +140,7 @@ const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
   ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕：跳、撿、坐、開車、騎車、手電筒、雨傘、地圖'
-  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>點</b>門、球、人　<b>Esc</b> 放開滑鼠';
+  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>點人</b>：說話　<b>點</b>門、球、人　<b>Esc</b> 放開滑鼠';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}
 
@@ -375,6 +386,7 @@ const WORLD={
     {type:'streetLamp',x:-18,z:5.8},{type:'streetLamp',x:-6,z:5.8},{type:'streetLamp',x:6,z:5.8},{type:'streetLamp',x:18,z:5.8},
     {type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
     // the little park
+    {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // where people leave for work and come back
     {type:'spot',kind:'exit',x:-23.2,z:5,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
@@ -628,6 +640,15 @@ PREFAB.bench=()=>{
   const sit=x=>({type:'bench',ap:[x,.62],an:[x,.56,.04],yaw:0,pose:'sit',label:'坐在長椅上'});
   return{solid:[[-.78,.78,-.28,.25]],boxes:[[-.75,.75,0,.48,-.23,.23],[-.75,.75,.48,.98,-.26,-.19]],spots:[sit(-.38),sit(.38)]};
 };
+// drinks machine. The front faces +z; click it to buy.
+PREFAB.vending=()=>{
+  box(1,1.9,.7,M.coral,0,.95,0,{r:.03});
+  const front=new THREE.Mesh(new THREE.PlaneGeometry(.8,1.1),new THREE.MeshBasicMaterial({color:0xbfe8ff}));front.position.set(0,1.2,.356);cur.add(front);
+  [-.25,0,.25].forEach((x,i)=>cyl(.05,.05,.16,[M.teal,M.brass,M.ceramic][i],x,1.25,.33,10));
+  box(.6,.12,.02,M.black,0,.35,.36);
+  front.userData={tip:'點一下：買飲料（$20）',act:buyDrink};interact.push(front);
+  return{solid:[[-.52,.52,-.37,.37]],boxes:[[-.5,.5,0,1.9,-.35,.35]]};
+};
 
 /* ---------- build the houses from their data ---------- */
 function hmat(H,name){return(H&&H.mats[name])||M[name];}
@@ -716,7 +737,7 @@ function updateDoors(dt){
     d.t=Math.max(0,Math.min(1,d.t+Math.sign(want-d.t)*dt*2.6));
     const e=d.t*d.t*(3-2*d.t);d.hinge.rotation.y=-e*Math.PI/2;
     const nowOpen=d.t>.5;
-    if(nowOpen!==d.open){d.open=nowOpen;const c=doorArea(d);d.pb[0]=c[0];d.pb[1]=c[1];d.pb[4]=c[2];d.pb[5]=c[3];}   // balls hit the leaf where it is now
+    if(nowOpen!==d.open){d.open=nowOpen;sfxDoor(d.x,d.z);const c=doorArea(d);d.pb[0]=c[0];d.pb[1]=c[1];d.pb[4]=c[2];d.pb[5]=c[3];}   // balls hit the leaf where it is now
   }
 }
 
@@ -921,6 +942,7 @@ function contact(b,nx,ny,nz,pen,svx,svz,M){
   b.v.x+=nx*J/b.m;b.v.y+=ny*J/b.m;b.v.z+=nz*J/b.m;
   if(bounce){const tx=rx-vn*nx,ty=ry-vn*ny,tz=rz-vn*nz,tl=Math.hypot(tx,ty,tz);
     if(tl>1e-4){const Jt=Math.min(.25*J,tl/invM)/b.m/tl;b.v.x-=tx*Jt;b.v.y-=ty*Jt;b.v.z-=tz*Jt;}}
+  if(J/b.m>1.3)sfxBounce(b,J);
   return J;
 }
 function hitPerson(b,px,pz,rad,top,svx,svz,M,who){
@@ -1034,7 +1056,7 @@ function updateCars(dt){
     for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
     const want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;
-    if(c.v<.2&&gap<4){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
+    if(c.v<.2&&gap<4){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
     c.honk-=dt;
     if(c.x*c.dir>85){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
     c.g.position.set(c.x,0,c.z);for(const w of c.wheels)w.rotation.z-=c.v*dt/.33;
@@ -1122,6 +1144,7 @@ function drawMap(){
   for(const c2 of cars)if(c2.on&&c2.x>WB.x0&&c2.x<WB.x1){g.fillStyle='#d9d3c8';g.fillRect(X(c2.x)-k*2.1,Y(c2.z)-k*.9,k*4.2,k*1.8);}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
+  if(quest){const n=quest.type==='letter'?quest.to:quest.from;if(!n.hidden){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(n.pos.x),Y(n.pos.z),k*1.6,0,7);g.stroke();}}   // where your job is
   g.save();g.translate(X(pos.x),Y(pos.z));g.rotate(-yaw);g.fillStyle='#fff';g.strokeStyle='#111';g.lineWidth=2;      // you: an arrow showing which way you face
   g.beginPath();g.moveTo(0,-k*1.5);g.lineTo(k*.95,k*1.1);g.lineTo(0,k*.5);g.lineTo(-k*.95,k*1.1);g.closePath();g.fill();g.stroke();g.restore();
 }
@@ -1202,7 +1225,7 @@ function rideStep(dt,f,s){
   const hit=r.v?rideHit(r,nx,nz,nh):false;r.bumped-=dt;
   if(!hit){r.x=nx;r.z=nz;r.h=nh;}
   else{if(hit!==true){notify(hit,'car',r);r.v=0;}                                                // a person: stop dead, and they will tell you what they think
-    else{if(Math.abs(r.v)>2.5&&r.bumped<=0){r.bumped=1;say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
+    else{if(Math.abs(r.v)>2.5&&r.bumped<=0){r.bumped=1;sfxBump();say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
   pos.x=r.x;pos.z=r.z;
   r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;for(const w of r.wheels)w.rotation.z-=r.v*dt/.33;
   if(r.kind==='bike')r.g.rotation.x+=(-st*Math.min(1,Math.abs(r.v)/S.max)*.38*Math.sign(r.v||1)-r.g.rotation.x)*(1-Math.exp(-dt*6));   // lean into the turn
@@ -1238,12 +1261,13 @@ function updateActs(){
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat)list.push('jump');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use);
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks;
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
   for(const id of list)el.appendChild(mkBtn(id==='in'?(nr.kind==='car'?'上車':'騎腳踏車'):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
+  if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
 }
 addEventListener('keydown',e=>{if(e.repeat)return;
   if(e.code==='Space')jump();
@@ -1253,8 +1277,101 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='Digit1')toggleItem('flashlight');
   else if(e.code==='Digit2')toggleItem('umbrella');
   else if(e.code==='KeyM')toggleItem('phone');
+  else if(e.code==='Digit3')drinkUp();
 });
 showItems();
+
+/* ---------- sound ---------- */
+// Every sound is made on the spot from simple tones and hiss, so there are no sound files to load.
+// Browsers only allow sound after you click or press a key, so it starts then.
+let AC=null,master=null,soundOn=true,noiseBuf=null,rainG=null,engO=null,engG=null,stepNo=0,lastBounce=0;
+function audioStart(){
+  if(AC||!soundOn)return;const A=window.AudioContext||window.webkitAudioContext;if(!A)return;
+  try{AC=new A();}catch(e){return;}
+  master=AC.createGain();master.gain.value=.5;master.connect(AC.destination);
+  noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const src=AC.createBufferSource();src.buffer=noiseBuf;src.loop=true;                               // rain: hiss that never stops, turned up when it rains
+  const hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=1700;rainG=AC.createGain();rainG.gain.value=0;src.connect(hp);hp.connect(rainG);rainG.connect(master);src.start();
+  engO=AC.createOscillator();engO.type='sawtooth';engO.frequency.value=50;                           // engine: a low buzz whose pitch follows the speed
+  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=320;engG=AC.createGain();engG.gain.value=0;engO.connect(lp);lp.connect(engG);engG.connect(master);engO.start();
+}
+addEventListener('pointerdown',audioStart);addEventListener('keydown',audioStart);
+function noise(dur,freq,q,vol){if(!AC||!soundOn||vol<=.002)return;const s=AC.createBufferSource();s.buffer=noiseBuf;
+  const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=freq;f.Q.value=q;const g=AC.createGain(),t=AC.currentTime;
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t,Math.random()*.5,dur+.03);}
+function tone(freq,dur,vol,type,slide){if(!AC||!soundOn||vol<=.002)return;const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;
+  o.type=type||'sine';o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(freq*slide,t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.03);}
+const hear=(x,z,far)=>Math.max(0,1-Math.hypot(x-pos.x,z-pos.z)/far);                                  // 1 right next to you, 0 too far to hear
+function sfxBounce(b,J){const now=performance.now();if(now-lastBounce<60)return;const v=Math.min(1,J/b.m/6)*hear(b.p.x,b.p.z,14);if(v<=.02)return;lastBounce=now;
+  tone(b.m>3?70:b.kind==='tennis'?420:b.kind==='beach'?240:160,.12,v*.5,'sine',.6);noise(.05,b.m>3?200:900,1,v*.3);}   // heavy balls thud, light ones pop
+function sfxStep(){noise(.06,roomAt(pos.x,pos.z)?520:300,1.2,.1);}
+function sfxHonk(x,z){const v=.22*hear(x,z,45);tone(392,.4,v,'square');tone(494,.4,v,'square');}
+function sfxDoor(x,z){noise(.14,240,2,.3*hear(x,z,10));}
+function sfxCoin(){tone(880,.08,.2,'triangle');setTimeout(()=>tone(1320,.16,.2,'triangle'),80);}
+function sfxBump(){noise(.18,140,.8,.4);tone(60,.2,.3,'sine',.5);}
+function updateAudio(){
+  if(!AC)return;const t=AC.currentTime;
+  rainG.gain.setTargetAtTime(soundOn?rain*(roomAt(pos.x,pos.z)?.04:.15):0,t,.3);                     // quieter indoors
+  let ev=0,ef=50;
+  if(ride&&ride.kind==='car'){ev=.04+Math.min(.07,Math.abs(ride.v)*.006);ef=48+Math.abs(ride.v)*11;}
+  else{let best=30,bc=null;for(const c of cars)if(c.on){const d=Math.hypot(c.x-pos.x,c.z-pos.z);if(d<best){best=d;bc=c;}}
+    if(bc){ev=.055*(1-best/30)*(roomAt(pos.x,pos.z)?.3:1);ef=50+bc.v*9;}}                             // the nearest passing car
+  engG.gain.setTargetAtTime(soundOn?ev:0,t,.12);engO.frequency.setTargetAtTime(ef,t,.12);
+}
+$('bSound').onclick=()=>{soundOn=!soundOn;$('bSound').textContent='聲音：'+(soundOn?'開':'關');if(soundOn)audioStart();};
+
+/* ---------- talking, favours, money ---------- */
+// Click a person to talk. You can say hello, ask what they are doing, offer help (they may give you a job),
+// or give them a drink. Jobs pay money; being kind raises your name on the street, being a nuisance lowers it.
+let cash=60,rep=0,drinks=0,stam=1,quest=null,talkN=null;
+function addRep(d){rep=Math.max(-9,Math.min(20,rep+d));}
+function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100);
+  const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
+  if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
+// running uses up your breath; walking, and especially sitting, brings it back
+function moveSpeed(dt,want){const run=(keys.ShiftLeft||keys.ShiftRight)&&want>.1&&stam>0&&!ride&&!seat;
+  stam=Math.max(0,Math.min(1,stam+(run?-.09:seat?.14:.05)*dt));return run?3.3:1.9;}
+function buyDrink(){if(cash<20){say('飲料一罐 $20，你的錢不夠。幫鄰居做事可以賺錢。');return;}
+  cash-=20;drinks++;sfxCoin();actKey='';say('你買了一罐飲料（剩 $'+cash+'）。按右下角「喝飲料」補體力，或在聊天時請別人喝。');}
+function drinkUp(){if(!drinks)return;drinks--;stam=1;actKey='';say('咕嚕咕嚕。體力補滿了，可以繼續跑。');}
+function describe(n){const g=n.goal,G=GOALS[g.id],pr=progress(n);
+  let low='energy';for(const k in NEED_ZH)if(n.need[k]<n.need[low])low=k;
+  const feel={energy:'我有點累了。',fun:'我好無聊。',fit:'我想動一動。',calm:'我想安靜一下。',care:'我還有家事沒做。'}[low];
+  return(n.phase==='at'?'我在'+G.label+(pr>=0?'，做了 '+Math.round(pr*100)+'% 了。':'。'):'我正要去'+G.label+'。')+(n.need[low]<.35?feel:'其他都還好。');}
+function offer(n){                                                          // think of something this person would like done
+  const others=people.filter(m=>m!==n&&!m.visitor&&!m.hidden&&m.home!==n.home);
+  if(others.length&&Math.random()<.55){const to=others[Math.floor(Math.random()*others.length)];
+    return{type:'letter',from:n,to,reward:50,text:'把'+n.o.name+'的信拿給 '+houses[to.home].no+' 號的'+to.o.name,ask:'可以幫我把這封信拿給 '+houses[to.home].no+' 號的'+to.o.name+'嗎？'};}
+  const kind=Math.random()<.5?'tennis':'basket',name=BALLS[kind][0];
+  return{type:'ball',from:n,kind,reward:40,text:'拿一顆'+name+'給'+n.o.name,ask:'我想要一顆'+name+'，可以幫我拿一顆過來嗎？'};}
+function ballFor(q){return bodies.find(b=>b.kind===q.kind&&(b===held||Math.hypot(b.p.x-q.from.pos.x,b.p.z-q.from.pos.z)<2.2));}
+function finishQuest(n,line){const q=quest;quest=null;cash+=q.reward;addRep(2);n.mood=Math.min(1,n.mood+.2);sfxCoin();
+  say('任務完成！你拿到 $'+q.reward+'，名聲變好了。');showTalk(n,line);}
+function closeTalk(){if(talkN&&talkN.react&&talkN.react.talk)talkN.react.t=0;talkN=null;$('talk').hidden=true;}
+function showTalk(n,line,opts){
+  talkN=n;const el=$('talk');el.hidden=false;el.textContent='';
+  const h=document.createElement('strong');h.textContent=n.o.name+' '+moodFace(n);const p=document.createElement('p');p.textContent=line;el.append(h,p);
+  if(!n.react||n.react.talk)n.react={say:'在跟你說話',t:45,pose:null,talk:true};       // they stop and face you while you talk
+  const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
+  if(opts){opts.forEach(o=>add(o[0],o[1]));return;}
+  if(rep<=-4){add('好吧…',closeTalk);return;}
+  add('嗨！',()=>{n.mood=Math.min(1,n.mood+.03);showTalk(n,n.mood>.6?['嗨！今天天氣不錯。','嗨！很高興看到你。','你好啊！'][Math.floor(Math.random()*3)]:n.mood>.38?'嗯，你好。':'…嗯。');});
+  add('你在做什麼？',()=>showTalk(n,describe(n)));
+  if(quest&&quest.type==='letter'&&quest.to===n)add('這是'+quest.from.o.name+'給你的信',()=>finishQuest(n,'啊，謝謝你特地送來！'));
+  else if(quest&&quest.type==='ball'&&quest.from===n){const b=ballFor(quest);
+    if(b)add('你要的'+b.name+'我拿來了',()=>{if(b===held)putDown();finishQuest(n,'太好了，謝謝你！');});
+    else add('你要的東西是什麼？',()=>showTalk(n,'我想要一顆'+BALLS[quest.kind][0]+'。拿在手上或放在我旁邊都可以。'));}
+  else if(!quest)add('需要幫忙嗎？',()=>{if(n.mood<.35){showTalk(n,'現在不用，謝謝。');return;}const q=offer(n);
+    showTalk(n,q.ask,[['好，我幫你',()=>{quest=q;showTalk(n,'謝謝！做完我給你 $'+q.reward+'。');}],['下次吧',()=>showTalk(n,'沒關係。')]]);});
+  if(drinks)add('請你喝飲料',()=>{if(!drinks){showTalk(n,'咦，你的飲料呢？');return;}drinks--;actKey='';n.mood=Math.min(1,n.mood+.2);n.need.fun=Math.min(1,n.need.fun+.2);addRep(1);showTalk(n,'哇，謝謝！你人真好。');});
+  add('再見',closeTalk);
+}
+function talk(n){
+  if(n.lie||ride||n.react&&!n.react.talk){notify(n,'greet');return;}          // asleep, or busy reacting to something: just a wave
+  if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>3.4){say('太遠了，走近一點再跟'+n.o.name+'說話。');return;}
+  showTalk(n,rep<=-4?'我不想跟你說話。你最近太誇張了。':n.mood>.6?'嗨！有什麼事嗎？':n.mood>.38?'嗯？':'…什麼事？');
+}
 
 /* ---------- people who live here ---------- */
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
@@ -1330,7 +1447,7 @@ function makePerson(o){
     need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
   JK.forEach(k=>n.cur[k]=0);
-  hit.userData={npc:n,tip:'點一下：跟'+o.name+'打招呼',act:()=>notify(n,'greet')};interact.push(hit);
+  hit.userData={npc:n,tip:'點一下：跟'+o.name+'說話',act:()=>talk(n)};interact.push(hit);
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
@@ -1417,6 +1534,7 @@ function progress(n){const g=n.goal,G=GOALS[g.id];
 function react(n,say,t,pose,after){n.react={say,t,pose,after};}
 function notify(n,type,b){
   if(n.hidden||!n.goal)return;
+  if(talkN===n&&type!=='greet')closeTalk();
   const now=performance.now()/1000,g=n.goal;
   if(type!=='greet'&&(n.react||now<n.calmAt))return;
   n.calmAt=now+1.2;
@@ -1434,13 +1552,14 @@ function notify(n,type,b){
   }else if(type==='hit'){
     if(g.id==='ball')return;                              // playing ball already: getting bumped is part of the game
     if(!(b.kickBy==='你'&&now-b.kickAt<4)){react(n,'哇！',1,'startle');return;}       // nobody to blame
+    addRep(-1);                                           // word gets around
     n.hits=(now-n.hitAt<60?n.hits:0)+1;n.hitAt=now;
     if(n.o.playful>.6&&n.mood>.4&&g.id!=='work'&&freeAct(n,'ball'))react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
     else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
     else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
   else if(type==='car'){n.cars=(now-(n.carAt||-99)<60?n.cars||0:0)+1;n.carAt=now;n.mood-=.1;      // nearly run over: a fright the first times, then real anger
-    const vb=b&&b.S?b.S.verb:'開車';
+    const vb=b&&b.S?b.S.verb:'開車';addRep(-1);
     react(n,n.cars<3?'哇！小心'+vb+'！':'你到底會不會'+vb+'！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
@@ -1710,16 +1829,17 @@ function tick(now){
   const f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;
   const s=(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x;
   if(keys.ArrowLeft)yaw+=1.9*dt;if(keys.ArrowRight)yaw-=1.9*dt;
-  const sp=(keys.ShiftLeft||keys.ShiftRight)?3.3:1.9,sn=Math.sin(yaw),cs=Math.cos(yaw);
+  const sp=moveSpeed(dt,Math.abs(f)+Math.abs(s)),sn=Math.sin(yaw),cs=Math.cos(yaw);
   let tx=(-sn*f+cs*s),tz=(-cs*f-sn*s);const tl=Math.hypot(tx,tz);if(tl>1){tx/=tl;tz/=tl;}
   if(!playerStep(dt,f,s)){
   const e=1-Math.exp(-dt*10);vel.x+=(tx*sp-vel.x)*e;vel.z+=(tz*sp-vel.z)*e;
   const nx=pos.x+vel.x*dt;if(!blocked(nx,pos.z))pos.x=nx;else vel.x=0;
   const nz=pos.z+vel.z*dt;if(!blocked(pos.x,nz))pos.z=nz;else vel.z=0;
   const v=Math.hypot(vel.x,vel.z);bob+=v*dt*3.6;
+  if(v>.6&&jumpY===0){const sn2=Math.floor(bob*2/Math.PI);if(sn2!==stepNo){stepNo=sn2;sfxStep();}}
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY;}
-  camera.updateMatrixWorld();carryHeld();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();
+  camera.updateMatrixWorld();carryHeld();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();if(frame%15===0){hudStats();updateAudio();}
   // the people, then the physics in small fixed steps
   for(const n of people)updNPC(n,dt,t);
   updateDoors(dt);updateCars(dt);updateWeather(dt);
@@ -1746,7 +1866,7 @@ scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.env
 [M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
 M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,talk,get q(){return{cash,rep,drinks,stam,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

@@ -85,6 +85,6 @@ function updateDoors(dt){
     d.t=Math.max(0,Math.min(1,d.t+Math.sign(want-d.t)*dt*2.6));
     const e=d.t*d.t*(3-2*d.t);d.hinge.rotation.y=-e*Math.PI/2;
     const nowOpen=d.t>.5;
-    if(nowOpen!==d.open){d.open=nowOpen;const c=doorArea(d);d.pb[0]=c[0];d.pb[1]=c[1];d.pb[4]=c[2];d.pb[5]=c[3];}   // balls hit the leaf where it is now
+    if(nowOpen!==d.open){d.open=nowOpen;sfxDoor(d.x,d.z);const c=doorArea(d);d.pb[0]=c[0];d.pb[1]=c[1];d.pb[4]=c[2];d.pb[5]=c[3];}   // balls hit the leaf where it is now
   }
 }

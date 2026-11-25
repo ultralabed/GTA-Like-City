@@ -77,6 +77,7 @@ function progress(n){const g=n.goal,G=GOALS[g.id];
 function react(n,say,t,pose,after){n.react={say,t,pose,after};}
 function notify(n,type,b){
   if(n.hidden||!n.goal)return;
+  if(talkN===n&&type!=='greet')closeTalk();
   const now=performance.now()/1000,g=n.goal;
   if(type!=='greet'&&(n.react||now<n.calmAt))return;
   n.calmAt=now+1.2;
@@ -94,13 +95,14 @@ function notify(n,type,b){
   }else if(type==='hit'){
     if(g.id==='ball')return;                              // playing ball already: getting bumped is part of the game
     if(!(b.kickBy==='你'&&now-b.kickAt<4)){react(n,'哇！',1,'startle');return;}       // nobody to blame
+    addRep(-1);                                           // word gets around
     n.hits=(now-n.hitAt<60?n.hits:0)+1;n.hitAt=now;
     if(n.o.playful>.6&&n.mood>.4&&g.id!=='work'&&freeAct(n,'ball'))react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
     else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
     else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
   else if(type==='car'){n.cars=(now-(n.carAt||-99)<60?n.cars||0:0)+1;n.carAt=now;n.mood-=.1;      // nearly run over: a fright the first times, then real anger
-    const vb=b&&b.S?b.S.verb:'開車';
+    const vb=b&&b.S?b.S.verb:'開車';addRep(-1);
     react(n,n.cars<3?'哇！小心'+vb+'！':'你到底會不會'+vb+'！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
