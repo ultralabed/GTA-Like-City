@@ -21,7 +21,7 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
-  rideQuest();
+  rideQuest();parcelQuest();
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
 function moveSpeed(dt,want){const run=(keys.ShiftLeft||keys.ShiftRight)&&want>.1&&stam>0&&!ride&&!seat;
@@ -81,6 +81,10 @@ function shopMenu(line){
   p.textContent=line||'歡迎光臨！你有 $'+cash+'。想買什麼？';
   for(const G of GOODS){if(G[3]&&G[3]())continue;add(G[0]+' $'+G[1],()=>{if(cash<G[1]){shopMenu('錢不夠喔。'+G[0]+'要 $'+G[1]+'，你只有 $'+cash+'。');return;}
     cash-=G[1];G[2]();sfxCoin();actKey='';shopMenu('謝謝！'+G[0]+'給你。你還有 $'+cash+'。');});}
+  if(!quest)add('打工：幫忙送貨',()=>{const hs=houses.filter(h=>h.front&&h.lot.tpl!=='shop'),H=hs[Math.floor(Math.random()*hs.length)];
+    const far=Math.hypot(H.front.x-pos.x,H.front.z-pos.z),secs=Math.round(25+far*1.6);                 // enough time on a bike, tight on foot
+    quest={type:'parcel',house:H,until:performance.now()+secs*1000,secs,reward:30,text:''};parcelQuest();el.hidden=true;
+    say('小芳：「麻煩把這個包裹送到 '+H.no+' 號門口，'+secs+' 秒內送到有獎金！」');});
   add('不買了',()=>{el.hidden=true;});
 }
 // --- giving someone a lift ---
@@ -97,3 +101,10 @@ function rideQuest(){const q=quest;if(!q||q.type!=='ride')return;const n=q.from,
     say('任務完成！'+n.o.name+'下車了，給你 $'+q.reward+'。');}
 }
 function buySnack(){if(cash<15){say('點心一份 $15，你的錢不夠。');return;}cash-=15;stam=Math.min(1,stam+.6);sfxCoin();say('你買了一份點心吃掉了（剩 $'+cash+'）。體力恢復了一些。');}
+// --- delivery work for the shop: get the parcel to a front door before the clock runs out ---
+function parcelQuest(){const q=quest;if(!q||q.type!=='parcel')return;const left=Math.ceil((q.until-performance.now())/1000),f=q.house.front;
+  q.text='把包裹送到 '+q.house.no+' 號門口，還剩 '+Math.max(0,left)+' 秒';
+  if(Math.hypot(f.x+f.dx*.8-pos.x,f.z+f.dz*.8-pos.z)<2.4&&(!ride||Math.abs(ride.v)<1)){const bonus=left>0?Math.round(left/q.secs*40):0;quest=null;cash+=q.reward+bonus;addRep(1);sfxCoin();
+    say(left>0?'準時送到！工資 $'+q.reward+'，加上獎金 $'+bonus+'。':'送到了，可是遲到了。只有工資 $'+q.reward+'，沒有獎金。');}
+  else if(left<-60){quest=null;say('包裹太晚了，小芳找別人送了。任務取消。');}
+}
