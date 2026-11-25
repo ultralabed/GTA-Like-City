@@ -11,8 +11,8 @@
   for(const H of houses)if(H.front){const f=H.front,edge=f.dz>0?S.z0-S.walk:S.z1+S.walk,len=Math.abs(edge-f.z);   // garden path from each front door
     flat(1.2,len,M.concrete,f.x,-.012,(f.z+edge)/2,1.2);}
   // the beach behind the north houses, and the sea beyond it
-  flat(LEN,7,M.sand,0,-.018,WB.z0-.5,3);
-  flat(900,400,M.water,0,-.014,WB.z0-3.5-200);
+  flat(LEN,7,M.sand,0,-.018,-9.5,3);
+  flat(900,400,M.water,0,-.014,WORLD.shore-200);
   WORLD.outdoor.forEach(it=>place(it,null));
 })();
 // three real lights that jump to whichever street lamps are nearest to you, so the street can have any number of lamps

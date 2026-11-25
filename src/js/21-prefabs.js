@@ -131,7 +131,7 @@ PREFAB.bed=()=>{
 // wardrobe. Stands against a wall; the doors face -z.
 PREFAB.wardrobe=()=>{
   box(1.4,2.1,.55,M.walnut,0,1.05,-.275,{r:.012});
-  [-.35,.35].forEach(x=>{box(.66,1.98,.02,M.trim,x,1.06,-.56);cyl(.012,.012,.3,M.brass,x<0?x+.27:x-.27,1.05,-.585,10);});
+  [-.35,.35].forEach(x=>{const dr=box(.66,1.98,.02,M.trim,x,1.06,-.56);dr.userData={tip:'點一下：換衣服',act:nextOutfit};interact.push(dr);cyl(.012,.012,.3,M.brass,x<0?x+.27:x-.27,1.05,-.585,10);});
   return{solid:[[-.72,.72,-.58,0]],boxes:[[-.7,.7,0,2.1,-.55,0]]};
 };
 

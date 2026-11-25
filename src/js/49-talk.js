@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),third,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),third,outfit,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
@@ -25,7 +25,13 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   rideQuest();parcelQuest();
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
-function moveSpeed(dt,want){const run=(keys.ShiftLeft||keys.ShiftRight)&&want>.1&&stam>0&&!ride&&!seat;
+let swimNote=0;
+function moveSpeed(dt,want){const wd=waterDepth();
+  if(wd>.05){const deep=wd>1;stam=Math.max(0,Math.min(1,stam+(deep&&want>.1?-.035:.03)*dt));               // swimming is tiring; floating still is not
+    if(deep&&performance.now()-swimNote>30000){swimNote=performance.now();say('你在游泳。游泳很累，體力快沒了就回岸邊。');}
+    if(deep&&stam<=0){vel.z+=2.2*dt;if(performance.now()-swimNote>4000){swimNote=performance.now();say('太累了，海浪把你慢慢推回岸邊。');}}
+    return 1.9*(1-.5*Math.min(1,wd/1.3));}
+  const run=(keys.ShiftLeft||keys.ShiftRight)&&want>.1&&stam>0&&!ride&&!seat;
   stam=Math.max(0,Math.min(1,stam+(run?-.09:seat?.14:.05)*dt));return run?3.3:1.9;}
 function buyDrink(){if(cash<20){say('飲料一罐 $20，你的錢不夠。幫鄰居做事可以賺錢。');return;}
   cash-=20;drinks++;sfxCoin();actKey='';say('你買了一罐飲料（剩 $'+cash+'）。按右下角「喝飲料」補體力，或在聊天時請別人喝。');}

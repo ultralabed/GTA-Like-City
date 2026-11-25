@@ -22,7 +22,7 @@ function tone(freq,dur,vol,type,slide){if(!AC||!soundOn||vol<=.002)return;const 
 const hear=(x,z,far)=>Math.max(0,1-Math.hypot(x-pos.x,z-pos.z)/far);                                  // 1 right next to you, 0 too far to hear
 function sfxBounce(b,J){const now=performance.now();if(now-lastBounce<60)return;const v=Math.min(1,J/b.m/6)*hear(b.p.x,b.p.z,14);if(v<=.02)return;lastBounce=now;
   tone(b.m>3?70:b.kind==='tennis'?420:b.kind==='beach'?240:160,.12,v*.5,'sine',.6);noise(.05,b.m>3?200:900,1,v*.3);}   // heavy balls thud, light ones pop
-function sfxStep(){noise(.06,roomAt(pos.x,pos.z)?520:300,1.2,.1);}
+function sfxStep(){if(waterDepth()>.05){noise(.16,900,.6,.12);return;}noise(.06,roomAt(pos.x,pos.z)?520:300,1.2,.1);}   // splashing in the sea
 function sfxHonk(x,z){const v=.22*hear(x,z,45);tone(392,.4,v,'square');tone(494,.4,v,'square');}
 function sfxDoor(x,z){noise(.14,240,2,.3*hear(x,z,10));}
 function sfxCoin(){tone(880,.08,.2,'triangle');setTimeout(()=>tone(1320,.16,.2,'triangle'),80);}

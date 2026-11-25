@@ -84,7 +84,8 @@ const WORLD={
   name:'夕陽街',
   h:2.8,                                                           // ceiling height, same in every room
   clock:17.4,
-  bounds:{x0:-38,x1:45,z0:-9,z1:26},                               // as far as anyone can walk
+  bounds:{x0:-38,x1:45,z0:-26,z1:26},                               // as far as anyone can walk
+  shore:-12.5,                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
   rides:[{kind:'car',x:-34,z:2.4,h:-Math.PI/2},{kind:'bike',x:.2,z:3.3,h:-Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens

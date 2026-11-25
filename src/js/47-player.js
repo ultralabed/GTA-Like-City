@@ -4,7 +4,10 @@ let jumpY=0,jumpV=0,held=null,seat=null,ride=null;
 const camDir=new THREE.Vector3(),camGoal=new THREE.Vector3();
 
 // --- jumping ---
-function jump(){if(jumpY===0&&!ride&&!seat)jumpV=4.2;}
+function jump(){if(jumpY===0&&!ride&&!seat&&waterDepth()<.5)jumpV=4.2;}
+// --- the sea ---
+// The ground is really flat, so wading is faked: the further out you go, the lower your eyes sink, as if the seabed sloped away.
+function waterDepth(){return ride?0:Math.max(0,Math.min(1.32,(WORLD.shore-pos.z)*.3));}
 
 // --- things you keep in your bag and use ---
 // flashlight and umbrella go in your hand (one at a time); the phone shows a map.
@@ -114,7 +117,7 @@ const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):bikeMes
 function rideHit(r,x,z,h){
   const fx=Math.cos(h),fz=-Math.sin(h),R=r.S.R;
   for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k;
-    if(!inWorld(cx,cz,R))return true;
+    if(!inWorld(cx,cz,R)||cz<WORLD.shore+.4)return true;                   // no driving into the sea
     for(const c of colliders)if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;
     for(const d of doors){const c=doorArea(d);if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;}
     for(const c of cars)if(c.on&&cx>c.box[0]-R&&cx<c.box[1]+R&&cz>c.box[2]-R&&cz<c.box[3]+R)return true;
@@ -177,7 +180,7 @@ function updateActs(){
   else{if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
-    if(!seat)list.push('jump');}
+    if(!seat&&waterDepth()<.5)list.push('jump');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
   const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx;
   if(key===actKey)return;actKey=key;

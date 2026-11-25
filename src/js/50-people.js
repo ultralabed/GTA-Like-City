@@ -10,7 +10,7 @@ function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
     const i0=Math.max(0,Math.floor((c[0]-NR-WB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-WB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-WB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-WB.z0)/GC));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
   for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC,k=j*GW+i;
-    if(!inWorld(x,z,NR)){grid[k]=1;continue;}
+    if(!inWorld(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
     cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
 })();
 const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-WB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-WB.z0)/GC)));
@@ -47,7 +47,7 @@ const JK=['sx','sz','nx','ny','alx','alz','arx','arz','elx','erx','hlx','hrx','k
 function makePerson(o){
   const s=o.h/1.75,root=new THREE.Group(),body=new THREE.Group();body.scale.setScalar(s);root.add(body);dyn.add(root);
   const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85});
-  const skin=mat(o.skin),top=mat(o.top),bot=mat(o.bottom),shoe=mat(o.shoe),hair=mat(o.hair),eye=mat(0x1a1210);
+  const skin=mat(o.skin),top=mat(o.top),bot=mat(o.bottom),shoe=mat(o.shoe),hair=mat(o.hair),eye=mat(0x1a1210);const mats={skin,top,bot,shoe,hair};
   const mk=(geo,m,par,x,y,z)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;par.add(me);return me;};
   const jt=(par,x,y,z)=>{const g=new THREE.Group();g.position.set(x,y,z);par.add(g);return g;};
   const cap=(r,l)=>new THREE.CapsuleGeometry(r,l,4,12),sph=r=>new THREE.SphereGeometry(r,18,12),J={};
@@ -74,7 +74,7 @@ function makePerson(o){
   JK.forEach(k=>n.cur[k]=0);
   hit.userData={npc:n,tip:'點一下：跟'+o.name+'說話',act:()=>talk(n)};interact.push(hit);
   // some people carry an umbrella: it only shows when they are out in the rain
-  n.brolly=Math.round(o.h*50)%2===0;n.like=0;                             // like: what this person thinks of you, from -5 to 5
+  n.brolly=Math.round(o.h*50)%2===0;n.like=0;n.mats=mats;                             // like: what this person thinks of you, from -5 to 5
   const um=new THREE.Group(),cloth=new THREE.MeshStandardMaterial({color:o.top,roughness:.8,side:THREE.DoubleSide});
   const canopy=new THREE.Mesh(new THREE.ConeGeometry(.62,.2,10,1,true),cloth);canopy.position.set(.12,1.2,.05);canopy.castShadow=true;
   const stick=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.8,6),eye);stick.position.set(.12,.8,.05);um.add(canopy,stick);um.visible=false;body.add(um);n.um=um;

@@ -16,7 +16,8 @@ function thirdCam(dt,t){
   if(!on)return;
   const sp=Math.hypot(vel.x,vel.z),moving=sp>.3&&!seat;
   if(moving)meYaw+=angDiff(Math.atan2(vel.x,vel.z),meYaw)*(1-Math.exp(-dt*10));      // turn to face the way you walk
-  let name='idle',y=me.stand+jumpY,lieQ2=null,hy=1.55+jumpY;
+  const wd=waterDepth();
+  let name='idle',y=me.stand+jumpY-wd,lieQ2=null,hy=1.55+jumpY-wd*.75;
   if(seat){const A=seat.A;name=A.pose;y=A.an[1];meYaw=A.yaw||0;hy=A.an[1]+.55;if(seat.lie)lieQ2=A.q;}
   else if(moving){name='walk';me.ph+=dt*sp*3.9;}
   pose(P,name,me,t);
@@ -37,3 +38,8 @@ function thirdCam(dt,t){
   camera.position.set(pos.x+bx*dist,Math.min(hy+by*dist+lift,indoors?RH-.15:99),pos.z+bz*dist);camera.rotation.set(pitch,yaw,0);camera.updateMatrixWorld();
   if(held){held.p.set(pos.x+Math.sin(meYaw)*.42,y+.18,pos.z+Math.cos(meYaw)*.42);held.v.set(vel.x,0,vel.z);held.mesh.position.copy(held.p);}   // the ball goes in your hands, not in front of the camera
 }
+// --- clothes: click any wardrobe to change ---
+const OUTFITS=[['黃上衣、藍褲子',0xf2c23d,0x2b3a67,0xffffff],['紅外套、黑褲子',0xc4553b,0x1c1c22,0x202024],['綠 T 恤、卡其褲',0x3f8a5a,0xc9b48a,0x5a3a26],['白襯衫、灰褲子',0xf2efe8,0x6a6a72,0x2a2420],['紫色運動服',0x7a4ab0,0x7a4ab0,0xf4f0e8]];
+let outfit=0;
+function wear(i){outfit=i%OUTFITS.length;const O=OUTFITS[outfit];me.mats.top.color.set(O[1]);me.mats.bot.color.set(O[2]);me.mats.shoe.color.set(O[3]);}
+function nextOutfit(){if(Math.hypot(camera.position.x-pos.x,camera.position.z-pos.z)>9)return;wear(outfit+1);say('你換上了：'+OUTFITS[outfit][0]+'。'+(third?'':'按 V 可以看看自己。'));}
