@@ -11,8 +11,9 @@ function waterDepth(){return ride?0:Math.max(0,Math.min(1.32,(WORLD.shore-pos.z)
 
 // --- things you keep in your bag and use ---
 // flashlight and umbrella go in your hand (one at a time); the phone shows a map.
-const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'}};
-const bag={phone:true},use={flashlight:false,umbrella:false,phone:false};
+const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'},board:{name:'滑板',key:'4'}};
+const bag={phone:true},use={flashlight:false,umbrella:false,phone:false,board:false};
+const boarding=()=>use.board&&!ride&&!onBus&&!seat&&!roomAt(pos.x,pos.z)&&waterDepth()<.05;   // actually rolling: outdoors, on dry ground
 const hand=new THREE.Group();camera.add(hand);
 const torch=new THREE.SpotLight(0xfff0d0,0,22,.5,.55,1.2);torch.position.set(.25,-.2,0);camera.add(torch);torch.target.position.set(0,-.08,-1);camera.add(torch.target);
 const handTorch=new THREE.Group(),handBrolly=new THREE.Group();hand.add(handTorch,handBrolly);
@@ -28,6 +29,7 @@ const handTorch=new THREE.Group(),handBrolly=new THREE.Group();hand.add(handTorc
 function showItems(){torch.intensity=use.flashlight&&!ride?1.7:0;handTorch.visible=use.flashlight&&!ride;handBrolly.visible=use.umbrella&&!ride;$('map').hidden=!use.phone;actKey='';}
 function toggleItem(k){if(!bag[k])return;
   if(k==='phone')use.phone=!use.phone;
+  else if(k==='board'){use.board=!use.board;say(use.board?(roomAt(pos.x,pos.z)?'滑板準備好了。走到外面就會踩上去（在屋子裡不能溜）。':'你踩上滑板了！輪子會滾，所以比跑步快，也不太費力。'):'你把滑板收起來了。');}
   else{const on=!use[k];use.flashlight=use.umbrella=false;use[k]=on;if(on&&held)putDown();
     if(on)say(k==='umbrella'?'你撐開了雨傘：雨不會落在你身上。':'你打開了手電筒。');}
   showItems();}
@@ -326,6 +328,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='Digit2')toggleItem('umbrella');
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
+  else if(e.code==='Digit4')toggleItem('board');
   else if(e.code==='KeyH')horn();
   else if(e.code==='KeyC'){if(atPump())refuel();}
   else if(e.code==='KeyT'){if(!ride&&!onBus)hail();}

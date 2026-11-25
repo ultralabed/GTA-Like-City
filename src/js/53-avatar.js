@@ -11,7 +11,11 @@ function camBlocked(x,z){if(!inWorld(x,z,.2))return true;
 function setView(on){third=on;ray.far=on?8:4.5;$('bView').textContent='視角：'+(on?'第三人稱':'第一人稱');}
 $('bView').onclick=()=>setView(!third);
 addEventListener('keydown',e=>{if(e.code==='KeyV'&&!e.repeat)setView(!third);});
+const deck=new THREE.Group();deck.visible=false;scene.add(deck);
+{const d=new THREE.Mesh(new THREE.BoxGeometry(.8,.03,.22),new THREE.MeshStandardMaterial({color:0xd9623f,roughness:.6}));d.position.y=.09;d.castShadow=true;deck.add(d);
+ for(const x of[-.27,.27])for(const z of[-.08,.08]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.04,10),M.black);w.rotation.x=Math.PI/2;w.position.set(x,.04,z);deck.add(w);}}
 function thirdCam(dt,t){
+  deck.visible=third&&boarding();if(deck.visible){deck.position.set(pos.x,jumpY,pos.z);deck.rotation.y=meYaw-Math.PI/2;}
   const on=third&&!ride&&!onBus;me.root.visible=on;hand.visible=!on;
   if(!on)return;
   const sp=Math.hypot(vel.x,vel.z),moving=sp>.3&&!seat;
@@ -19,6 +23,7 @@ function thirdCam(dt,t){
   const wd=waterDepth();
   let name='idle',y=me.stand+jumpY-wd,lieQ2=null,hy=1.55+jumpY-wd*.75;
   if(seat){const A=seat.A;name=A.pose;y=A.an[1];meYaw=A.yaw||0;hy=A.an[1]+.55;if(seat.lie)lieQ2=A.q;}
+  else if(moving&&boarding()){name='idle';y+=.1;}                              // gliding: stand still on the deck
   else if(moving){name='walk';me.ph+=dt*sp*3.9;}
   pose(P,name,me,t);
   if(held){P.alx=P.arx=-1.15;P.elx=P.erx=-.7;}else if(use.umbrella){P.arx=-1.5;P.erx=-1.1;}else if(use.flashlight){P.arx=-1.2;P.erx=-.3;}

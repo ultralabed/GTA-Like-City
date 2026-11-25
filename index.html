@@ -1424,8 +1424,9 @@ function waterDepth(){return ride?0:Math.max(0,Math.min(1.32,(WORLD.shore-pos.z)
 
 // --- things you keep in your bag and use ---
 // flashlight and umbrella go in your hand (one at a time); the phone shows a map.
-const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'}};
-const bag={phone:true},use={flashlight:false,umbrella:false,phone:false};
+const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'},board:{name:'滑板',key:'4'}};
+const bag={phone:true},use={flashlight:false,umbrella:false,phone:false,board:false};
+const boarding=()=>use.board&&!ride&&!onBus&&!seat&&!roomAt(pos.x,pos.z)&&waterDepth()<.05;   // actually rolling: outdoors, on dry ground
 const hand=new THREE.Group();camera.add(hand);
 const torch=new THREE.SpotLight(0xfff0d0,0,22,.5,.55,1.2);torch.position.set(.25,-.2,0);camera.add(torch);torch.target.position.set(0,-.08,-1);camera.add(torch.target);
 const handTorch=new THREE.Group(),handBrolly=new THREE.Group();hand.add(handTorch,handBrolly);
@@ -1441,6 +1442,7 @@ const handTorch=new THREE.Group(),handBrolly=new THREE.Group();hand.add(handTorc
 function showItems(){torch.intensity=use.flashlight&&!ride?1.7:0;handTorch.visible=use.flashlight&&!ride;handBrolly.visible=use.umbrella&&!ride;$('map').hidden=!use.phone;actKey='';}
 function toggleItem(k){if(!bag[k])return;
   if(k==='phone')use.phone=!use.phone;
+  else if(k==='board'){use.board=!use.board;say(use.board?(roomAt(pos.x,pos.z)?'滑板準備好了。走到外面就會踩上去（在屋子裡不能溜）。':'你踩上滑板了！輪子會滾，所以比跑步快，也不太費力。'):'你把滑板收起來了。');}
   else{const on=!use[k];use.flashlight=use.umbrella=false;use[k]=on;if(on&&held)putDown();
     if(on)say(k==='umbrella'?'你撐開了雨傘：雨不會落在你身上。':'你打開了手電筒。');}
   showItems();}
@@ -1739,6 +1741,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='Digit2')toggleItem('umbrella');
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
+  else if(e.code==='Digit4')toggleItem('board');
   else if(e.code==='KeyH')horn();
   else if(e.code==='KeyC'){if(atPump())refuel();}
   else if(e.code==='KeyT'){if(!ride&&!onBus)hail();}
@@ -1771,7 +1774,7 @@ function tone(freq,dur,vol,type,slide){if(!AC||!soundOn||vol<=.002)return;const 
 const hear=(x,z,far)=>Math.max(0,1-Math.hypot(x-pos.x,z-pos.z)/far);                                  // 1 right next to you, 0 too far to hear
 function sfxBounce(b,J){const now=performance.now();if(now-lastBounce<60)return;const v=Math.min(1,J/b.m/6)*hear(b.p.x,b.p.z,14);if(v<=.02)return;lastBounce=now;
   tone(b.m>3?70:b.kind==='tennis'?420:b.kind==='beach'?240:160,.12,v*.5,'sine',.6);noise(.05,b.m>3?200:900,1,v*.3);}   // heavy balls thud, light ones pop
-function sfxStep(){if(waterDepth()>.05){noise(.16,900,.6,.12);return;}noise(.06,roomAt(pos.x,pos.z)?520:300,1.2,.1);}   // splashing in the sea
+function sfxStep(){if(boarding()){noise(.14,170,.5,.07);return;}if(waterDepth()>.05){noise(.16,900,.6,.12);return;}noise(.06,roomAt(pos.x,pos.z)?520:300,1.2,.1);}   // splashing in the sea
 function sfxHonk(x,z){const v=.22*hear(x,z,45);tone(392,.4,v,'square');tone(494,.4,v,'square');}
 function sfxDoor(x,z){noise(.14,240,2,.3*hear(x,z,10));}
 function sfxCoin(){tone(880,.08,.2,'triangle');setTimeout(()=>tone(1320,.16,.2,'triangle'),80);}
@@ -1920,6 +1923,7 @@ function moveSpeed(dt,want){const wd=waterDepth();
     if(deep&&performance.now()-swimNote>30000){swimNote=performance.now();say('你在游泳。游泳很累，體力快沒了就回岸邊。');}
     if(deep&&stam<=0){vel.z+=2.2*dt;if(performance.now()-swimNote>4000){swimNote=performance.now();say('太累了，海浪把你慢慢推回岸邊。');}}
     return 1.9*(1-.5*Math.min(1,wd/1.3));}
+  if(boarding()){stam=Math.max(0,Math.min(1,stam+.04*dt));return 4.6;}                              // on the skateboard: quick, and your legs get a rest
   const run=(keys.ShiftLeft||keys.ShiftRight||runLock||Math.hypot(joy.x,joy.y)>.93)&&want>.1&&stam>0&&!ride&&!seat;
   stam=Math.max(0,Math.min(1,stam+(run?-.09:seat?.14:.05)*dt));return run?3.3:1.9;}
 function buyDrink(){if(cash<20){say('飲料一罐 $20，你的錢不夠。幫鄰居做事可以賺錢。');return;}
@@ -1996,7 +2000,7 @@ function talk(n){
 }
 // --- the shop ---
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
-const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella]];
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board]];
 function shopMenu(line){
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='夕陽商店';const p=document.createElement('p');el.append(h,p);
@@ -2517,7 +2521,11 @@ function camBlocked(x,z){if(!inWorld(x,z,.2))return true;
 function setView(on){third=on;ray.far=on?8:4.5;$('bView').textContent='視角：'+(on?'第三人稱':'第一人稱');}
 $('bView').onclick=()=>setView(!third);
 addEventListener('keydown',e=>{if(e.code==='KeyV'&&!e.repeat)setView(!third);});
+const deck=new THREE.Group();deck.visible=false;scene.add(deck);
+{const d=new THREE.Mesh(new THREE.BoxGeometry(.8,.03,.22),new THREE.MeshStandardMaterial({color:0xd9623f,roughness:.6}));d.position.y=.09;d.castShadow=true;deck.add(d);
+ for(const x of[-.27,.27])for(const z of[-.08,.08]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.04,10),M.black);w.rotation.x=Math.PI/2;w.position.set(x,.04,z);deck.add(w);}}
 function thirdCam(dt,t){
+  deck.visible=third&&boarding();if(deck.visible){deck.position.set(pos.x,jumpY,pos.z);deck.rotation.y=meYaw-Math.PI/2;}
   const on=third&&!ride&&!onBus;me.root.visible=on;hand.visible=!on;
   if(!on)return;
   const sp=Math.hypot(vel.x,vel.z),moving=sp>.3&&!seat;
@@ -2525,6 +2533,7 @@ function thirdCam(dt,t){
   const wd=waterDepth();
   let name='idle',y=me.stand+jumpY-wd,lieQ2=null,hy=1.55+jumpY-wd*.75;
   if(seat){const A=seat.A;name=A.pose;y=A.an[1];meYaw=A.yaw||0;hy=A.an[1]+.55;if(seat.lie)lieQ2=A.q;}
+  else if(moving&&boarding()){name='idle';y+=.1;}                              // gliding: stand still on the deck
   else if(moving){name='walk';me.ph+=dt*sp*3.9;}
   pose(P,name,me,t);
   if(held){P.alx=P.arx=-1.15;P.elx=P.erx=-.7;}else if(use.umbrella){P.arx=-1.5;P.erx=-1.1;}else if(use.flashlight){P.arx=-1.2;P.erx=-.3;}
@@ -2744,7 +2753,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

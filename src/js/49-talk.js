@@ -51,6 +51,7 @@ function moveSpeed(dt,want){const wd=waterDepth();
     if(deep&&performance.now()-swimNote>30000){swimNote=performance.now();say('你在游泳。游泳很累，體力快沒了就回岸邊。');}
     if(deep&&stam<=0){vel.z+=2.2*dt;if(performance.now()-swimNote>4000){swimNote=performance.now();say('太累了，海浪把你慢慢推回岸邊。');}}
     return 1.9*(1-.5*Math.min(1,wd/1.3));}
+  if(boarding()){stam=Math.max(0,Math.min(1,stam+.04*dt));return 4.6;}                              // on the skateboard: quick, and your legs get a rest
   const run=(keys.ShiftLeft||keys.ShiftRight||runLock||Math.hypot(joy.x,joy.y)>.93)&&want>.1&&stam>0&&!ride&&!seat;
   stam=Math.max(0,Math.min(1,stam+(run?-.09:seat?.14:.05)*dt));return run?3.3:1.9;}
 function buyDrink(){if(cash<20){say('飲料一罐 $20，你的錢不夠。幫鄰居做事可以賺錢。');return;}
@@ -127,7 +128,7 @@ function talk(n){
 }
 // --- the shop ---
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
-const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella]];
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board]];
 function shopMenu(line){
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='夕陽商店';const p=document.createElement('p');el.append(h,p);
