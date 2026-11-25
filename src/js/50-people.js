@@ -78,4 +78,5 @@ function makePerson(o){
 const up3=new THREE.Vector3(0,1,0);
 const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home=H.id;return n;}))
   .concat(WORLD.visitors.map((o,i)=>{const n=makePerson(o);n.home=-1;n.visitor=true;n.stay=0;
-    n.o.shift=[(clock+23)%24,(clock+.15+i*.45)%24];return n;}));              // for a visitor, 'shift' is the time spent away from this street
+    n.o.shift=[(clock+23)%24,(clock+.15+i*.45)%24];return n;}))
+  .concat([WORLD.guard].map(o=>{const n=makePerson(o);n.home=-1;n.guard=true;return n;}));   // the patrol officer              // for a visitor, 'shift' is the time spent away from this street

@@ -2,8 +2,23 @@
 // Click a person to talk. You can say hello, ask what they are doing, offer help (they may give you a job),
 // or give them a drink. Jobs pay money; being kind raises your name on the street, being a nuisance lowers it.
 let cash=60,rep=0,drinks=0,stam=1,quest=null,talkN=null;
-function addRep(d){rep=Math.max(-9,Math.min(20,rep+d));}
-function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100);
+// heat: how much trouble you are in right now (0 to 3 stars). Each time you hit or scare someone it goes up;
+// the patrol officer then comes after you, faster the more stars you have. Stay out of trouble for a while and it fades.
+let heat=0,heatAt=0,saveNo=0;
+function addRep(d){rep=Math.max(-9,Math.min(20,rep+d));if(d<0){heat=Math.min(3,heat+1);heatAt=performance.now();say('有人看到了！巡邏員會來找你。'+'★'.repeat(heat));}}
+function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBump();
+  showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
+  say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
+const SAVE_KEY='sunset-street-save-1';
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h])}));}catch(e){}}
+function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
+  clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
+  (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
+let noSave=false;
+$('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
+function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100)+(heat?'　'+'★'.repeat(heat):'');
+  if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
+  if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back

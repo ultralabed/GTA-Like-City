@@ -23,15 +23,33 @@ function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir,z:lane?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0]}));
 });
-// should this walker hold back at the kerb? yes if a moving car will get here within a few seconds
+// --- the traffic light at the zebra crossing ---
+// One clock runs it: cars get green, then yellow, then red while the walkers get their green figure.
+let sigCars='g',sigWalk=false;const SIG={r:new THREE.MeshBasicMaterial(),y:new THREE.MeshBasicMaterial(),g:new THREE.MeshBasicMaterial(),walk:new THREE.MeshBasicMaterial(),stop:new THREE.MeshBasicMaterial()};
+(function(){cur=scene;
+  [[ZEBRA[0]-.5,ST.z0-.2],[ZEBRA[1]+.5,ST.z1+.2]].forEach(p=>{
+    cyl(.06,.08,3.4,M.steel,p[0],1.7,p[1],10);box(.3,.95,.3,M.black,p[0],3.6,p[1]);
+    [['r',3.9],['y',3.6],['g',3.3]].forEach(q=>[-1,1].forEach(k=>{const m=new THREE.Mesh(new THREE.CircleGeometry(.1,16),SIG[q[0]]);m.position.set(p[0]+k*.152,q[1],p[1]);m.rotation.y=k*Math.PI/2;scene.add(m);}));   // lamps for the cars, facing both ways
+    box(.22,.5,.16,M.black,p[0],2.3,p[1]);
+    [['stop',2.42],['walk',2.18]].forEach(q=>[-1,1].forEach(k=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.14,.18),SIG[q[0]]);m.position.set(p[0],q[1],p[1]+k*.082);m.rotation.y=k>0?0:Math.PI;scene.add(m);}));   // red and green figure for walkers
+    colliders.push([p[0]-.1,p[0]+.1,p[1]-.1,p[1]+.1]);});
+})();
+function updateSignal(t){const u=t%36;
+  sigCars=u<19?'g':u<22?'y':'r';sigWalk=u>22.6&&u<32.5;
+  SIG.r.color.setRGB(sigCars==='r'?6:.12,.02,.02);SIG.y.color.setRGB(sigCars==='y'?5:.1,sigCars==='y'?3.6:.08,.02);SIG.g.color.setRGB(.02,sigCars==='g'?5:.1,sigCars==='g'?1.6:.04);
+  const blink=u>30&&Math.floor(u*3)%2;SIG.walk.color.setRGB(.02,sigWalk&&!blink?4:.08,sigWalk&&!blink?1.4:.03);SIG.stop.color.setRGB(sigWalk?.1:5,.02,.02);}
+// should this walker hold back at the kerb? At the zebra they obey the light; anywhere else they wait for a gap in the cars.
 function carDanger(n,q){
   if(onRoad(n.pos.z)||!(onRoad(q[1])||(q[1]-ST.z0)*(n.pos.z-ST.z0)<0))return false;       // already crossing, or not heading for the road
   if(Math.min(Math.abs(n.pos.z-ST.z0),Math.abs(n.pos.z-ST.z1))>.4)return false;           // not at the kerb yet
+  if(n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){n.waitWhy='等紅綠燈';return!sigWalk;}
+  n.waitWhy='等車子過';
   for(const c of cars){if(!c.on||c.v<1)continue;const ahead=(n.pos.x-c.x)*c.dir;if(ahead>-2.5&&ahead<c.v*4+4)return true;}
   return false;
 }
 const cv3=new THREE.Vector3();
 function updateCars(dt){
+  updateSignal(performance.now()/1000);
   for(const c of cars){
     if(!c.on){c.t-=dt;
       if(c.t<=0){const sx=-c.dir*85;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<14)){c.t=2;continue;}
@@ -40,8 +58,9 @@ function updateCars(dt){
     const front=c.x+c.dir*2.1;let gap=1e9;
     const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
     see(pos.x-(ride?c.dir*ride.S.len:0),pos.z);                                   // you, or the back of the car you are driving
-    for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);
-      if(n.atCurb&&n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;if(d>-.6&&d<gap)gap=d;}}   // someone waiting at the zebra: stop before it
+    for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);    }
+    if(sigCars!=='g'){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;                    // red or yellow light: stop at the line (on yellow only if there is room to stop gently)
+      if(d>(sigCars==='y'?5:-.6)&&d<gap)gap=d;}
     for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
     const want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;

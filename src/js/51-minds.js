@@ -14,7 +14,9 @@ const GOALS={                                                           // type 
   window:{label:'看海',type:'window',need:'calm',gain:.7,dur:.6},
   plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25},
   bench:{label:'去公園坐坐',type:'bench',need:'calm',gain:.9,dur:.5,outside:true},
-  stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true}
+  stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true},
+  patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
+  catch:{label:'找你談談',type:'catch'}
 };
 const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
@@ -27,13 +29,15 @@ function freeAct(n,id){                                                 // find 
         if(O.shared)continue;
         if(m.want===k||(O.owner===A.owner&&(A.solo||O.solo))){taken=true;break;}}   // someone lying on a sofa takes the whole sofa
       if(taken)continue;}
-    const dist=Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);
+    const dist=type==='patrol'?rnd(0,40):Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);   // patrol points are picked at random
     const s=(A.pref||0)*100+(n.visitor&&type==='exit'?dist:-dist);        // a bed beats a sofa; otherwise the nearest one. Visitors leave by the far end, so they walk the whole street
     if(s>bs){bs=s;best=k;}}
   return best;
 }
 function utility(n,id){
   const g=GOALS[id];
+  if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
+  if(id==='patrol'||id==='catch')return -1;
   if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
@@ -64,6 +68,8 @@ function brain(n,dt){
   if(doing&&G.need){g.elapsed+=dh;n.need[G.need]=Math.min(1,n.need[G.need]+G.gain*dh);
     if(G.also)n.need[G.also]=Math.min(1,n.need[G.also]+G.gain*.5*dh);}
   if(n.react)return;                                                    // finish reacting before deciding anything
+  if(n.guard){for(const k in n.need)n.need[k]=.8;n.cool.patrol=0;           // never tired, never bored
+    if(heat>0&&g.id!=='catch'){setGoal(n,'catch');return;}if(heat===0&&g.id==='catch'){endGoal(n,false);return;}if(g.id==='catch')return;}
   if(n.visitor&&g.id!=='work'){n.stay-=dh;                                // visitors go home after a while, or when night falls, or when it rains
     if(n.stay<=0||dark>.75||rainOn){n.o.shift=[(clock+23.9)%24,(clock+rnd(.8,2.5)+dark*6)%24];n.resume=null;setGoal(n,'work');return;}}
   if(g.id!=='work'&&inSpan(n.o.shift,clock)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
@@ -78,6 +84,7 @@ function react(n,say,t,pose,after){n.react={say,t,pose,after};}
 function notify(n,type,b){
   if(n.hidden||!n.goal)return;
   if(talkN===n&&type!=='greet')closeTalk();
+  if(n.guard&&(type==='hit'||type==='car')){react(n,'嘿！不可以這樣！',1.5,'glare');if(type==='car'||(b&&b.kickBy==='你'))addRep(-1);return;}
   const now=performance.now()/1000,g=n.goal;
   if(type!=='greet'&&(n.react||now<n.calmAt))return;
   n.calmAt=now+1.2;
@@ -116,7 +123,8 @@ const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
 function sched(n){return n.want;}
 function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
-people.forEach((n,i)=>{const H=houses[n.home];if(H)n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);else n.pos.set(i%2?WB.x1:WB.x0,0,i%3?5:14);       // start from home so 'nearest spot' means something
+people.forEach((n,i)=>{const H=houses[n.home];if(n.guard){setGoal(n,'patrol');const A=ACT[n.want];n.act=n.want;n.pos.set(A.ap[0],0,A.ap[1]);n.phase='at';n.root.position.set(A.ap[0],n.stand,A.ap[1]);return;}
+  if(H)n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);else n.pos.set(i%2?WB.x1:WB.x0,0,i%3?5:14);       // start from home so 'nearest spot' means something
   setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
@@ -158,7 +166,9 @@ function updNPC(n,dt,t){
     if(Math.hypot(ap[0]-n.pos.x,ap[1]-n.pos.z)<.06&&Math.abs(n.y-n.stand)<.05){n.act=want;begin(n);}
   }else if(n.phase==='go'){
     label='要去'+A.label;n.atCurb=false;
-    if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
+    if(A.catch){label='來找你';n.repath-=dt;                               // the patrol officer walking up to you
+      if(dP<1.5){n.path=[];if(heat>0)fine(n);}else if(n.repath<=0){n.repath=.7;n.path=findPath(n.pos.x,n.pos.z,pos.x,pos.z)||[];}}
+    else if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
         const rc=roomAt(basket.p.x,basket.p.z)||rooms[0],cxr=basket.p.x-rc.cx,czr=basket.p.z-rc.cz,cl=Math.hypot(cxr,czr)||1,kx=bx/bd*.4-cxr/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-czr/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
@@ -171,9 +181,9 @@ function updNPC(n,dt,t){
       else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
         if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
       else{if(dP>.9){n.wait=0;n.said=false;}
-        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=rainOn&&!roomAt(n.pos.x,n.pos.z)?1.7:1,stp=1.15*hurry*dt;
+        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=rainOn&&!roomAt(n.pos.x,n.pos.z)?1.7:1,stp=1.15*hurry*(n.guard&&heat?1.25+.3*heat:1)*dt;
         n.atCurb=carDanger(n,q);
-        if(n.atCurb){label='等車子過';tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
+        if(n.atCurb){label=n.waitWhy;tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
         else{if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
           name='walk';n.ph+=dt*7.2*hurry;}}
     }else if(!A.chase){n.phase='in';n.settle=0;}

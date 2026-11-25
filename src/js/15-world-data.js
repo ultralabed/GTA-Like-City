@@ -92,6 +92,8 @@ const WORLD={
     person('婷婷',1.62,0xf0cfb2,0x5a3418,0x9ad0c2,0x34405a,0xe8e0d0,true,null,[23,6],.75,.5,{energy:1,fun:1,fit:.9,calm:1.4,care:.5}),
     person('老王',1.7,0xd2a078,0x8a8a8a,0x5a4a6a,0x2a2a2a,0x1a1a1a,false,null,[23,6],.9,.2,{energy:1,fun:1,fit:.8,calm:1.5,care:.5})
   ],
+  // the patrol officer: walks the street all day. If you keep being a nuisance he comes over and fines you.
+  guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
   outdoor:[
     // trees
     {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:24.5,z:2.5,s:1.15},
@@ -108,6 +110,10 @@ const WORLD={
     {type:'spot',kind:'exit',x:27.2,z:5,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
     {type:'spot',kind:'exit',x:-23.2,z:14,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
     {type:'spot',kind:'exit',x:27.2,z:14,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    // where the patrol officer walks to
+    {type:'spot',kind:'patrol',x:-16,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:14,z:5,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},
+    {type:'spot',kind:'patrol',x:-14,z:14,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:20,z:14.4,yaw:0,pose:'window',shared:true,label:'巡邏'},
+    {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     // places to walk to
     {type:'spot',kind:'stroll',x:8.8,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
     {type:'spot',kind:'stroll',x:-4.7,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},

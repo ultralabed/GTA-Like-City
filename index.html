@@ -112,7 +112,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
     <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
@@ -377,6 +377,8 @@ const WORLD={
     person('婷婷',1.62,0xf0cfb2,0x5a3418,0x9ad0c2,0x34405a,0xe8e0d0,true,null,[23,6],.75,.5,{energy:1,fun:1,fit:.9,calm:1.4,care:.5}),
     person('老王',1.7,0xd2a078,0x8a8a8a,0x5a4a6a,0x2a2a2a,0x1a1a1a,false,null,[23,6],.9,.2,{energy:1,fun:1,fit:.8,calm:1.5,care:.5})
   ],
+  // the patrol officer: walks the street all day. If you keep being a nuisance he comes over and fines you.
+  guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
   outdoor:[
     // trees
     {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:24.5,z:2.5,s:1.15},
@@ -393,6 +395,10 @@ const WORLD={
     {type:'spot',kind:'exit',x:27.2,z:5,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
     {type:'spot',kind:'exit',x:-23.2,z:14,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
     {type:'spot',kind:'exit',x:27.2,z:14,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    // where the patrol officer walks to
+    {type:'spot',kind:'patrol',x:-16,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:14,z:5,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},
+    {type:'spot',kind:'patrol',x:-14,z:14,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:20,z:14.4,yaw:0,pose:'window',shared:true,label:'巡邏'},
+    {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     // places to walk to
     {type:'spot',kind:'stroll',x:8.8,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
     {type:'spot',kind:'stroll',x:-4.7,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
@@ -479,7 +485,7 @@ function place(item,R){
 
 /* ---------- furniture prefabs ---------- */
 // Every number in here is measured from the furniture's own middle (or from the wall it hangs on).
-PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase,hide:o.hide,shared:o.shared}]});
+PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase,catch:o.catch,hide:o.hide,shared:o.shared}]});
 
 PREFAB.rug=o=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(o.w||2.5,o.d||3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
 
@@ -1034,15 +1040,33 @@ function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir,z:lane?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0]}));
 });
-// should this walker hold back at the kerb? yes if a moving car will get here within a few seconds
+// --- the traffic light at the zebra crossing ---
+// One clock runs it: cars get green, then yellow, then red while the walkers get their green figure.
+let sigCars='g',sigWalk=false;const SIG={r:new THREE.MeshBasicMaterial(),y:new THREE.MeshBasicMaterial(),g:new THREE.MeshBasicMaterial(),walk:new THREE.MeshBasicMaterial(),stop:new THREE.MeshBasicMaterial()};
+(function(){cur=scene;
+  [[ZEBRA[0]-.5,ST.z0-.2],[ZEBRA[1]+.5,ST.z1+.2]].forEach(p=>{
+    cyl(.06,.08,3.4,M.steel,p[0],1.7,p[1],10);box(.3,.95,.3,M.black,p[0],3.6,p[1]);
+    [['r',3.9],['y',3.6],['g',3.3]].forEach(q=>[-1,1].forEach(k=>{const m=new THREE.Mesh(new THREE.CircleGeometry(.1,16),SIG[q[0]]);m.position.set(p[0]+k*.152,q[1],p[1]);m.rotation.y=k*Math.PI/2;scene.add(m);}));   // lamps for the cars, facing both ways
+    box(.22,.5,.16,M.black,p[0],2.3,p[1]);
+    [['stop',2.42],['walk',2.18]].forEach(q=>[-1,1].forEach(k=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.14,.18),SIG[q[0]]);m.position.set(p[0],q[1],p[1]+k*.082);m.rotation.y=k>0?0:Math.PI;scene.add(m);}));   // red and green figure for walkers
+    colliders.push([p[0]-.1,p[0]+.1,p[1]-.1,p[1]+.1]);});
+})();
+function updateSignal(t){const u=t%36;
+  sigCars=u<19?'g':u<22?'y':'r';sigWalk=u>22.6&&u<32.5;
+  SIG.r.color.setRGB(sigCars==='r'?6:.12,.02,.02);SIG.y.color.setRGB(sigCars==='y'?5:.1,sigCars==='y'?3.6:.08,.02);SIG.g.color.setRGB(.02,sigCars==='g'?5:.1,sigCars==='g'?1.6:.04);
+  const blink=u>30&&Math.floor(u*3)%2;SIG.walk.color.setRGB(.02,sigWalk&&!blink?4:.08,sigWalk&&!blink?1.4:.03);SIG.stop.color.setRGB(sigWalk?.1:5,.02,.02);}
+// should this walker hold back at the kerb? At the zebra they obey the light; anywhere else they wait for a gap in the cars.
 function carDanger(n,q){
   if(onRoad(n.pos.z)||!(onRoad(q[1])||(q[1]-ST.z0)*(n.pos.z-ST.z0)<0))return false;       // already crossing, or not heading for the road
   if(Math.min(Math.abs(n.pos.z-ST.z0),Math.abs(n.pos.z-ST.z1))>.4)return false;           // not at the kerb yet
+  if(n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){n.waitWhy='等紅綠燈';return!sigWalk;}
+  n.waitWhy='等車子過';
   for(const c of cars){if(!c.on||c.v<1)continue;const ahead=(n.pos.x-c.x)*c.dir;if(ahead>-2.5&&ahead<c.v*4+4)return true;}
   return false;
 }
 const cv3=new THREE.Vector3();
 function updateCars(dt){
+  updateSignal(performance.now()/1000);
   for(const c of cars){
     if(!c.on){c.t-=dt;
       if(c.t<=0){const sx=-c.dir*85;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<14)){c.t=2;continue;}
@@ -1051,8 +1075,9 @@ function updateCars(dt){
     const front=c.x+c.dir*2.1;let gap=1e9;
     const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
     see(pos.x-(ride?c.dir*ride.S.len:0),pos.z);                                   // you, or the back of the car you are driving
-    for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);
-      if(n.atCurb&&n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;if(d>-.6&&d<gap)gap=d;}}   // someone waiting at the zebra: stop before it
+    for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);    }
+    if(sigCars!=='g'){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;                    // red or yellow light: stop at the line (on yellow only if there is room to stop gently)
+      if(d>(sigCars==='y'?5:-.6)&&d<gap)gap=d;}
     for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
     const want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;
@@ -1325,8 +1350,23 @@ $('bSound').onclick=()=>{soundOn=!soundOn;$('bSound').textContent='聲音：'+(s
 // Click a person to talk. You can say hello, ask what they are doing, offer help (they may give you a job),
 // or give them a drink. Jobs pay money; being kind raises your name on the street, being a nuisance lowers it.
 let cash=60,rep=0,drinks=0,stam=1,quest=null,talkN=null;
-function addRep(d){rep=Math.max(-9,Math.min(20,rep+d));}
-function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100);
+// heat: how much trouble you are in right now (0 to 3 stars). Each time you hit or scare someone it goes up;
+// the patrol officer then comes after you, faster the more stars you have. Stay out of trouble for a while and it fades.
+let heat=0,heatAt=0,saveNo=0;
+function addRep(d){rep=Math.max(-9,Math.min(20,rep+d));if(d<0){heat=Math.min(3,heat+1);heatAt=performance.now();say('有人看到了！巡邏員會來找你。'+'★'.repeat(heat));}}
+function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBump();
+  showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
+  say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
+const SAVE_KEY='sunset-street-save-1';
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h])}));}catch(e){}}
+function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
+  clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
+  (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
+let noSave=false;
+$('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
+function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100)+(heat?'　'+'★'.repeat(heat):'');
+  if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
+  if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
@@ -1453,7 +1493,8 @@ function makePerson(o){
 const up3=new THREE.Vector3(0,1,0);
 const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home=H.id;return n;}))
   .concat(WORLD.visitors.map((o,i)=>{const n=makePerson(o);n.home=-1;n.visitor=true;n.stay=0;
-    n.o.shift=[(clock+23)%24,(clock+.15+i*.45)%24];return n;}));              // for a visitor, 'shift' is the time spent away from this street
+    n.o.shift=[(clock+23)%24,(clock+.15+i*.45)%24];return n;}))
+  .concat([WORLD.guard].map(o=>{const n=makePerson(o);n.home=-1;n.guard=true;return n;}));   // the patrol officer              // for a visitor, 'shift' is the time spent away from this street
 
 /* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
 // Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
@@ -1471,7 +1512,9 @@ const GOALS={                                                           // type 
   window:{label:'看海',type:'window',need:'calm',gain:.7,dur:.6},
   plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25},
   bench:{label:'去公園坐坐',type:'bench',need:'calm',gain:.9,dur:.5,outside:true},
-  stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true}
+  stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true},
+  patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
+  catch:{label:'找你談談',type:'catch'}
 };
 const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
@@ -1484,13 +1527,15 @@ function freeAct(n,id){                                                 // find 
         if(O.shared)continue;
         if(m.want===k||(O.owner===A.owner&&(A.solo||O.solo))){taken=true;break;}}   // someone lying on a sofa takes the whole sofa
       if(taken)continue;}
-    const dist=Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);
+    const dist=type==='patrol'?rnd(0,40):Math.hypot(A.ap[0]-n.pos.x,A.ap[1]-n.pos.z);   // patrol points are picked at random
     const s=(A.pref||0)*100+(n.visitor&&type==='exit'?dist:-dist);        // a bed beats a sofa; otherwise the nearest one. Visitors leave by the far end, so they walk the whole street
     if(s>bs){bs=s;best=k;}}
   return best;
 }
 function utility(n,id){
   const g=GOALS[id];
+  if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
+  if(id==='patrol'||id==='catch')return -1;
   if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
@@ -1521,6 +1566,8 @@ function brain(n,dt){
   if(doing&&G.need){g.elapsed+=dh;n.need[G.need]=Math.min(1,n.need[G.need]+G.gain*dh);
     if(G.also)n.need[G.also]=Math.min(1,n.need[G.also]+G.gain*.5*dh);}
   if(n.react)return;                                                    // finish reacting before deciding anything
+  if(n.guard){for(const k in n.need)n.need[k]=.8;n.cool.patrol=0;           // never tired, never bored
+    if(heat>0&&g.id!=='catch'){setGoal(n,'catch');return;}if(heat===0&&g.id==='catch'){endGoal(n,false);return;}if(g.id==='catch')return;}
   if(n.visitor&&g.id!=='work'){n.stay-=dh;                                // visitors go home after a while, or when night falls, or when it rains
     if(n.stay<=0||dark>.75||rainOn){n.o.shift=[(clock+23.9)%24,(clock+rnd(.8,2.5)+dark*6)%24];n.resume=null;setGoal(n,'work');return;}}
   if(g.id!=='work'&&inSpan(n.o.shift,clock)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
@@ -1535,6 +1582,7 @@ function react(n,say,t,pose,after){n.react={say,t,pose,after};}
 function notify(n,type,b){
   if(n.hidden||!n.goal)return;
   if(talkN===n&&type!=='greet')closeTalk();
+  if(n.guard&&(type==='hit'||type==='car')){react(n,'嘿！不可以這樣！',1.5,'glare');if(type==='car'||(b&&b.kickBy==='你'))addRep(-1);return;}
   const now=performance.now()/1000,g=n.goal;
   if(type!=='greet'&&(n.react||now<n.calmAt))return;
   n.calmAt=now+1.2;
@@ -1573,7 +1621,8 @@ const moodFace=n=>n.mood>.62?'😊':n.mood>.38?'😐':'😠';
 function sched(n){return n.want;}
 function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
-people.forEach((n,i)=>{const H=houses[n.home];if(H)n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);else n.pos.set(i%2?WB.x1:WB.x0,0,i%3?5:14);       // start from home so 'nearest spot' means something
+people.forEach((n,i)=>{const H=houses[n.home];if(n.guard){setGoal(n,'patrol');const A=ACT[n.want];n.act=n.want;n.pos.set(A.ap[0],0,A.ap[1]);n.phase='at';n.root.position.set(A.ap[0],n.stand,A.ap[1]);return;}
+  if(H)n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);else n.pos.set(i%2?WB.x1:WB.x0,0,i%3?5:14);       // start from home so 'nearest spot' means something
   setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
@@ -1615,7 +1664,9 @@ function updNPC(n,dt,t){
     if(Math.hypot(ap[0]-n.pos.x,ap[1]-n.pos.z)<.06&&Math.abs(n.y-n.stand)<.05){n.act=want;begin(n);}
   }else if(n.phase==='go'){
     label='要去'+A.label;n.atCurb=false;
-    if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
+    if(A.catch){label='來找你';n.repath-=dt;                               // the patrol officer walking up to you
+      if(dP<1.5){n.path=[];if(heat>0)fine(n);}else if(n.repath<=0){n.repath=.7;n.path=findPath(n.pos.x,n.pos.z,pos.x,pos.z)||[];}}
+    else if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
       if(bd<.45&&basket.p.y<.5&&n.kickCd<=0){const J=2.2;                     // foot pushes ball; ball pushes foot
         const rc=roomAt(basket.p.x,basket.p.z)||rooms[0],cxr=basket.p.x-rc.cx,czr=basket.p.z-rc.cz,cl=Math.hypot(cxr,czr)||1,kx=bx/bd*.4-cxr/cl*.6+rnd(-.3,.3),kz=bz/bd*.4-czr/cl*.6+rnd(-.3,.3),kl=Math.hypot(kx,kz)||1; // aim back toward the middle of the room
@@ -1628,9 +1679,9 @@ function updNPC(n,dt,t){
       else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
         if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
       else{if(dP>.9){n.wait=0;n.said=false;}
-        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=rainOn&&!roomAt(n.pos.x,n.pos.z)?1.7:1,stp=1.15*hurry*dt;
+        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=rainOn&&!roomAt(n.pos.x,n.pos.z)?1.7:1,stp=1.15*hurry*(n.guard&&heat?1.25+.3*heat:1)*dt;
         n.atCurb=carDanger(n,q);
-        if(n.atCurb){label='等車子過';tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
+        if(n.atCurb){label=n.waitWhy;tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
         else{if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
           name='walk';n.ph+=dt*7.2*hurry;}}
     }else if(!A.chase){n.phase='in';n.settle=0;}
@@ -1865,8 +1916,9 @@ scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.env
 // things that stand outside take much more of their light from the sky
 [M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
 M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
+if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,talk,get q(){return{cash,rep,drinks,stam,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,get heat(){return heat;},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
