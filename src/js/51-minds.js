@@ -15,15 +15,16 @@ const GOALS={                                                           // type 
   plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25},
   bench:{label:'去公園坐坐',type:'bench',need:'calm',gain:.9,dur:.5,outside:true},
   stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true},
+  shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'}
 };
 const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
-  const type=GOALS[id].type;let best=null,bs=-1e9;
+  const type=id==='work'&&n.o.job?'serve':GOALS[id].type;let best=null,bs=-1e9;   // someone with a job on the street works there instead of leaving
   for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
-    if(A.house!=null&&A.house!==n.home)continue;                         // other people's houses are off limits
+    if(A.house!=null&&A.house!==n.home&&!A.pub&&type!=='serve')continue;                         // other people's houses are off limits
     if(!A.shared){let taken=!!seat&&seat.k===k;                           // you might be sitting there
       for(const m of people){if(m===n||!m.want)continue;const O=ACT[m.want];
         if(O.shared)continue;
@@ -43,7 +44,8 @@ function utility(n,id){
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}                                        // few people go out after dark
+  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}
+  if(id==='shop'&&!shopOpen())return -1;                                  // nobody behind the counter: closed                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
 }

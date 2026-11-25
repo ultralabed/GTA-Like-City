@@ -1,6 +1,6 @@
 /* ---------- furniture prefabs ---------- */
 // Every number in here is measured from the furniture's own middle (or from the wall it hangs on).
-PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase,catch:o.catch,hide:o.hide,shared:o.shared}]});
+PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase,catch:o.catch,hide:o.hide,shared:o.shared,pub:o.pub}]});
 
 PREFAB.rug=o=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(o.w||2.5,o.d||3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
 
@@ -138,6 +138,23 @@ PREFAB.item=o=>{const g=new THREE.Group();g.position.y=o.y||0;cur.add(g);const p
   if(o.kind==='flashlight'){cyl(.022,.028,.17,M.steel,0,.03,0,12).rotation.x=Math.PI/2;cyl(.036,.03,.04,M.brass,0,.03,.1,12).rotation.x=Math.PI/2;}
   else{cyl(.035,.05,.78,M.teal,0,.43,0,10);cyl(.009,.009,.96,M.black,0,.5,0,6);}
   cur=pv;return{marks:[{kind:'item',x:0,z:0,item:o.kind,mesh:g}]};
+};
+
+// shop counter with a till. The shopkeeper stands behind it (at -z) facing the customers (+z). Click the till to buy.
+PREFAB.counter=()=>{
+  box(2.4,.95,.6,M.walnut,0,.475,0,{r:.02});box(2.5,.05,.7,M.ceramic,0,.975,0);
+  const till=box(.42,.3,.36,M.black,-.6,1.15,0,{r:.03});box(.3,.16,.02,M.teal,-.6,1.36,.1,{rz:0});
+  till.userData={tip:'點一下：買東西',act:shopMenu};interact.push(till);
+  [.2,.55,.9].forEach((x,i)=>cyl(.05,.05,.16,[M.teal,M.brass,M.coral][i],x,1.08,.05,10));
+  return{solid:[[-1.25,1.25,-.35,.35]],boxes:[[-1.2,1.2,0,1,-.3,.3]],
+    spots:[{type:'serve',ap:[0,-.8],yaw:0,pose:'window',label:'顧店'}]};
+};
+// a low double-sided shelf of goods. People stand in front of it to look.
+PREFAB.rack=()=>{
+  box(1.6,1.2,.5,M.trim,0,.6,0);
+  for(let s=0;s<3;s++)for(let i=0;i<7;i++)[-1,1].forEach(k=>box(.16,rnd(.14,.24),.14,new THREE.MeshStandardMaterial({color:bookCols[Math.floor(rnd(0,8))],roughness:.6}),-.66+i*.22,.2+s*.4,k*.2));
+  const look=(x,z,yaw)=>({type:'browse',ap:[x,z],yaw,pose:'read',label:'逛商店',pub:true});
+  return{solid:[[-.82,.82,-.27,.27]],boxes:[[-.8,.8,0,1.2,-.25,.25]],spots:[look(-.3,.75,Math.PI),look(.3,-.75,0)]};
 };
 
 /* ----- things that stand outside ----- */

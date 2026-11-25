@@ -64,3 +64,16 @@ function talk(n){
   if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>3.4){say('太遠了，走近一點再跟'+n.o.name+'說話。');return;}
   showTalk(n,rep<=-4?'我不想跟你說話。你最近太誇張了。':n.mood>.6?'嗨！有什麼事嗎？':n.mood>.38?'嗯？':'…什麼事？');
 }
+// --- the shop ---
+const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella]];
+function shopMenu(line){
+  const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
+  const h=document.createElement('strong');h.textContent='夕陽商店';const p=document.createElement('p');el.append(h,p);
+  const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
+  if(!shopOpen()){p.textContent='店員不在，現在沒辦法結帳。小芳早上 9 點到晚上 8 點顧店。';add('好',()=>{el.hidden=true;});return;}
+  p.textContent=line||'歡迎光臨！你有 $'+cash+'。想買什麼？';
+  for(const G of GOODS){if(G[3]&&G[3]())continue;add(G[0]+' $'+G[1],()=>{if(cash<G[1]){shopMenu('錢不夠喔。'+G[0]+'要 $'+G[1]+'，你只有 $'+cash+'。');return;}
+    cash-=G[1];G[2]();sfxCoin();actKey='';shopMenu('謝謝！'+G[0]+'給你。你還有 $'+cash+'。');});}
+  add('不買了',()=>{el.hidden=true;});
+}

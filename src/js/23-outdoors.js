@@ -5,7 +5,7 @@
   M.grass.map.repeat.set(160,160);
   flat(LEN,S.z1-S.z0,M.asphalt,0,-.02,mid,4);                                                  // the road
   flat(LEN,S.walk,M.concrete,0,-.012,S.z0-S.walk/2,1.5);flat(LEN,S.walk,M.concrete,0,-.012,S.z1+S.walk/2,1.5);   // sidewalks
-  for(let x=-58;x<=62;x+=4)flat(1.7,.14,M.paint,x,-.008,mid);                                  // centre dashes
+  for(let x=-110;x<=110;x+=4)flat(1.7,.14,M.paint,x,-.008,mid);                                  // centre dashes
   [S.z0+.25,S.z1-.25].forEach(z=>flat(LEN,.1,M.paint,0,-.008,z));                              // edge lines
   for(let i=0;i<7;i++)flat(.5,S.z1-S.z0-.9,M.paint,1.9-3+i,-.008,mid);                         // zebra crossing in front of number 1
   for(const H of houses)if(H.front){const f=H.front,edge=f.dz>0?S.z0-S.walk:S.z1+S.walk,len=Math.abs(edge-f.z);   // garden path from each front door

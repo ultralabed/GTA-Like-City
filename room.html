@@ -336,7 +336,24 @@ const TEMPLATES={
       {kind:'beach',x:-1.6,z:1.3},{kind:'bowl',x:2.3,z:.4},
       {kind:'tennis',x:-1.9,z:-.6},{kind:'tennis',x:-1.7,z:-.95},{kind:'tennis',x:-.85,y:.445,z:.75},
       {kind:'orb',x:2.55,z:1.3}
-    ]}
+    ]},
+  // a little shop: one big room with a counter, shelves and a wide front window
+  shop:{
+    rooms:[
+      {id:'shop',name:'店裡',x:0,z:0,w:7,d:6,
+        walls:{
+          north:{mat:'wall'},east:{mat:'sage'},west:{mat:'sage'},
+          south:{mat:'wall',open:[{kind:'door',c:-2.3,half:.5,y1:2.1,front:true},{kind:'window',c:1,half:1.7,y0:.6,y1:2.3}]}},
+        furniture:[
+          {type:'counter',x:1.6,z:-1.7},
+          {type:'bookshelf',x:-3.5,z:-1.6,rot:2},{type:'bookshelf',x:-3.5,z:.2,rot:2},
+          {type:'rack',x:-.6,z:.3},{type:'rack',x:1.4,z:1.2},
+          {type:'lampCorner',x:2.5,z:-2.5},
+          {type:'art',x:-1,z:-3,seed:0,rot:2},
+          {type:'item',kind:'umbrella',x:-2.9,z:2.6}
+        ]}
+    ],
+    balls:[]}
 };
 // a person: looks, working hours (shift, or null for none), bedtime, and character
 const person=(name,h,skin,hair,top,bottom,shoe,long,shift,bed,patience,playful,w)=>({name,h,skin,hair,top,bottom,shoe,long,shift,bed,patience,playful,w});
@@ -344,10 +361,10 @@ const WORLD={
   name:'夕陽街',
   h:2.8,                                                           // ceiling height, same in every room
   clock:17.4,
-  bounds:{x0:-24,x1:28,z0:-9,z1:26},                               // as far as anyone can walk
+  bounds:{x0:-38,x1:45,z0:-9,z1:26},                               // as far as anyone can walk
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
-  rides:[{kind:'car',x:-20,z:2.4,h:-Math.PI/2},{kind:'bike',x:.2,z:3.3,h:-Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
+  rides:[{kind:'car',x:-34,z:2.4,h:-Math.PI/2},{kind:'bike',x:.2,z:3.3,h:-Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
   lots:[
     {no:1,tpl:'cottage',x:0,z:0,ext:0xe9dccb,accent:0x1c4a50,roof:0x3a3140,door:0xd9623f,balls:'all',people:[
       person('小美',1.64,0xe8b996,0x2a1a16,0xd9623f,0xe9dfcf,0xf4f0e8,true,[9,17],[22,8],.8,.4,{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}),
@@ -361,7 +378,16 @@ const WORLD={
       person('大衛',1.82,0xb87f5a,0x1a1412,0xb5533a,0x3a3a3a,0x151515,false,[7,16],[22,6],.6,.6,{energy:1,fun:1,fit:1.3,calm:.8,care:.8}),
       person('莉莉',1.66,0xf2d0b4,0x7a4a22,0x7fb8a6,0xf0e8dc,0xd9623f,true,[13,21],[0,9],.7,.5,{energy:1,fun:1.1,fit:.9,calm:1,care:1.1})]},
     {no:4,tpl:'cottage',x:10,z:19,flip:true,ext:0xe6dfc8,accent:0x5a4a2a,roof:0x3d3630,door:0x7a3b4a,balls:'few',people:[
-      person('阿明',1.74,0xcf9a72,0x241a14,0x3b4a7a,0x6a5a48,0x2a2420,false,[10,19],[23,8],.45,.7,{energy:1,fun:1.1,fit:1,calm:.9,care:.9})]}
+      person('阿明',1.74,0xcf9a72,0x241a14,0x3b4a7a,0x6a5a48,0x2a2420,false,[10,19],[23,8],.45,.7,{energy:1,fun:1.1,fit:1,calm:.9,care:.9})]},
+    {no:7,tpl:'cottage',x:-27,z:0,ext:0xdfe6cf,accent:0x2a5a3a,roof:0x35382c,door:0x7a2c5a,balls:'few',people:[
+      person('阿豪',1.76,0xbf8a62,0x1c1410,0xe0a45c,0x2a2a30,0x101010,false,[8,17],[23,7],.5,.75,{energy:1,fun:1.2,fit:1.2,calm:.8,care:.7}),
+      person('佩佩',1.6,0xf0c9aa,0x3a2016,0xb5a0d9,0xe8e0d0,0x7a2c5a,true,[10,18],[23,8],.8,.5,{energy:1,fun:1,fit:.8,calm:1.2,care:1.2})]},
+    {no:9,tpl:'cottage',x:27,z:0,ext:0xf0dcc8,accent:0x6a3a2a,roof:0x3a2f2a,door:0x2a5a3a,balls:'few',people:[
+      Object.assign(person('小芳',1.62,0xeec3a2,0x2a1810,0xff8a5c,0x2b3a67,0xffffff,true,[9,20],[23,7],.85,.5,{energy:1,fun:1,fit:.8,calm:1.1,care:1.1}),{job:'shop'})]},   // 小芳 works in the shop instead of leaving the street
+    {no:6,tpl:'cottage',x:-18,z:19,flip:true,ext:0xcfd8e6,accent:0x5a2a3a,roof:0x2c3038,door:0xe0a45c,balls:'few',people:[
+      person('志明',1.72,0xc99a74,0x16120f,0x5a7a4a,0x3a3028,0x1a1a1a,false,[9,18],[23,7],.6,.6,{energy:1,fun:1.1,fit:1,calm:.9,care:.8}),
+      person('春嬌',1.58,0xf2ceb0,0x4a2a18,0xd9623f,0x34405a,0xf4f0e8,true,[14,22],[1,9],.7,.6,{energy:1,fun:1.2,fit:.9,calm:1,care:1})]},
+    {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
   visitors:[
@@ -373,22 +399,22 @@ const WORLD={
   guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
   outdoor:[
     // trees
-    {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:24.5,z:2.5,s:1.15},
-    {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:-18.5,z:18.5,s:1.2},{type:'tree',x:4.4,z:15.7,s:.85},
+    {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:36.6,z:2.8,s:1.15},{type:'tree',x:-35.8,z:-2.5,s:1.1},{type:'tree',x:40.5,z:-3,s:.9},
+    {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:-29.5,z:18.5,s:1.2},{type:'tree',x:-33,z:22,s:.95},{type:'tree',x:41.5,z:17,s:1},{type:'tree',x:4.4,z:15.7,s:.85},
     {type:'tree',x:17,z:19.5,s:1.1},{type:'tree',x:21.5,z:23},{type:'tree',x:25.5,z:17.5,s:.9},{type:'tree',x:25,z:22,s:1.2},
     // street lamps: their arm reaches over the road
-    {type:'streetLamp',x:-18,z:5.8},{type:'streetLamp',x:-6,z:5.8},{type:'streetLamp',x:6,z:5.8},{type:'streetLamp',x:18,z:5.8},
-    {type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
+    {type:'streetLamp',x:-30,z:5.8},{type:'streetLamp',x:30,z:5.8},{type:'streetLamp',x:42,z:5.8},{type:'streetLamp',x:-18,z:5.8},{type:'streetLamp',x:-6,z:5.8},{type:'streetLamp',x:6,z:5.8},{type:'streetLamp',x:18,z:5.8},
+    {type:'streetLamp',x:-36,z:13.2,rot:2},{type:'streetLamp',x:-24,z:13.2,rot:2},{type:'streetLamp',x:36,z:13.2,rot:2},{type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
     // the little park
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // where people leave for work and come back
-    {type:'spot',kind:'exit',x:-23.2,z:5,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
-    {type:'spot',kind:'exit',x:27.2,z:5,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
-    {type:'spot',kind:'exit',x:-23.2,z:14,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
-    {type:'spot',kind:'exit',x:27.2,z:14,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:-37.2,z:5,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:44.2,z:5,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:-37.2,z:14,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:44.2,z:14,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
     // where the patrol officer walks to
-    {type:'spot',kind:'patrol',x:-16,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:14,z:5,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},
+    {type:'spot',kind:'patrol',x:-31,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:38,z:14.3,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:-16,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:14,z:5,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},
     {type:'spot',kind:'patrol',x:-14,z:14,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:20,z:14.4,yaw:0,pose:'window',shared:true,label:'巡邏'},
     {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     // places to walk to
@@ -477,7 +503,7 @@ function place(item,R){
 
 /* ---------- furniture prefabs ---------- */
 // Every number in here is measured from the furniture's own middle (or from the wall it hangs on).
-PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase,catch:o.catch,hide:o.hide,shared:o.shared}]});
+PREFAB.spot=o=>({spots:[{type:o.kind,ap:[0,0],yaw:o.yaw,pose:o.pose,label:o.label,chase:o.chase,catch:o.catch,hide:o.hide,shared:o.shared,pub:o.pub}]});
 
 PREFAB.rug=o=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(o.w||2.5,o.d||3.1),M.rug);m.rotation.x=-Math.PI/2;m.position.y=.008;m.receiveShadow=true;cur.add(m);};
 
@@ -617,6 +643,23 @@ PREFAB.item=o=>{const g=new THREE.Group();g.position.y=o.y||0;cur.add(g);const p
   cur=pv;return{marks:[{kind:'item',x:0,z:0,item:o.kind,mesh:g}]};
 };
 
+// shop counter with a till. The shopkeeper stands behind it (at -z) facing the customers (+z). Click the till to buy.
+PREFAB.counter=()=>{
+  box(2.4,.95,.6,M.walnut,0,.475,0,{r:.02});box(2.5,.05,.7,M.ceramic,0,.975,0);
+  const till=box(.42,.3,.36,M.black,-.6,1.15,0,{r:.03});box(.3,.16,.02,M.teal,-.6,1.36,.1,{rz:0});
+  till.userData={tip:'點一下：買東西',act:shopMenu};interact.push(till);
+  [.2,.55,.9].forEach((x,i)=>cyl(.05,.05,.16,[M.teal,M.brass,M.coral][i],x,1.08,.05,10));
+  return{solid:[[-1.25,1.25,-.35,.35]],boxes:[[-1.2,1.2,0,1,-.3,.3]],
+    spots:[{type:'serve',ap:[0,-.8],yaw:0,pose:'window',label:'顧店'}]};
+};
+// a low double-sided shelf of goods. People stand in front of it to look.
+PREFAB.rack=()=>{
+  box(1.6,1.2,.5,M.trim,0,.6,0);
+  for(let s=0;s<3;s++)for(let i=0;i<7;i++)[-1,1].forEach(k=>box(.16,rnd(.14,.24),.14,new THREE.MeshStandardMaterial({color:bookCols[Math.floor(rnd(0,8))],roughness:.6}),-.66+i*.22,.2+s*.4,k*.2));
+  const look=(x,z,yaw)=>({type:'browse',ap:[x,z],yaw,pose:'read',label:'逛商店',pub:true});
+  return{solid:[[-.82,.82,-.27,.27]],boxes:[[-.8,.8,0,1.2,-.25,.25]],spots:[look(-.3,.75,Math.PI),look(.3,-.75,0)]};
+};
+
 /* ----- things that stand outside ----- */
 const icoG=new THREE.IcosahedronGeometry(1,1);
 PREFAB.tree=o=>{const s=o.s||1;
@@ -746,7 +789,7 @@ function updateDoors(dt){
   M.grass.map.repeat.set(160,160);
   flat(LEN,S.z1-S.z0,M.asphalt,0,-.02,mid,4);                                                  // the road
   flat(LEN,S.walk,M.concrete,0,-.012,S.z0-S.walk/2,1.5);flat(LEN,S.walk,M.concrete,0,-.012,S.z1+S.walk/2,1.5);   // sidewalks
-  for(let x=-58;x<=62;x+=4)flat(1.7,.14,M.paint,x,-.008,mid);                                  // centre dashes
+  for(let x=-110;x<=110;x+=4)flat(1.7,.14,M.paint,x,-.008,mid);                                  // centre dashes
   [S.z0+.25,S.z1-.25].forEach(z=>flat(LEN,.1,M.paint,0,-.008,z));                              // edge lines
   for(let i=0;i<7;i++)flat(.5,S.z1-S.z0-.9,M.paint,1.9-3+i,-.008,mid);                         // zebra crossing in front of number 1
   for(const H of houses)if(H.front){const f=H.front,edge=f.dz>0?S.z0-S.walk:S.z1+S.walk,len=Math.abs(edge-f.z);   // garden path from each front door
@@ -1061,7 +1104,7 @@ function updateCars(dt){
   updateSignal(performance.now()/1000);
   for(const c of cars){
     if(!c.on){c.t-=dt;
-      if(c.t<=0){const sx=-c.dir*85;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<14)){c.t=2;continue;}
+      if(c.t<=0){const sx=-c.dir*105;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<14)){c.t=2;continue;}
         c.on=true;c.x=sx;c.v=CAR_SPEED;c.g.visible=true;}
       continue;}
     const front=c.x+c.dir*2.1;let gap=1e9;
@@ -1075,7 +1118,7 @@ function updateCars(dt){
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;
     if(c.v<.2&&gap<4){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
     c.honk-=dt;
-    if(c.x*c.dir>85){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
+    if(c.x*c.dir>105){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
     c.g.position.set(c.x,0,c.z);for(const w of c.wheels)w.rotation.z-=c.v*dt/.33;
     c.box[0]=c.x-2.15;c.box[1]=c.x+2.15;c.box[2]=c.z-.92;c.box[3]=c.z+.92;
     carLights(c,want<c.v-.5);
@@ -1149,7 +1192,8 @@ function takeItem(it){it.taken=true;it.mesh.visible=false;
   bag[it.item]=true;say('你拿到了'+ITEM[it.item].name+'，放進背包了。按右下角的「'+ITEM[it.item].name+'」來用它。');actKey='';}
 // the phone map: the whole street from above
 function drawMap(){
-  const c=$('mapc'),g=c.getContext('2d'),k=c.width/(WB.x1-WB.x0),X=x=>(x-WB.x0)*k,Y=z=>(z-WB.z0)*k,S=WORLD.street;
+  const c=$('mapc'),hh=Math.round(c.width*(WB.z1-WB.z0)/(WB.x1-WB.x0));if(c.height!==hh)c.height=hh;
+  const g=c.getContext('2d'),k=c.width/(WB.x1-WB.x0),X=x=>(x-WB.x0)*k,Y=z=>(z-WB.z0)*k,S=WORLD.street;
   g.fillStyle='#3d5a34';g.fillRect(0,0,c.width,c.height);
   g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WB.z0+1.2));g.fillStyle='#cdbb92';g.fillRect(0,Y(WB.z0+1.2),c.width,k*1.2);
   g.fillStyle='#9b958c';g.fillRect(0,Y(S.z0-S.walk),c.width,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(0,Y(S.z0),c.width,k*(S.z1-S.z0));
@@ -1404,6 +1448,19 @@ function talk(n){
   if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>3.4){say('太遠了，走近一點再跟'+n.o.name+'說話。');return;}
   showTalk(n,rep<=-4?'我不想跟你說話。你最近太誇張了。':n.mood>.6?'嗨！有什麼事嗎？':n.mood>.38?'嗯？':'…什麼事？');
 }
+// --- the shop ---
+const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella]];
+function shopMenu(line){
+  const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
+  const h=document.createElement('strong');h.textContent='夕陽商店';const p=document.createElement('p');el.append(h,p);
+  const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
+  if(!shopOpen()){p.textContent='店員不在，現在沒辦法結帳。小芳早上 9 點到晚上 8 點顧店。';add('好',()=>{el.hidden=true;});return;}
+  p.textContent=line||'歡迎光臨！你有 $'+cash+'。想買什麼？';
+  for(const G of GOODS){if(G[3]&&G[3]())continue;add(G[0]+' $'+G[1],()=>{if(cash<G[1]){shopMenu('錢不夠喔。'+G[0]+'要 $'+G[1]+'，你只有 $'+cash+'。');return;}
+    cash-=G[1];G[2]();sfxCoin();actKey='';shopMenu('謝謝！'+G[0]+'給你。你還有 $'+cash+'。');});}
+  add('不買了',()=>{el.hidden=true;});
+}
 
 /* ---------- people who live here ---------- */
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
@@ -1437,7 +1494,7 @@ function findPath(x0,z0,x1,z1){
   const si=nearestFree(cellX(x0),cellZ(z0)),ei=nearestFree(cellX(x1),cellZ(z1));if(si<0||ei<0)return null;
   const ex=ei%GW,ez=ei/GW|0,no=++searchNo;hf.length=0;hi.length=0;
   gs[si]=0;mark[si]=no;from[si]=-1;hpush(0,si);let found=si===ei,guard=0;
-  while(hf.length&&guard++<160000){const cur=hpop();if(cur===ei){found=true;break;}if(shut[cur]===no)continue;shut[cur]=no;
+  while(hf.length&&guard++<600000){const cur=hpop();if(cur===ei){found=true;break;}if(shut[cur]===no)continue;shut[cur]=no;
     const ci=cur%GW,cj=cur/GW|0;
     for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){if(!di&&!dj)continue;const ni=ci+di,nj=cj+dj;if(ni<0||nj<0||ni>=GW||nj>=GH)continue;
       const n=nj*GW+ni;if(grid[n]||shut[n]===no)continue;if(di&&dj&&(grid[cj*GW+ni]||grid[nj*GW+ci]))continue;
@@ -1505,15 +1562,16 @@ const GOALS={                                                           // type 
   plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25},
   bench:{label:'去公園坐坐',type:'bench',need:'calm',gain:.9,dur:.5,outside:true},
   stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true},
+  shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'}
 };
 const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
-  const type=GOALS[id].type;let best=null,bs=-1e9;
+  const type=id==='work'&&n.o.job?'serve':GOALS[id].type;let best=null,bs=-1e9;   // someone with a job on the street works there instead of leaving
   for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
-    if(A.house!=null&&A.house!==n.home)continue;                         // other people's houses are off limits
+    if(A.house!=null&&A.house!==n.home&&!A.pub&&type!=='serve')continue;                         // other people's houses are off limits
     if(!A.shared){let taken=!!seat&&seat.k===k;                           // you might be sitting there
       for(const m of people){if(m===n||!m.want)continue;const O=ACT[m.want];
         if(O.shared)continue;
@@ -1533,7 +1591,8 @@ function utility(n,id){
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}                                        // few people go out after dark
+  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}
+  if(id==='shop'&&!shopOpen())return -1;                                  // nobody behind the counter: closed                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
 }

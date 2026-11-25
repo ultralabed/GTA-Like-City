@@ -35,7 +35,8 @@ function takeItem(it){it.taken=true;it.mesh.visible=false;
   bag[it.item]=true;say('你拿到了'+ITEM[it.item].name+'，放進背包了。按右下角的「'+ITEM[it.item].name+'」來用它。');actKey='';}
 // the phone map: the whole street from above
 function drawMap(){
-  const c=$('mapc'),g=c.getContext('2d'),k=c.width/(WB.x1-WB.x0),X=x=>(x-WB.x0)*k,Y=z=>(z-WB.z0)*k,S=WORLD.street;
+  const c=$('mapc'),hh=Math.round(c.width*(WB.z1-WB.z0)/(WB.x1-WB.x0));if(c.height!==hh)c.height=hh;
+  const g=c.getContext('2d'),k=c.width/(WB.x1-WB.x0),X=x=>(x-WB.x0)*k,Y=z=>(z-WB.z0)*k,S=WORLD.street;
   g.fillStyle='#3d5a34';g.fillRect(0,0,c.width,c.height);
   g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WB.z0+1.2));g.fillStyle='#cdbb92';g.fillRect(0,Y(WB.z0+1.2),c.width,k*1.2);
   g.fillStyle='#9b958c';g.fillRect(0,Y(S.z0-S.walk),c.width,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(0,Y(S.z0),c.width,k*(S.z1-S.z0));

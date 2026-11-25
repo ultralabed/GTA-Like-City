@@ -59,7 +59,24 @@ const TEMPLATES={
       {kind:'beach',x:-1.6,z:1.3},{kind:'bowl',x:2.3,z:.4},
       {kind:'tennis',x:-1.9,z:-.6},{kind:'tennis',x:-1.7,z:-.95},{kind:'tennis',x:-.85,y:.445,z:.75},
       {kind:'orb',x:2.55,z:1.3}
-    ]}
+    ]},
+  // a little shop: one big room with a counter, shelves and a wide front window
+  shop:{
+    rooms:[
+      {id:'shop',name:'店裡',x:0,z:0,w:7,d:6,
+        walls:{
+          north:{mat:'wall'},east:{mat:'sage'},west:{mat:'sage'},
+          south:{mat:'wall',open:[{kind:'door',c:-2.3,half:.5,y1:2.1,front:true},{kind:'window',c:1,half:1.7,y0:.6,y1:2.3}]}},
+        furniture:[
+          {type:'counter',x:1.6,z:-1.7},
+          {type:'bookshelf',x:-3.5,z:-1.6,rot:2},{type:'bookshelf',x:-3.5,z:.2,rot:2},
+          {type:'rack',x:-.6,z:.3},{type:'rack',x:1.4,z:1.2},
+          {type:'lampCorner',x:2.5,z:-2.5},
+          {type:'art',x:-1,z:-3,seed:0,rot:2},
+          {type:'item',kind:'umbrella',x:-2.9,z:2.6}
+        ]}
+    ],
+    balls:[]}
 };
 // a person: looks, working hours (shift, or null for none), bedtime, and character
 const person=(name,h,skin,hair,top,bottom,shoe,long,shift,bed,patience,playful,w)=>({name,h,skin,hair,top,bottom,shoe,long,shift,bed,patience,playful,w});
@@ -67,10 +84,10 @@ const WORLD={
   name:'夕陽街',
   h:2.8,                                                           // ceiling height, same in every room
   clock:17.4,
-  bounds:{x0:-24,x1:28,z0:-9,z1:26},                               // as far as anyone can walk
+  bounds:{x0:-38,x1:45,z0:-9,z1:26},                               // as far as anyone can walk
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
-  rides:[{kind:'car',x:-20,z:2.4,h:-Math.PI/2},{kind:'bike',x:.2,z:3.3,h:-Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
+  rides:[{kind:'car',x:-34,z:2.4,h:-Math.PI/2},{kind:'bike',x:.2,z:3.3,h:-Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
   lots:[
     {no:1,tpl:'cottage',x:0,z:0,ext:0xe9dccb,accent:0x1c4a50,roof:0x3a3140,door:0xd9623f,balls:'all',people:[
       person('小美',1.64,0xe8b996,0x2a1a16,0xd9623f,0xe9dfcf,0xf4f0e8,true,[9,17],[22,8],.8,.4,{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}),
@@ -84,7 +101,16 @@ const WORLD={
       person('大衛',1.82,0xb87f5a,0x1a1412,0xb5533a,0x3a3a3a,0x151515,false,[7,16],[22,6],.6,.6,{energy:1,fun:1,fit:1.3,calm:.8,care:.8}),
       person('莉莉',1.66,0xf2d0b4,0x7a4a22,0x7fb8a6,0xf0e8dc,0xd9623f,true,[13,21],[0,9],.7,.5,{energy:1,fun:1.1,fit:.9,calm:1,care:1.1})]},
     {no:4,tpl:'cottage',x:10,z:19,flip:true,ext:0xe6dfc8,accent:0x5a4a2a,roof:0x3d3630,door:0x7a3b4a,balls:'few',people:[
-      person('阿明',1.74,0xcf9a72,0x241a14,0x3b4a7a,0x6a5a48,0x2a2420,false,[10,19],[23,8],.45,.7,{energy:1,fun:1.1,fit:1,calm:.9,care:.9})]}
+      person('阿明',1.74,0xcf9a72,0x241a14,0x3b4a7a,0x6a5a48,0x2a2420,false,[10,19],[23,8],.45,.7,{energy:1,fun:1.1,fit:1,calm:.9,care:.9})]},
+    {no:7,tpl:'cottage',x:-27,z:0,ext:0xdfe6cf,accent:0x2a5a3a,roof:0x35382c,door:0x7a2c5a,balls:'few',people:[
+      person('阿豪',1.76,0xbf8a62,0x1c1410,0xe0a45c,0x2a2a30,0x101010,false,[8,17],[23,7],.5,.75,{energy:1,fun:1.2,fit:1.2,calm:.8,care:.7}),
+      person('佩佩',1.6,0xf0c9aa,0x3a2016,0xb5a0d9,0xe8e0d0,0x7a2c5a,true,[10,18],[23,8],.8,.5,{energy:1,fun:1,fit:.8,calm:1.2,care:1.2})]},
+    {no:9,tpl:'cottage',x:27,z:0,ext:0xf0dcc8,accent:0x6a3a2a,roof:0x3a2f2a,door:0x2a5a3a,balls:'few',people:[
+      Object.assign(person('小芳',1.62,0xeec3a2,0x2a1810,0xff8a5c,0x2b3a67,0xffffff,true,[9,20],[23,7],.85,.5,{energy:1,fun:1,fit:.8,calm:1.1,care:1.1}),{job:'shop'})]},   // 小芳 works in the shop instead of leaving the street
+    {no:6,tpl:'cottage',x:-18,z:19,flip:true,ext:0xcfd8e6,accent:0x5a2a3a,roof:0x2c3038,door:0xe0a45c,balls:'few',people:[
+      person('志明',1.72,0xc99a74,0x16120f,0x5a7a4a,0x3a3028,0x1a1a1a,false,[9,18],[23,7],.6,.6,{energy:1,fun:1.1,fit:1,calm:.9,care:.8}),
+      person('春嬌',1.58,0xf2ceb0,0x4a2a18,0xd9623f,0x34405a,0xf4f0e8,true,[14,22],[1,9],.7,.6,{energy:1,fun:1.2,fit:.9,calm:1,care:1})]},
+    {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
   visitors:[
@@ -96,22 +122,22 @@ const WORLD={
   guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
   outdoor:[
     // trees
-    {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:24.5,z:2.5,s:1.15},
-    {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:-18.5,z:18.5,s:1.2},{type:'tree',x:4.4,z:15.7,s:.85},
+    {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:36.6,z:2.8,s:1.15},{type:'tree',x:-35.8,z:-2.5,s:1.1},{type:'tree',x:40.5,z:-3,s:.9},
+    {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:-29.5,z:18.5,s:1.2},{type:'tree',x:-33,z:22,s:.95},{type:'tree',x:41.5,z:17,s:1},{type:'tree',x:4.4,z:15.7,s:.85},
     {type:'tree',x:17,z:19.5,s:1.1},{type:'tree',x:21.5,z:23},{type:'tree',x:25.5,z:17.5,s:.9},{type:'tree',x:25,z:22,s:1.2},
     // street lamps: their arm reaches over the road
-    {type:'streetLamp',x:-18,z:5.8},{type:'streetLamp',x:-6,z:5.8},{type:'streetLamp',x:6,z:5.8},{type:'streetLamp',x:18,z:5.8},
-    {type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
+    {type:'streetLamp',x:-30,z:5.8},{type:'streetLamp',x:30,z:5.8},{type:'streetLamp',x:42,z:5.8},{type:'streetLamp',x:-18,z:5.8},{type:'streetLamp',x:-6,z:5.8},{type:'streetLamp',x:6,z:5.8},{type:'streetLamp',x:18,z:5.8},
+    {type:'streetLamp',x:-36,z:13.2,rot:2},{type:'streetLamp',x:-24,z:13.2,rot:2},{type:'streetLamp',x:36,z:13.2,rot:2},{type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
     // the little park
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // where people leave for work and come back
-    {type:'spot',kind:'exit',x:-23.2,z:5,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
-    {type:'spot',kind:'exit',x:27.2,z:5,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
-    {type:'spot',kind:'exit',x:-23.2,z:14,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
-    {type:'spot',kind:'exit',x:27.2,z:14,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:-37.2,z:5,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:44.2,z:5,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:-37.2,z:14,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
+    {type:'spot',kind:'exit',x:44.2,z:14,yaw:Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
     // where the patrol officer walks to
-    {type:'spot',kind:'patrol',x:-16,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:14,z:5,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},
+    {type:'spot',kind:'patrol',x:-31,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:38,z:14.3,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:-16,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:14,z:5,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},
     {type:'spot',kind:'patrol',x:-14,z:14,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:20,z:14.4,yaw:0,pose:'window',shared:true,label:'巡邏'},
     {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     // places to walk to

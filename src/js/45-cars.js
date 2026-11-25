@@ -52,7 +52,7 @@ function updateCars(dt){
   updateSignal(performance.now()/1000);
   for(const c of cars){
     if(!c.on){c.t-=dt;
-      if(c.t<=0){const sx=-c.dir*85;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<14)){c.t=2;continue;}
+      if(c.t<=0){const sx=-c.dir*105;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<14)){c.t=2;continue;}
         c.on=true;c.x=sx;c.v=CAR_SPEED;c.g.visible=true;}
       continue;}
     const front=c.x+c.dir*2.1;let gap=1e9;
@@ -66,7 +66,7 @@ function updateCars(dt){
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;
     if(c.v<.2&&gap<4){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
     c.honk-=dt;
-    if(c.x*c.dir>85){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
+    if(c.x*c.dir>105){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
     c.g.position.set(c.x,0,c.z);for(const w of c.wheels)w.rotation.z-=c.v*dt/.33;
     c.box[0]=c.x-2.15;c.box[1]=c.x+2.15;c.box[2]=c.z-.92;c.box[3]=c.z+.92;
     carLights(c,want<c.v-.5);
