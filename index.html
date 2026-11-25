@@ -377,7 +377,7 @@ const WORLD={
   shore:-12.5,                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
-  rides:[{kind:'car',x:-1.2,z:3.65,h:0},{kind:'bike',x:3.3,z:3.3,h:-Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
+  rides:[{kind:'car',x:-1.2,z:3.65,h:0},{kind:'bike',x:3.3,z:3.3,h:-Math.PI/2},{kind:'moto',x:-9.4,z:15.7,h:Math.PI/2}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
   lots:[
     {no:1,tpl:'cottage',x:0,z:0,ext:0xe9dccb,accent:0x1c4a50,roof:0x3a3140,door:0xd9623f,balls:'all',people:[
       person('小美',1.64,0xe8b996,0x2a1a16,0xd9623f,0xe9dfcf,0xf4f0e8,true,[9,17],[22,8],.8,.4,{energy:1,fun:.9,fit:.7,calm:1.2,care:1.2}),
@@ -1271,7 +1271,7 @@ function drawMap(){
     g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
   for(const c2 of cars)if(c2.on&&c2.x>WB.x0&&c2.x<WB.x1){g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(c2.x)-k*c2.hl,Y(c2.z)-k*c2.hw,k*c2.hl*2,k*c2.hw*2);}
-  for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
+  for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
   if(quest&&quest.type==='ride'&&quest.in){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(quest.dest[1]),Y(quest.dest[2]),k*2.2,0,7);g.stroke();}
@@ -1315,12 +1315,15 @@ function standUp(){if(!seat)return;if(seat.lie){speedIdx=napSpeed<0?1:napSpeed;$
 // For bumping into things, a vehicle is a row of circles (pts = where along its length, R = how big).
 const SPEC={
   car:{name:'車',verb:'開車',max:13,acc:5.5,rev:4,turn:1.5,pts:[1.15,-1.15],R:.95,back:6.4,up:3.2,mass:1200,len:2.4,exit:1.75},
+  moto:{name:'機車',verb:'騎車',max:16,acc:7.5,rev:1.5,turn:2.1,pts:[.5,-.5],R:.4,back:5,up:2.5,mass:180,len:1,exit:.9},
   bike:{name:'腳踏車',verb:'騎車',max:6.5,acc:3.6,rev:1.5,turn:2.6,pts:[.42,-.42],R:.36,back:4.4,up:2.3,mass:95,len:.9,exit:.85}
 };
-function bikeMesh(){
+function bikeMesh(moto){
   const g=new THREE.Group();scene.add(g);cur=g;
-  const paint=new THREE.MeshStandardMaterial({color:0xff5fa8,roughness:.4,metalness:.5});
-  const wheels=[-.52,.52].map(x=>{const w=wheel(.34,.045,x,0);w.front=x>0;return w;});
+  const paint=new THREE.MeshStandardMaterial({color:moto?0x2a8fb0:0xff5fa8,roughness:.4,metalness:.5});
+  const wheels=[-.52,.52].map(x=>{const w=wheel(moto?.3:.34,moto?.14:.045,x*(moto?1.25:1),0);w.front=x>0;return w;});
+  if(moto){box(.75,.3,.26,paint,-.05,.55,0,{r:.08});box(.5,.1,.28,M.black,-.3,.82,0,{r:.04});box(.3,.26,.2,M.steel,.05,.35,0,{r:.04});   // tank, seat, engine
+    const lamp=new THREE.MeshBasicMaterial({color:0x222222});box(.05,.12,.16,lamp,.68,.86,0).castShadow=false;g.userData.lamp=lamp;}
   box(.95,.045,.045,paint,0,.66,0);box(.045,.5,.045,paint,-.25,.62,0);box(.6,.045,.045,paint,-.05,.42,0,{rz:.5});
   box(.045,.66,.045,paint,.5,.66,0,{rz:.18});box(.045,.045,.52,M.steel,.44,.98,0);box(.26,.05,.15,M.black,-.27,.9,0,{r:.02});
   // a simple rider, only shown while you ride
@@ -1332,7 +1335,7 @@ function bikeMesh(){
   rider.visible=false;cur=scene;g.rotation.order='YXZ';
   return{g,wheels,rider};
 }
-const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):bikeMesh();          // your car is the yellow one
+const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):bikeMesh(o.kind==='moto');          // your car is the yellow one
   m.g.rotation.order='YXZ';m.g.position.set(o.x,0,o.z);m.g.rotation.y=o.h;
   if(o.kind==='car'){cur=scene;const along=Math.abs(Math.cos(o.h))>.5;flat(along?5.6:2.8,along?2.8:5.6,M.concrete,o.x,-.011,o.z,1.4);}   // a parking pad under it
   return Object.assign(m,{kind:o.kind,S:SPEC[o.kind],x:o.x,z:o.z,h:o.h,v:0,bumped:0});});
@@ -1349,7 +1352,7 @@ function rideHit(r,x,z,h){
 }
 function nearRide(){let best=null,bd=1e9;for(const r of rides){const d=Math.hypot(r.x-pos.x,r.z-pos.z)-r.S.R;if(d<2&&d<bd){bd=d;best=r;}}return best;}
 function getIn(){const r=nearRide();if(!r||ride)return;putDown();standUp();ride=r;r.v=0;vel.x=vel.z=0;jumpY=jumpV=0;if(r.rider)r.rider.visible=true;showItems();
-  say(r.kind==='car'?'你上車了。W 或往前推是油門，S 是煞車和倒車，A D 是方向盤。':'你騎上腳踏車了。W 踩踏板，S 煞車，A D 轉彎。腳踏車可以騎上人行道。');}
+  say(r.kind==='car'?'你上車了。W 或往前推是油門，S 是煞車和倒車，A D 是方向盤。':r.kind==='moto'?'你騎上機車了。W 催油門，S 煞車，A D 轉彎。它比車子還快，小心騎。':'你騎上腳踏車了。W 踩踏板，S 煞車，A D 轉彎。腳踏車可以騎上人行道。');}
 function getOut(){const r=ride;if(!r)return;if(Math.abs(r.v)>1.5){say('先停下來再下車。');return;}
   const fx=Math.cos(r.h),fz=-Math.sin(r.h);ride=null;                                          // (blocked() treats the vehicle as parked from here on)
   for(const side of[1,-1]){const x=r.x+fz*r.S.exit*side,z=r.z-fx*r.S.exit*side;                 // try the left side, then the right
@@ -1366,7 +1369,8 @@ function rideStep(dt,f,s){
     else{if(Math.abs(r.v)>2.5&&r.bumped<=0){r.bumped=1;sfxBump();say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
   pos.x=r.x;pos.z=r.z;
   r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;spinWheels(r,r.v,dt,st);
-  if(r.kind==='bike')r.g.rotation.x+=(-st*Math.min(1,Math.abs(r.v)/S.max)*.38*Math.sign(r.v||1)-r.g.rotation.x)*(1-Math.exp(-dt*6));   // lean into the turn
+  if(r.g.userData.lamp){const k=Math.max(0,Math.min(1,(dark-.2)/.4));r.g.userData.lamp.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);}
+  if(r.kind!=='car')r.g.rotation.x+=(-st*Math.min(1,Math.abs(r.v)/S.max)*.38*Math.sign(r.v||1)-r.g.rotation.x)*(1-Math.exp(-dt*6));   // lean into the turn
   // the camera follows behind and above
   const fx=Math.cos(r.h),fz=-Math.sin(r.h);
   camGoal.set(r.x-fx*S.back,S.up,r.z-fz*S.back);camera.position.lerp(camGoal,1-Math.exp(-dt*5));
@@ -1410,7 +1414,7 @@ function updateActs(){
   const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock;
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='run'?(runLock?'跑步中':'跑'):id==='in'?(nr.kind==='car'?'上車':'騎腳踏車'):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='run'?(runLock?'跑步中':'跑'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
@@ -1462,7 +1466,7 @@ function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
   rainG.gain.setTargetAtTime(soundOn?rain*(roomAt(pos.x,pos.z)?.04:.15):0,t,.3);                     // quieter indoors
   let ev=0,ef=50;
-  if(ride&&ride.kind==='car'){ev=.04+Math.min(.07,Math.abs(ride.v)*.006);ef=48+Math.abs(ride.v)*11;}
+  if(ride&&ride.kind!=='bike'){const m=ride.kind==='moto'?1.8:1;ev=.04+Math.min(.07,Math.abs(ride.v)*.006);ef=(48+Math.abs(ride.v)*11)*m;}   // a motorbike buzzes higher than a car
   else{let best=30,bc=null;for(const c of cars)if(c.on){const d=Math.hypot(c.x-pos.x,c.z-pos.z);if(d<best){best=d;bc=c;}}
     if(bc){ev=.055*(1-best/30)*(roomAt(pos.x,pos.z)?.3:1);ef=50+bc.v*9;}}                             // the nearest passing car
   engG.gain.setTargetAtTime(soundOn?ev:0,t,.12);engO.frequency.setTargetAtTime(ef,t,.12);

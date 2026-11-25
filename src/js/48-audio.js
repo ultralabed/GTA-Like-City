@@ -31,7 +31,7 @@ function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
   rainG.gain.setTargetAtTime(soundOn?rain*(roomAt(pos.x,pos.z)?.04:.15):0,t,.3);                     // quieter indoors
   let ev=0,ef=50;
-  if(ride&&ride.kind==='car'){ev=.04+Math.min(.07,Math.abs(ride.v)*.006);ef=48+Math.abs(ride.v)*11;}
+  if(ride&&ride.kind!=='bike'){const m=ride.kind==='moto'?1.8:1;ev=.04+Math.min(.07,Math.abs(ride.v)*.006);ef=(48+Math.abs(ride.v)*11)*m;}   // a motorbike buzzes higher than a car
   else{let best=30,bc=null;for(const c of cars)if(c.on){const d=Math.hypot(c.x-pos.x,c.z-pos.z);if(d<best){best=d;bc=c;}}
     if(bc){ev=.055*(1-best/30)*(roomAt(pos.x,pos.z)?.3:1);ef=50+bc.v*9;}}                             // the nearest passing car
   engG.gain.setTargetAtTime(soundOn?ev:0,t,.12);engO.frequency.setTargetAtTime(ef,t,.12);
