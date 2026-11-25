@@ -21,8 +21,22 @@ function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
 [0xc4553b,0x1f6a6e,0xe9e2d6,0x3b4a7a].forEach((col,i)=>{
   const lane=i%2,dir=lane?1:-1,m=carMesh(col);m.g.rotation.y=dir>0?0:Math.PI;m.g.visible=false;
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
-  cars.push(Object.assign(m,{dir,z:lane?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0]}));
+  cars.push(Object.assign(m,{dir,z:lane?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92}));
 });
+// two buses, one each way. People going to work wait at the stop and get on; people coming home get off.
+function busMesh(col){const g=new THREE.Group();scene.add(g);cur=g;
+  const paint=new THREE.MeshStandardMaterial({color:col,roughness:.4,metalness:.3});
+  box(7,2.1,2.3,paint,0,1.45,0,{r:.14});box(7.02,.75,2.32,carGlass,0,1.9,0,{r:.1});box(7.04,.16,2.34,paint,0,2.45,0,{r:.05});
+  const wheels=[[-2.3,-1.05],[-2.3,1.05],[2.3,-1.05],[2.3,1.05]].map(p=>{const w=cyl(.45,.45,.28,carTyre,p[0],.45,p[1],16);w.rotation.x=Math.PI/2;return w;});
+  const headMat=new THREE.MeshBasicMaterial({color:0x222222}),tailMat=new THREE.MeshBasicMaterial({color:0x330000});
+  [-.8,.8].forEach(z=>{box(.06,.16,.4,headMat,3.52,.8,z).castShadow=false;box(.06,.14,.4,tailMat,-3.52,.85,z).castShadow=false;});
+  const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
+  beam.rotation.x=-Math.PI/2;beam.position.set(7,.02,0);g.add(beam);cur=scene;return{g,wheels,headMat,tailMat,beam};}
+const BUS_STOP={'-1':-25.3,'1':18.5};   // where the front of each bus ends up, so its middle is level with the stop                                         // where each direction's bus stops (x along the street)
+[-1,1].forEach((dir,i)=>{const m=busMesh(0xe8a23a);m.g.rotation.y=dir>0?0:Math.PI;m.g.visible=false;
+  const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
+  cars.push(Object.assign(m,{dir,z:dir>0?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:6+i*9,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,stopX:BUS_STOP[dir],dwell:0,served:false}));});
+const busAt=dir=>cars.some(c=>c.bus&&c.dir===dir&&c.on&&c.dwell>0);
 // --- the traffic light at the zebra crossing ---
 // One clock runs it: cars get green, then yellow, then red while the walkers get their green figure.
 let sigCars='g',sigWalk=false;const SIG={r:new THREE.MeshBasicMaterial(),y:new THREE.MeshBasicMaterial(),g:new THREE.MeshBasicMaterial(),walk:new THREE.MeshBasicMaterial(),stop:new THREE.MeshBasicMaterial()};
@@ -52,24 +66,27 @@ function updateCars(dt){
   updateSignal(performance.now()/1000);
   for(const c of cars){
     if(!c.on){c.t-=dt;
-      if(c.t<=0){const sx=-c.dir*105;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<14)){c.t=2;continue;}
-        c.on=true;c.x=sx;c.v=CAR_SPEED;c.g.visible=true;}
+      if(c.t<=0){const sx=-c.dir*105;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<20)){c.t=2;continue;}
+        c.on=true;c.x=sx;c.v=CAR_SPEED;c.g.visible=true;c.served=false;c.dwell=0;}
       continue;}
-    const front=c.x+c.dir*2.1;let gap=1e9;
+    const front=c.x+c.dir*c.hl;let gap=1e9;
     const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
     see(pos.x-(ride?c.dir*ride.S.len:0),pos.z);                                   // you, or the back of the car you are driving
     for(const d of pets)see(d.x,d.z);                                              // drivers stop for the dog too
     for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);    }
     if(sigCars!=='g'){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;                    // red or yellow light: stop at the line (on yellow only if there is room to stop gently)
       if(d>(sigCars==='y'?5:-.6)&&d<gap)gap=d;}
-    for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*2.1-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
+    for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*o.hl-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
+    if(c.bus){const d=(c.stopX-front)*c.dir;                                          // a bus pulls up at its stop, waits with the doors open, then goes on
+      if(c.dwell>0){c.dwell-=dt;gap=0;}
+      else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=6;c.served=true;sfxDoor(c.x,c.z);}}}
     const want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;
-    if(c.v<.2&&gap<4){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
+    if(c.v<.2&&gap<4&&!(c.dwell>0)){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
     c.honk-=dt;
-    if(c.x*c.dir>105){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=rnd(5,16)*(1+dark*1.5);continue;}
+    if(c.x*c.dir>105){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.bus?rnd(14,26):rnd(5,16)*(1+dark*1.5);continue;}
     c.g.position.set(c.x,0,c.z);for(const w of c.wheels)w.rotation.z-=c.v*dt/.33;
-    c.box[0]=c.x-2.15;c.box[1]=c.x+2.15;c.box[2]=c.z-.92;c.box[3]=c.z+.92;
+    c.box[0]=c.x-c.hl-.05;c.box[1]=c.x+c.hl+.05;c.box[2]=c.z-c.hw;c.box[3]=c.z+c.hw;
     carLights(c,want<c.v-.5);
     c.tag.hidden=c.honk<=0;
     if(c.honk>0){cv3.set(c.x,2,c.z).project(camera);if(cv3.z<1){c.tag.style.left=((cv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-cv3.y)/2*canvas.clientHeight)+'px';}else c.tag.hidden=true;}

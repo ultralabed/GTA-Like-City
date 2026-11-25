@@ -200,3 +200,11 @@ PREFAB.stall=()=>{
     return{type:'eat',ap:[x,.95],an:[x,.58,.25],yaw:Math.PI,pose:'eat',label:'在小吃攤吃東西',pub:true};};
   return{solid:[[-1.15,1.15,-1,-.2],[-.7,-.3,.05,.45],[.3,.7,.05,.45]],boxes:[[-1.1,1.1,0,.95,-.95,-.25],[-1.3,1.3,2.25,2.35,-1.2,.3]],spots:[seat(-.5),seat(.5)]};
 };
+// bus stop: a sign, a little shelter and a bench. People wait in front of it (+z, toward the road).
+PREFAB.busStop=o=>{
+  cyl(.04,.05,2.6,M.steel,-1.5,1.3,.3,8);box(.5,.5,.04,M.teal,-1.5,2.4,.3);box(.3,.12,.045,M.trim,-1.5,2.4,.3);
+  [-1,1].forEach(x=>cyl(.04,.04,2.3,M.steel,x,1.15,-.5,8));box(2.5,.06,1.2,M.teal,0,2.32,-.1);box(2.3,1.3,.03,M.glass,0,1.35,-.52,{shadow:false});
+  box(1.8,.06,.4,M.walnut,0,.45,-.3);[-.75,.75].forEach(x=>box(.06,.45,.36,M.steel,x,.225,-.3));
+  return{solid:[[-1.05,1.05,-.6,-.1],[-1.6,-1.4,.2,.4]],boxes:[[-.95,.95,0,.5,-.5,-.1],[-1.3,1.3,2.28,2.36,-.7,.5]],
+    spots:[{type:'exit',ap:[0,.55],yaw:0,pose:'idle',hide:true,shared:true,bus:o.dir,label:'搭公車'}]};
+};

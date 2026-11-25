@@ -161,7 +161,7 @@ function updNPC(n,dt,t){
   brain(n,dt);
   const want=sched(n);
   if(want!==n.act){
-    if(n.hidden){n.hidden=false;n.root.visible=true;n.act=want;begin(n);}
+    if(n.hidden){if(!ACT[n.act].bus||busAt(ACT[n.act].bus)){n.hidden=false;n.root.visible=true;n.act=want;begin(n);}}   // people who left by bus come back when a bus pulls in
     else if(n.phase==='go'){n.act=want;begin(n);}
     else if(n.phase!=='exit'){n.phase='exit';n.from=ACT[n.act];}
   }
@@ -201,9 +201,11 @@ function updNPC(n,dt,t){
           name='walk';n.ph+=dt*7.2*hurry;}}
     }else if(!A.chase){n.phase='in';n.settle=0;}
   }else{                                                  // settle in, then stay
-    const q=A.an||[A.ap[0],n.stand,A.ap[1]];
+    const q=A.an||[A.ap[0]+(A.bus?((people.indexOf(n)%5)-2)*.55:0),n.stand,A.ap[1]];             // people at a bus stop spread out along the kerb
     n.pos.x+=(q[0]-n.pos.x)*k4;n.pos.z+=(q[2]-n.pos.z)*k4;ty=q[1];tyaw=A.yaw||0;name=A.pose;lie=!!A.lie;n.settle+=dt;
-    if(n.phase==='in'&&n.settle>1){n.phase='at';if(A.hide){n.hidden=true;n.root.visible=false;n.tag.hidden=true;return;}}
+    if(n.phase==='in'&&n.settle>1)n.phase='at';
+    if(A.bus)label='等公車';
+    if(n.phase==='at'&&A.hide&&(!A.bus||busAt(A.bus))){n.hidden=true;n.root.visible=false;n.tag.hidden=true;return;}   // gets on when the bus has stopped
   }
   n.lie=lie;n.sit=name==='sit'||name==='eat';
   n.vx=(n.pos.x-ox)/dt;n.vz=(n.pos.z-oz)/dt;

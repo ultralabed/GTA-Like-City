@@ -24,7 +24,11 @@ const pv3=new THREE.Vector3();
 function updatePets(dt,t){
   for(const d of pets){
     const night=dark>.8,S=WORLD.street;d.think-=dt;d.rest-=dt;d.happy-=dt;
+    if(d.carry){const b=d.carry;b.p.set(d.x+Math.cos(d.h)*.45,.5,d.z-Math.sin(d.h)*.45);b.v.set(0,0,0);b.mesh.position.copy(b.p);
+      if(Math.hypot(pos.x-d.x,pos.z-d.z)<1.7||ride||b===held){b.held=b===held;b.kickBy=d.name;d.carry=null;d.happy=2;d.rest=3;bark(d);say('小黃把'+b.name+'撿回來給你了！');}}
     if(d.think<=0){d.think=.6;let tx=d.home[0],tz=d.home[1],near=.4;d.mood=night?'睡覺 💤':'在門口等';d.tgt=null;
+      if(d.carry){tx=pos.x;tz=pos.z;near=1.4;d.mood='把球撿回來給你';d.near=near;d.path=findPath(d.x,d.z,tx,tz)||[];}
+      else
       if(!night){
         let ball=null,bd=9;if(d.rest<=0)for(const b of bodies){if(b.held||roomAt(b.p.x,b.p.z)||b.m>3)continue;const q=Math.hypot(b.p.x-d.x,b.p.z-d.z),sp=Math.hypot(b.v.x,b.v.z);if(q<bd&&(sp>.5||q<3.5)){bd=q;ball=b;}}
         const o=d.owner,pd=Math.hypot(pos.x-d.x,pos.z-d.z);
@@ -43,7 +47,8 @@ function updatePets(dt,t){
         moving=true;d.ph+=dt*run*5;}}
     if(!moving){d.vx=d.vz=0;}
     if(d.tgt){const b=d.tgt,q=Math.hypot(b.p.x-d.x,b.p.z-d.z);
-      if(q<.55&&b.p.y<.6){const kx=Math.cos(d.h),kz=-Math.sin(d.h);b.v.x+=kx*3;b.v.z+=kz*3;b.v.y+=1.5;b.kickBy=d.name;d.tgt=null;d.think=.9;if(Math.random()<.5)bark(d);}}   // nose-bumps the ball onward
+      if(q<.55&&b.p.y<.6&&b.kickBy==='你'&&performance.now()/1000-b.kickAt<40&&!ride){d.carry=b;b.held=true;d.tgt=null;d.think=0;bark(d);}   // you threw it: he brings it back
+      else if(q<.55&&b.p.y<.6){const kx=Math.cos(d.h),kz=-Math.sin(d.h);b.v.x+=kx*3;b.v.z+=kz*3;b.v.y+=1.5;b.kickBy=d.name;d.tgt=null;d.think=.9;if(Math.random()<.5)bark(d);}}   // nose-bumps the ball onward
     const lie=night&&!moving?1:0;d.lie+=(lie-d.lie)*(1-Math.exp(-dt*4));
     d.g.position.set(d.x,-.2*d.lie+(moving?Math.abs(Math.sin(d.ph))*.03:0)+(d.happy>0?Math.abs(Math.sin(t*10))*.08:0),d.z);d.g.rotation.y=d.h;
     d.legs.forEach((L,i)=>{L.rotation.z=moving?Math.sin(d.ph+(i%3?Math.PI:0))*.6:d.lie*1.2*(i<2?-1:1);});
