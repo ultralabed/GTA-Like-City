@@ -200,17 +200,20 @@ function rideStep(dt,f,s){
 // --- fishing: stand at the water's edge, cast, wait for a bite, then pull in time ---
 let fish=null,fishBag=0,fishCount=0;
 const bobber=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),new THREE.MeshBasicMaterial({color:0xff5533}));bobber.visible=false;scene.add(bobber);
-const atShore=()=>!ride&&!seat&&pos.z<WORLD.shore+2.2&&pos.z>WORLD.shore-3&&inTown(pos.x,pos.z,0);
+const onBoat=()=>!!ride&&!!ride.S.water&&Math.abs(ride.v)<.8;
+const atShore=()=>onBoat()||!ride&&!seat&&pos.z<WORLD.shore+2.2&&pos.z>WORLD.shore-3&&inTown(pos.x,pos.z,0);
 function fishing(){
+  if(!fish&&onBoat()){const r=ride;fish={x:r.x+Math.sin(r.h)*3.2,z:r.z+Math.cos(r.h)*3.2,t:0,at:rnd(3,8),bite:false,px:pos.x,pz:pos.z,deep:r.z<WORLD.shore-25};
+    say('你從船上把釣線甩出去了。'+(fish.deep?'這裡離岸邊很遠，水很深，比較容易釣到大魚。':'')+'船一開走就會收線。');noise(.2,1200,.8,.15);actKey='';return;}
   if(!fish){if(!atShore())return;camera.getWorldDirection(camDir);const fx=camDir.x,fz=Math.min(-.3,camDir.z),L=Math.hypot(fx,fz);
     fish={x:pos.x+fx/L*4.5,z:Math.min(WORLD.shore-1.5,pos.z+fz/L*4.5),t:0,at:rnd(4,11),bite:false,px:pos.x,pz:pos.z};say('你把釣線甩出去了。等浮標沉下去，再按「拉！」。走開就會收線。');noise(.2,1200,.8,.15);return;}
-  if(fish.bite){const r=Math.random(),c=r<.12?['一隻舊鞋子',0]:r<.6?['一條小魚',8]:r<.9?['一條鯛魚',15]:['一條大魚',30];fishBag+=c[1];fishCount++;fish=null;sfxCoin();
+  if(fish.bite){const r=Math.random()+(fish.deep?.3:0),c=r<.12?['一隻舊鞋子',0]:r<.6?['一條小魚',8]:r<.9?['一條鯛魚',15]:r<1.2?['一條大魚',30]:['一條超大的鮪魚',60];fishBag+=c[1];fishCount++;fish=null;sfxCoin();
     say('釣到'+c[0]+'了！'+(c[1]?'值 $'+c[1]+'，拿去夕陽商店可以賣掉（現在魚簍裡共值 $'+fishBag+'）。':'沒人要買這個。'));}
   else{fish=null;say('太早拉了，魚還沒咬。');}
   actKey='';}
 function fishStep(dt,t){
   bobber.visible=!!fish;if(!fish)return;
-  if(Math.hypot(pos.x-fish.px,pos.z-fish.pz)>1.2||ride){fish=null;actKey='';say('你收線了。');return;}
+  if(Math.hypot(pos.x-fish.px,pos.z-fish.pz)>1.2||(ride&&!ride.S.water)){fish=null;actKey='';say('你收線了。');return;}
   fish.t+=dt;const was=fish.bite;fish.bite=fish.t>fish.at&&fish.t<fish.at+1.7;
   if(fish.bite&&!was){actKey='';noise(.25,700,.7,.3);say('有魚咬了！快按「拉！」');}
   if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10);say('魚跑掉了。再等一下。');}
@@ -291,7 +294,7 @@ function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
   const nbus=nearBus();
   if(onBus)list.push('off');
-  else if(ride){list.push('out','horn');if(atPump()&&ride.fuel<.98)list.push('fuel');if(ride.kind==='car')list.push('radio');}
+  else if(ride){list.push('out','horn');if(fish||onBoat())list.push('fish');if(atPump()&&ride.fuel<.98)list.push('fuel');if(ride.kind==='car')list.push('radio');}
   else{if(nbus)list.push('bus');else if(canHail())list.push('taxi');if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
