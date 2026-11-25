@@ -10,12 +10,12 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),third,outfit,day,fishBag,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
   if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;
-  (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
+  (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
 function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100)+(heat?'　'+'★'.repeat(heat):'');
@@ -23,7 +23,7 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
   rideQuest();parcelQuest();dogQuest();
-  $('speed').hidden=!ride;if(ride)$('speed').textContent=Math.round(Math.abs(ride.v)*3.6)+' km/h';
+  $('speed').hidden=!ride;if(ride)$('speed').textContent=Math.round(Math.abs(ride.v)*3.6)+' km/h'+(ride.S.tank?'　油 '+Math.round(ride.fuel*100)+'%'+(ride.fuel<=.15?' ⚠':''):'');
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
 let swimNote=0;

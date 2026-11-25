@@ -94,8 +94,8 @@ function standUp(){if(!seat)return;if(seat.lie){speedIdx=napSpeed<0?1:napSpeed;$
 // --- riding: a car and a bicycle ---
 // For bumping into things, a vehicle is a row of circles (pts = where along its length, R = how big).
 const SPEC={
-  car:{name:'車',verb:'開車',max:13,acc:5.5,rev:4,turn:1.5,pts:[1.15,-1.15],R:.95,back:6.4,up:3.2,mass:1200,len:2.4,exit:1.75},
-  moto:{name:'機車',verb:'騎車',max:16,acc:7.5,rev:1.5,turn:2.1,pts:[.5,-.5],R:.4,back:5,up:2.5,mass:180,len:1,exit:.9},
+  car:{name:'車',verb:'開車',tank:900,full:40,max:13,acc:5.5,rev:4,turn:1.5,pts:[1.15,-1.15],R:.95,back:6.4,up:3.2,mass:1200,len:2.4,exit:1.75},
+  moto:{name:'機車',verb:'騎車',tank:1300,full:20,max:16,acc:7.5,rev:1.5,turn:2.1,pts:[.5,-.5],R:.4,back:5,up:2.5,mass:180,len:1,exit:.9},
   bike:{name:'腳踏車',verb:'騎車',max:6.5,acc:3.6,rev:1.5,turn:2.6,pts:[.42,-.42],R:.36,back:4.4,up:2.3,mass:95,len:.9,exit:.85}
 };
 function bikeMesh(moto){
@@ -118,7 +118,7 @@ function bikeMesh(moto){
 const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):bikeMesh(o.kind==='moto');          // your car is the yellow one
   m.g.rotation.order='YXZ';m.g.position.set(o.x,0,o.z);m.g.rotation.y=o.h;
   if(o.kind==='car'){cur=scene;const along=Math.abs(Math.cos(o.h))>.5;flat(along?5.6:2.8,along?2.8:5.6,M.concrete,o.x,-.011,o.z,1.4);}   // a parking pad under it
-  return Object.assign(m,{kind:o.kind,S:SPEC[o.kind],x:o.x,z:o.z,h:o.h,v:0,bumped:0});});
+  return Object.assign(m,{kind:o.kind,S:SPEC[o.kind],x:o.x,z:o.z,h:o.h,v:0,bumped:0,fuel:o.kind==='car'?.5:.7});});
 function rideHit(r,x,z,h){
   const fx=Math.cos(h),fz=-Math.sin(h),R=r.S.R;
   for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k;
@@ -147,7 +147,11 @@ function horn(){const r=ride;if(!r)return;const now=performance.now()/1000;if(no
     if(d<9&&d>.1&&(dx*fx+dz*fz)/d>.55&&!roomAt(n.pos.x,n.pos.z))notify(n,'honk',r);}
   for(const d of pets)if(Math.hypot(d.x-r.x,d.z-r.z)<10)bark(d);}
 function rideStep(dt,f,s){
-  const r=ride,S=r.S,a=Math.max(-1,Math.min(1,f)),st=-Math.max(-1,Math.min(1,s));
+  const r=ride,S=r.S;let a=Math.max(-1,Math.min(1,f));
+  if(S.tank){const was=r.fuel;r.fuel=Math.max(0,r.fuel-Math.abs(r.v)*dt/S.tank);                 // engines drink petrol as they go; the bicycle runs on you
+    if(was>.15&&r.fuel<=.15)say('油快沒了！大馬路南邊、公園西邊有加油機（綠色的），把'+S.name+'停在旁邊加油。');
+    if(r.fuel<=0){if(was>0)say('沒油了。'+S.name+'沒有油就沒有力氣，只能慢慢滑到停下來。可以下車用走的，或推到加油機旁邊。');if(a>0)a=Math.min(a,.12);}}
+  const st=-Math.max(-1,Math.min(1,s));
   r.v+=a*(a*r.v<0?14:a>0?S.acc:S.rev*.9)*dt;r.v*=Math.exp(-.5*dt);r.v=Math.max(-S.rev,Math.min(S.max,r.v));
   if(Math.abs(a)<.05&&Math.abs(r.v)<.2)r.v=0;
   const nh=r.h+st*Math.max(-1,Math.min(1,r.v/4))*S.turn*dt,nx=r.x+Math.cos(nh)*r.v*dt,nz=r.z-Math.sin(nh)*r.v*dt;
@@ -222,6 +226,16 @@ function taxiMenu(line){const c=onBus,el=$('talk');el.hidden=false;el.textConten
       say('司機：「好，去'+D[0]+'。」車錢 $'+fare+(ahead?'':'。那個地方在後面，計程車會先開到街尾掉頭')+'。');});}
   add('不坐了',()=>{el.hidden=true;leaveBus();});}
 let taxiTrips=0;
+// --- petrol: stop beside the pump and fill up; you pay for what goes in ---
+const PUMP=WORLD.outdoor.find(o=>o.type==='pump');
+function atPump(){const r=ride;return!!r&&!!r.S.tank&&Math.abs(r.v)<.6&&Math.hypot(r.x-PUMP.x,r.z-PUMP.z)<5;}
+function refuel(){const r=ride||rides.find(q=>q.S.tank&&Math.hypot(q.x-PUMP.x,q.z-PUMP.z)<5);
+  if(!r||!r.S.tank||Math.hypot(r.x-PUMP.x,r.z-PUMP.z)>=5){say('要先把車子或機車停在加油機旁邊（5 公尺內）才能加油。');return;}
+  if(Math.abs(r.v)>=.6){say('先停好再加油。');return;}
+  const need=1-r.fuel,cost=Math.ceil(need*r.S.full);if(cost<1){say(r.S.name+'的油是滿的。');return;}
+  if(cash<1){say('你沒有錢加油。先去做任務賺錢吧。');return;}
+  const pay=Math.min(cost,cash);r.fuel=Math.min(1,r.fuel+pay/r.S.full);cash-=pay;sfxCoin();actKey='';
+  say(pay<cost?'你的錢只夠加一部分：花了 $'+pay+'，'+r.S.name+'的油現在 '+Math.round(r.fuel*100)+'%。':'加滿了！花了 $'+pay+'。');}
 // --- one step of you. Returns true when it has already placed the camera (riding or sitting) ---
 function playerStep(dt,f,s){
   const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
@@ -237,12 +251,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T'};
+const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T',fuel:'C'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],off:['',leaveBus]};
+const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],fuel:['加油',refuel],off:['',leaveBus]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -251,7 +265,7 @@ function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
   const nbus=nearBus();
   if(onBus)list.push('off');
-  else if(ride){list.push('out','horn');if(ride.kind==='car')list.push('radio');}
+  else if(ride){list.push('out','horn');if(atPump()&&ride.fuel<.98)list.push('fuel');if(ride.kind==='car')list.push('radio');}
   else{if(nbus)list.push('bus');else if(canHail())list.push('taxi');if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
@@ -278,6 +292,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
   else if(e.code==='KeyH')horn();
+  else if(e.code==='KeyC'){if(atPump())refuel();}
   else if(e.code==='KeyT'){if(!ride&&!onBus)hail();}
   else if(e.code==='KeyG')fishing();
   else if(e.code==='KeyR'&&ride&&ride.kind==='car')nextRadio();

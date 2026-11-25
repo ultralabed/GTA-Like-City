@@ -147,6 +147,7 @@ const WORLD={
     {type:'streetLamp',x:-36,z:13.2,rot:2},{type:'streetLamp',x:-24,z:13.2,rot:2},{type:'streetLamp',x:36,z:13.2,rot:2},{type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
     // the little park
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
+    {type:'pump',x:28,z:13.5,rot:2},                                    // the petrol pump: stop your car beside it
     {type:'stall',x:23.5,z:16.2,rot:2},{type:'hoop',x:19.2,z:23.4,rot:2},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // bus stops: where people leave for work and come back

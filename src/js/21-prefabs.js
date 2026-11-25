@@ -183,6 +183,13 @@ PREFAB.bench=()=>{
   return{solid:[[-.78,.78,-.28,.25]],boxes:[[-.75,.75,0,.48,-.23,.23],[-.75,.75,.48,.98,-.26,-.19]],spots:[sit(-.38),sit(.38)]};
 };
 // drinks machine. The front faces +z; click it to buy.
+PREFAB.pump=()=>{
+  box(.9,.12,.6,M.concrete,0,.06,0);box(.6,1.5,.4,M.teal,0,.87,0,{r:.04});box(.66,.2,.46,M.ceramic,0,1.7,0,{r:.04});
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(.4,.3),new THREE.MeshBasicMaterial({color:0xfff0c0}));scr.position.set(0,1.25,.205);cur.add(scr);
+  box(.06,.5,.06,M.black,.34,.9,.1);cyl(.03,.03,.3,M.steel,.34,1.2,.1,8);
+  scr.userData={tip:'點一下：加油（要先把車停在旁邊）',act:()=>refuel()};interact.push(scr);
+  return{solid:[[-.4,.4,-.28,.28]],boxes:[[-.3,.3,0,1.8,-.2,.2]]};
+};
 PREFAB.vending=()=>{
   box(1,1.9,.7,M.coral,0,.95,0,{r:.03});
   const front=new THREE.Mesh(new THREE.PlaneGeometry(.8,1.1),new THREE.MeshBasicMaterial({color:0xbfe8ff}));front.position.set(0,1.2,.356);cur.add(front);
