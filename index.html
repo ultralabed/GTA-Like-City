@@ -1008,6 +1008,7 @@ const lin=h=>new THREE.Color(h).convertSRGBToLinear();
 const SKY={top:[lin(0x02030a),lin(0x24184f),lin(0x1f5fc4)],mid:[lin(0x0a1034),lin(0xe3507a),lin(0x8cc4f0)],hor:[lin(0x2a1d55),lin(0xffb870),lin(0xdff0fb)],
   city:[lin(0x070515),lin(0x2a163f),lin(0x8fa2bf)],sea:[lin(0x0a1230),lin(0xb85a78),lin(0x2f7fb0)]};   // night, dusk, day
 const blend=(out,c,a,b)=>out.copy(c[0]).lerp(c[1],a).lerp(c[2],b);
+const fogC=new THREE.Color();
 function applyTime(){
   const h=clock,isDay=h>=6&&h<18,a=(isDay?h-6:(h-18+24)%24)/12*Math.PI;
   const e=Math.sin(a),se=Math.sin((h-6)/12*Math.PI);     // e: height of whichever is up, se: sun height (negative at night)
@@ -1019,11 +1020,15 @@ function applyTime(){
   const duskW=ss(-.3,-.02,se),dayW=ss(.12,.5,se);dark=1-duskW;
   blend(skyU.cTop.value,SKY.top,duskW,dayW);blend(skyU.cMid.value,SKY.mid,duskW,dayW);blend(skyU.cHor.value,SKY.hor,duskW,dayW);skyU.stars.value=ss(.6,1,dark)*1.3;
   blend(ringMat.color,SKY.city,duskW,dayW);ringGlow.opacity=.25+.75*dark-.25*dayW;blend(M.water.color,SKY.sea,duskW,dayW);
-  if(rain>.01){const gk=1-.55*rain;for(const u of[skyU.cTop,skyU.cMid,skyU.cHor]){const c=u.value,m=(c.r+c.g+c.b)/3;c.r=(c.r+(m-c.r)*.6*rain)*gk;c.g=(c.g+(m-c.g)*.6*rain)*gk;c.b=(c.b+(m-c.b)*.6*rain)*gk;}
+  if(rain>.01){const gk=1-(storm?.78:.55)*rain;for(const u of[skyU.cTop,skyU.cMid,skyU.cHor]){const c=u.value,m=(c.r+c.g+c.b)/3;c.r=(c.r+(m-c.r)*.6*rain)*gk;c.g=(c.g+(m-c.g)*.6*rain)*gk;c.b=(c.b+(m-c.b)*.6*rain)*gk;}
     sun.intensity*=1-.75*rain;skyU.stars.value*=1-rain;}                  // rain clouds: greyer, darker, no stars
-  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8);scene.fog.density=.0045+.012*rain;
+  if(mist>.01){const h=skyU.cHor.value,m=(h.r+h.g+h.b)/3;fogC.setRGB(m,m,m*1.03).multiplyScalar(1.05);          // fog: the whole sky fades to the same pale grey
+    for(const u of[skyU.cTop,skyU.cMid,skyU.cHor])u.value.lerp(fogC,.92*mist);sun.intensity*=1-.6*mist;skyU.stars.value*=1-mist;}
+  ringMat.opacity=1-mist;ringGlow.opacity*=1-mist;
+  if(flash>.01)for(const u of[skyU.cTop,skyU.cMid,skyU.cHor]){u.value.r+=flash*.9;u.value.g+=flash*.95;u.value.b+=flash*1.2;}
+  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8+.2*mist);scene.fog.density=.0045+.012*rain+.04*mist;
   skyMesh.position.set(pos.x,0,pos.z);ring.position.set(pos.x,0,pos.z);
-  hemi.color.copy(cNight).lerp(cDusk,duskW).lerp(cDay,dayW);hemi.intensity=.02+.08*duskW+.1*dayW;
+  hemi.color.copy(cNight).lerp(cDusk,duskW).lerp(cDay,dayW);hemi.intensity=.02+.08*duskW+.1*dayW+flash*.9;
   exposureTarget=(1.15-.15*duskW)*(roomAt(pos.x,pos.z)?1:1-.22*dayW);    // outdoors in daylight is bright: squint a little
   disc.position.set(pos.x+sunDir.x*SUN_R,1.6+sunDir.y*SUN_R,pos.z+sunDir.z*SUN_R);disc.lookAt(pos.x,1.6,pos.z);
   glow.position.copy(disc.position).addScaledVector(sunDir,2);glow.quaternion.copy(disc.quaternion);
@@ -1337,20 +1342,38 @@ function updateCars(dt){
 // Rain comes and goes by itself, or you press the button. When it starts, people outside get a fright,
 // give up whatever they were doing out there, and hurry home.
 let rainOn=false,rain=0,rainT=rnd(150,300);
+let wx='sun',storm=false,fogOn=false,mist=0,flash=0,flash2=0,boltT=5,boltShow=0,toldBolt=false;   // weather: sun, rain, storm (rain with lightning) or fog
 const RN=900,rPos=new Float32Array(RN*6);                                   // each drop is a short streak: two points
 for(let i=0;i<RN;i++){const x=rnd(-16,16),y=rnd(0,12),z=rnd(-16,16);rPos.set([x,y,z,x+.03,y+.45,z],i*6);}
 const rGeo=new THREE.BufferGeometry();rGeo.setAttribute('position',new THREE.BufferAttribute(rPos,3));
 const rainPts=new THREE.LineSegments(rGeo,new THREE.LineBasicMaterial({color:0xbfd4e6,transparent:true,opacity:.4,depthWrite:false,fog:false}));
 rainPts.frustumCulled=false;rainPts.visible=false;scene.add(rainPts);
-function setRain(on){
-  if(on===rainOn)return;rainOn=on;rainT=rnd(120,260);
-  $('bRain').textContent='天氣：'+(on?'下雨':'晴天');
-  say(on?'下雨了：在外面的人會嚇一跳，放下手邊的事，跑回家。':'雨停了。');
-  if(on)for(const n of people)if(!n.hidden&&!roomAt(n.pos.x,n.pos.z))notify(n,'rain');
+// a lightning bolt: a crooked bright line far away in the sky
+const boltGeo=new THREE.BufferGeometry();boltGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(12*3),3));
+const bolt=new THREE.Line(boltGeo,new THREE.LineBasicMaterial({color:new THREE.Color(9,10,14),fog:false}));bolt.frustumCulled=false;bolt.visible=false;scene.add(bolt);
+function strike(){
+  const a=rnd(0,6.283),d=rnd(90,220),A=boltGeo.attributes.position;let x=pos.x+Math.cos(a)*d,z=pos.z+Math.sin(a)*d;
+  for(let i=0;i<12;i++){A.setXYZ(i,x,90-i*8.2,z);x+=rnd(-7,7);z+=rnd(-7,7);}A.needsUpdate=true;
+  bolt.visible=true;boltShow=.22;flash=1;flash2=.13;
+  const wait=d/343*4;setTimeout(()=>sfxThunder(1-d/300),wait*1000);                 // light arrives at once; sound takes its time (stretched a little so you can notice)
+  if(!toldBolt){toldBolt=true;say('閃電！光跑得非常快，所以先看到亮光；聲音跑得慢，過一下才聽到轟隆隆的雷聲。');}
+  for(const n of people)if(!n.hidden&&!n.react&&!n.lie&&!roomAt(n.pos.x,n.pos.z)&&Math.random()<.6)react(n,'哇！打雷了！',1.2,'startle');
+  for(const d2 of pets){d2.happy=0;bark(d2);}
 }
-$('bRain').onclick=()=>setRain(!rainOn);
+const WX={sun:'晴天',rain:'下雨',storm:'雷雨',fog:'起霧'};
+function setWeather(k){if(k===wx)return;const was=wx;wx=k;storm=k==='storm';fogOn=k==='fog';toldBolt=false;boltT=rnd(3,6);
+  $('bRain').textContent='天氣：'+WX[k];rainT=rnd(120,260);
+  const wet=k==='rain'||k==='storm';
+  if(wet!==rainOn){rainOn=wet;if(wet)for(const n of people)if(!n.hidden&&!roomAt(n.pos.x,n.pos.z))notify(n,'rain');}
+  say(k==='rain'?'下雨了：在外面的人會嚇一跳，放下手邊的事，跑回家。':k==='storm'?'雷雨來了：雨很大，天空還會閃電打雷。':k==='fog'?'起霧了：空氣裡有很多很小的水滴，遠的東西變得白白的看不清楚。':was==='fog'?'霧散了。':'雨停了。');}
+function setRain(on){setWeather(on?'rain':'sun');}
+$('bRain').onclick=()=>setWeather({sun:'rain',rain:'storm',storm:'fog',fog:'sun'}[wx]);
 function updateWeather(dt){
-  rainT-=dt;if(rainT<=0)setRain(!rainOn&&Math.random()<.6?true:false);
+  rainT-=dt;if(rainT<=0){const r=Math.random(),early=clock>4&&clock<9;setWeather(wx!=='sun'?(wx==='rain'&&r<.3?'storm':'sun'):r<(early?.45:.12)?'fog':r<.6?'rain':r<.75?'storm':'sun');}
+  mist+=((fogOn?1:0)-mist)*(1-Math.exp(-dt*.5));
+  flash*=Math.exp(-dt*10);if(flash2>0){flash2-=dt;if(flash2<=0)flash=.8;}          // a flash flickers twice
+  if(boltShow>0){boltShow-=dt;if(boltShow<=0)bolt.visible=false;}
+  if(storm&&rain>.5){boltT-=dt;if(boltT<=0){boltT=rnd(7,18);strike();}}
   rain+=((rainOn?1:0)-rain)*(1-Math.exp(-dt*.8));
   M.asphalt.roughness=.85-.5*rain;M.concrete.roughness=.9-.4*rain;               // wet ground shines
   rainPts.visible=rain>.03;if(!rainPts.visible)return;
@@ -1653,6 +1676,7 @@ function sfxHonk(x,z){const v=.22*hear(x,z,45);tone(392,.4,v,'square');tone(494,
 function sfxDoor(x,z){noise(.14,240,2,.3*hear(x,z,10));}
 function sfxCoin(){tone(880,.08,.2,'triangle');setTimeout(()=>tone(1320,.16,.2,'triangle'),80);}
 function sfxBell(){tone(1568,.5,.18,'sine');setTimeout(()=>tone(1245,.7,.16,'sine'),180);}
+function sfxThunder(k){const v=Math.max(.15,k)*(roomAt(pos.x,pos.z)?.5:1);noise(2.6,110,.6,.7*v);noise(1.2,400,.5,.25*v);tone(48,2.2,.35*v,'sine',.6);}
 function sfxBump(){noise(.18,140,.8,.4);tone(60,.2,.3,'sine',.5);}
 function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
@@ -2571,7 +2595,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,setWeather,strike,get wx(){return{wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

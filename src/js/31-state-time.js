@@ -39,6 +39,7 @@ const lin=h=>new THREE.Color(h).convertSRGBToLinear();
 const SKY={top:[lin(0x02030a),lin(0x24184f),lin(0x1f5fc4)],mid:[lin(0x0a1034),lin(0xe3507a),lin(0x8cc4f0)],hor:[lin(0x2a1d55),lin(0xffb870),lin(0xdff0fb)],
   city:[lin(0x070515),lin(0x2a163f),lin(0x8fa2bf)],sea:[lin(0x0a1230),lin(0xb85a78),lin(0x2f7fb0)]};   // night, dusk, day
 const blend=(out,c,a,b)=>out.copy(c[0]).lerp(c[1],a).lerp(c[2],b);
+const fogC=new THREE.Color();
 function applyTime(){
   const h=clock,isDay=h>=6&&h<18,a=(isDay?h-6:(h-18+24)%24)/12*Math.PI;
   const e=Math.sin(a),se=Math.sin((h-6)/12*Math.PI);     // e: height of whichever is up, se: sun height (negative at night)
@@ -50,11 +51,15 @@ function applyTime(){
   const duskW=ss(-.3,-.02,se),dayW=ss(.12,.5,se);dark=1-duskW;
   blend(skyU.cTop.value,SKY.top,duskW,dayW);blend(skyU.cMid.value,SKY.mid,duskW,dayW);blend(skyU.cHor.value,SKY.hor,duskW,dayW);skyU.stars.value=ss(.6,1,dark)*1.3;
   blend(ringMat.color,SKY.city,duskW,dayW);ringGlow.opacity=.25+.75*dark-.25*dayW;blend(M.water.color,SKY.sea,duskW,dayW);
-  if(rain>.01){const gk=1-.55*rain;for(const u of[skyU.cTop,skyU.cMid,skyU.cHor]){const c=u.value,m=(c.r+c.g+c.b)/3;c.r=(c.r+(m-c.r)*.6*rain)*gk;c.g=(c.g+(m-c.g)*.6*rain)*gk;c.b=(c.b+(m-c.b)*.6*rain)*gk;}
+  if(rain>.01){const gk=1-(storm?.78:.55)*rain;for(const u of[skyU.cTop,skyU.cMid,skyU.cHor]){const c=u.value,m=(c.r+c.g+c.b)/3;c.r=(c.r+(m-c.r)*.6*rain)*gk;c.g=(c.g+(m-c.g)*.6*rain)*gk;c.b=(c.b+(m-c.b)*.6*rain)*gk;}
     sun.intensity*=1-.75*rain;skyU.stars.value*=1-rain;}                  // rain clouds: greyer, darker, no stars
-  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8);scene.fog.density=.0045+.012*rain;
+  if(mist>.01){const h=skyU.cHor.value,m=(h.r+h.g+h.b)/3;fogC.setRGB(m,m,m*1.03).multiplyScalar(1.05);          // fog: the whole sky fades to the same pale grey
+    for(const u of[skyU.cTop,skyU.cMid,skyU.cHor])u.value.lerp(fogC,.92*mist);sun.intensity*=1-.6*mist;skyU.stars.value*=1-mist;}
+  ringMat.opacity=1-mist;ringGlow.opacity*=1-mist;
+  if(flash>.01)for(const u of[skyU.cTop,skyU.cMid,skyU.cHor]){u.value.r+=flash*.9;u.value.g+=flash*.95;u.value.b+=flash*1.2;}
+  scene.fog.color.copy(skyU.cHor.value).multiplyScalar(.8+.2*mist);scene.fog.density=.0045+.012*rain+.04*mist;
   skyMesh.position.set(pos.x,0,pos.z);ring.position.set(pos.x,0,pos.z);
-  hemi.color.copy(cNight).lerp(cDusk,duskW).lerp(cDay,dayW);hemi.intensity=.02+.08*duskW+.1*dayW;
+  hemi.color.copy(cNight).lerp(cDusk,duskW).lerp(cDay,dayW);hemi.intensity=.02+.08*duskW+.1*dayW+flash*.9;
   exposureTarget=(1.15-.15*duskW)*(roomAt(pos.x,pos.z)?1:1-.22*dayW);    // outdoors in daylight is bright: squint a little
   disc.position.set(pos.x+sunDir.x*SUN_R,1.6+sunDir.y*SUN_R,pos.z+sunDir.z*SUN_R);disc.lookAt(pos.x,1.6,pos.z);
   glow.position.copy(disc.position).addScaledVector(sunDir,2);glow.quaternion.copy(disc.quaternion);
