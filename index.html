@@ -1841,7 +1841,7 @@ function describe(n){const g=n.goal,G=GOALS[g.id],pr=progress(n);
   return(n.phase==='at'?'我在'+G.label+(pr>=0?'，做了 '+Math.round(pr*100)+'% 了。':'。'):'我正要去'+G.label+'。')+(n.need[low]<.35?feel:'其他都還好。');}
 function offer(n){                                                          // think of something this person would like done
   const others=people.filter(m=>m!==n&&m.home>=0&&!m.hidden&&m.home!==n.home);     // only people with an address can get a letter
-  if(others.length&&Math.random()<.55){const to=others[Math.floor(Math.random()*others.length)];
+  if(others.length&&Math.random()<.3){const to=others[Math.floor(Math.random()*others.length)];
     return{type:'letter',from:n,to,reward:50,text:'把'+n.o.name+'的信拿給 '+houses[to.home].no+' 號的'+to.o.name,ask:'可以幫我把這封信拿給 '+houses[to.home].no+' 號的'+to.o.name+'嗎？'};}
   if(Math.random()<.5){const D=[['公園',19.5,11.3],['夕陽商店',36.5,11.3],['街的西邊',-30,7.8],['街的東邊',41,11.3]].filter(d=>Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z)>14),d=D[Math.floor(Math.random()*D.length)];
     return{type:'ride',from:n,dest:d,reward:60,text:'開車載'+n.o.name+'去'+d[0]+'（他會走到你的黃色車旁邊等你，上車後他就會坐進來）',ask:'你有車對吧？可以載我去'+d[0]+'嗎？我走去你的車那邊等你。'};}
@@ -1851,6 +1851,7 @@ function offer(n){                                                          // t
       start(){dg.x=d[1];dg.z=d[2];dg.path=[];dg.think=0;dg.lost=[d[1],d[2]];dg.lead=false;}};}
   if(Math.random()<.5){const S=LOST_AT.filter(d=>!blocked(d[1],d[2])&&Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z)>8),d=S[Math.floor(Math.random()*S.length)],thing=['鑰匙','錢包','手錶'][Math.floor(Math.random()*3)];
     if(d)return{type:'find',from:n,at:d,thing,reward:55,text:'幫'+n.o.name+'找'+thing+'：好像掉在'+d[0]+'（走過去找會發亮的小東西）',ask:'我的'+thing+'不見了，好像掉在'+d[0]+'。可以幫我找嗎？'};}
+  if(n.need.food<.6&&Math.random()<.6||Math.random()<.25)return{type:'drink',from:n,reward:45,text:'幫'+n.o.name+'買一罐飲料（販賣機或商店 $20），拿回來給他',ask:'我好渴，可是走不開。可以幫我買一罐飲料嗎？錢我會加倍還你。'};
   const kind=Math.random()<.5?'tennis':'basket',name=BALLS[kind][0];
   return{type:'ball',from:n,kind,reward:40,text:'拿一顆'+name+'給'+n.o.name,ask:'我想要一顆'+name+'，可以幫我拿一顆過來嗎？'};}
 // --- a lost thing: it lies somewhere outside and glints; walk up to it to pick it up, then take it back ---
@@ -1887,10 +1888,13 @@ function showTalk(n,line,opts){
   else if(quest&&quest.type==='find'&&quest.from===n){
     if(quest.got)add('你的'+quest.thing+'我找到了',()=>finishQuest(n,'你找到了！太感謝你了！'));
     else add('你的'+quest.thing+'掉在哪裡？',()=>showTalk(n,'好像掉在'+quest.at[0]+'。它會亮亮的，走近就看得到。'));}
+  else if(quest&&quest.type==='drink'&&quest.from===n){
+    if(drinks)add('你要的飲料買來了',()=>{drinks--;actKey='';n.need.food=Math.min(1,n.need.food+.25);finishQuest(n,'啊，好涼！謝謝你，這是飲料錢和跑腿費。');});
+    else add('哪裡買得到飲料？',()=>showTalk(n,'公園旁邊有販賣機，夕陽商店也有賣，一罐 $20。'));}
   else if(quest&&quest.type==='dog'&&quest.from===n)add('小黃在哪裡？',()=>showTalk(n,quest.got?'牠不是跟著你嗎？帶牠過來就好。':'有人說看到牠在'+quest.at[0]+'。'));
   else if(!quest)add('需要幫忙嗎？',()=>{if(n.mood<.35||n.like<=-2){showTalk(n,'現在不用，謝謝。');return;}const q=offer(n);
     showTalk(n,q.ask,[['好，我幫你',()=>{quest=q;if(q.start)q.start();showTalk(n,'謝謝！做完我給你 $'+q.reward+'。');}],['下次吧',()=>showTalk(n,'沒關係。')]]);});
-  if(drinks)add('請你喝飲料',()=>{if(!drinks){showTalk(n,'咦，你的飲料呢？');return;}drinks--;actKey='';n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);n.need.fun=Math.min(1,n.need.fun+.2);addRep(1);showTalk(n,'哇，謝謝！你人真好。');});
+  if(drinks&&!(quest&&quest.type==='drink'&&quest.from===n))add('請你喝飲料',()=>{if(!drinks){showTalk(n,'咦，你的飲料呢？');return;}drinks--;actKey='';n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);n.need.fun=Math.min(1,n.need.fun+.2);addRep(1);showTalk(n,'哇，謝謝！你人真好。');});
   add('再見',closeTalk);
 }
 function talk(n){
@@ -2650,7 +2654,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,get wx(){return{wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,get wx(){return{wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
