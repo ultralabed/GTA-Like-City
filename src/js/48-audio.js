@@ -61,6 +61,8 @@ const TRACKS={
     bass:pat('1.1.1.1.1.1.2.1.'),arp:pat('5..5..4. 5..7..5.'),arpVol:.045,arpType:'sawtooth',arpLen:.2,kick:pat('1...1...1...1...'),snare:pat('....1.......1..1'),hat:pat('..1...1...1...1.'),drum:.6},
   shop:{name:'商店裡',bpm:96,swing:.12,prog:[[50,'m7'],[55,'dom7'],[48,'maj7'],[57,'dom7']],pad:0,padType:'triangle',cut:2000,
     bass:pat('1.....2.1...2...'),arp:pat('..C..C....C..C..'),arpVol:.035,arpType:'triangle',arpLen:.14,kick:pat('1.....1...1.....'),snare:pat('....1..1....1...'),hat:pat('1.1.1.1.1.1.1.1.'),drum:.3},
+  beach:{name:'海邊',bpm:80,swing:.1,prog:[[48,'maj7'],[45,'m7'],[53,'maj7'],[55,'sus']],pad:.05,padType:'sine',cut:1600,
+    bass:pat('1.....2...1.....'),arp:pat('1.3.5.7.5.3.4.2.'),arpVol:.045,arpType:'sine',arpLen:.7,kick:pat('1.........1.....'),snare:pat('................'),hat:pat('..1...1...1...1.'),drum:.25},
   chase:{name:'被巡邏員追',bpm:140,swing:0,prog:[[50,'min'],[50,'min'],[46,'maj'],[45,'maj']],pad:.03,padType:'sawtooth',cut:1200,
     bass:pat('1.11.11.1.11.112'),arp:pat('5.4.5.7.5.4.3.2.'),arpVol:.04,arpType:'square',arpLen:.1,kick:pat('1...1...1...1...'),snare:pat('....1.......1.11'),hat:pat('1111111111111111'),drum:.6}
 };
@@ -86,10 +88,11 @@ function playStep(T,n,t,d){
 // which tune fits where you are and what is going on
 function musicScene(){
   if(heat>0)return'chase';
-  if(ride&&ride.kind==='car')return'drive';
+  if(ride&&ride.kind==='car')return RADIO[radioIdx];
   const r=roomAt(pos.x,pos.z);
   if(r)return r.id==='shop'?'shop':'home';
   if(rain>.4)return'rain';
+  if(pos.z<-3.5&&dark<.75)return'beach';
   if(dark>.75)return'night';
   return clock>=16.5&&clock<19.6||clock>=5&&clock<7?'dusk':'day';
 }

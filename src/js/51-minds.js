@@ -17,7 +17,8 @@ const GOALS={                                                           // type 
   stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true},
   shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
-  catch:{label:'找你談談',type:'catch'}
+  catch:{label:'找你談談',type:'catch'},
+  lift:{label:'等你開車載他',type:'lift'}
 };
 const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
@@ -38,7 +39,7 @@ function freeAct(n,id){                                                 // find 
 function utility(n,id){
   const g=GOALS[id];
   if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
-  if(id==='patrol'||id==='catch')return -1;
+  if(id==='patrol'||id==='catch'||id==='lift')return -1;
   if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
@@ -70,6 +71,8 @@ function brain(n,dt){
   if(doing&&G.need){g.elapsed+=dh;n.need[G.need]=Math.min(1,n.need[G.need]+G.gain*dh);
     if(G.also)n.need[G.also]=Math.min(1,n.need[G.also]+G.gain*.5*dh);}
   if(n.react)return;                                                    // finish reacting before deciding anything
+  if(quest&&quest.type==='ride'&&quest.from===n&&!quest.in){if(g.id!=='lift'){n.resume=null;setGoal(n,'lift');}return;}   // asked you for a lift: walk to your car and wait
+  if(g.id==='lift'){endGoal(n,false);return;}
   if(n.guard){for(const k in n.need)n.need[k]=.8;n.cool.patrol=0;           // never tired, never bored
     if(heat>0&&g.id!=='catch'){setGoal(n,'catch');return;}if(heat===0&&g.id==='catch'){endGoal(n,false);return;}if(g.id==='catch')return;}
   if(n.visitor&&g.id!=='work'){n.stay-=dh;                                // visitors go home after a while, or when night falls, or when it rains
@@ -149,6 +152,7 @@ function pose(P,name,n,t){
 const qT=new THREE.Quaternion(),P={},hv=new THREE.Vector3();
 const angDiff=(a,b)=>{let d=(a-b)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return d;};
 function updNPC(n,dt,t){
+  if(n.riding){n.pos.x=pos.x;n.pos.z=pos.z;n.tag.hidden=true;return;}       // sitting in your car
   brain(n,dt);
   const want=sched(n);
   if(want!==n.act){
@@ -168,7 +172,9 @@ function updNPC(n,dt,t){
     if(Math.hypot(ap[0]-n.pos.x,ap[1]-n.pos.z)<.06&&Math.abs(n.y-n.stand)<.05){n.act=want;begin(n);}
   }else if(n.phase==='go'){
     label='要去'+A.label;n.atCurb=false;
-    if(A.catch){label='來找你';n.repath-=dt;                               // the patrol officer walking up to you
+    if(A.lift){label='走去你的車旁邊';n.repath-=dt;const c=rides[0],cd=Math.hypot(c.x-n.pos.x,c.z-n.pos.z);
+      if(cd<2.8){n.path=[];label='在車旁邊等你';}else if(n.repath<=0){n.repath=1;n.path=findPath(n.pos.x,n.pos.z,c.x,c.z)||[];}}
+    else if(A.catch){label='來找你';n.repath-=dt;                               // the patrol officer walking up to you
       if(dP<1.5){n.path=[];if(heat>0)fine(n);}else if(n.repath<=0){n.repath=.7;n.path=findPath(n.pos.x,n.pos.z,pos.x,pos.z)||[];}}
     else if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
       const bx=basket.p.x-n.pos.x,bz=basket.p.z-n.pos.z,bd=Math.hypot(bx,bz);
@@ -179,7 +185,7 @@ function updNPC(n,dt,t){
       else if(n.repath<=0){n.repath=.8;n.path=bd>.4?(findPath(n.pos.x,n.pos.z,basket.p.x,basket.p.z)||[]):[];}
     }
     if(n.path.length){
-      if(R){tyaw=Math.atan2(dpx,dpz);}                                        // reacting: stand still and face you
+      if(R){tyaw=R.at?Math.atan2(R.at.pos.x-n.pos.x,R.at.pos.z-n.pos.z):Math.atan2(dpx,dpz);}   // face whoever this is about                                        // reacting: stand still and face you
       else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
         if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
       else{if(dP>.9){n.wait=0;n.said=false;}
@@ -200,7 +206,7 @@ function updNPC(n,dt,t){
   n.y+=(ty-n.y)*(1-Math.exp(-dt*6));
   pose(P,name,n,t);
   if(!lie){
-    if(R||(dP<2.3&&name!=='dance'))P.ny=Math.max(-1.1,Math.min(1.1,angDiff(Math.atan2(dpx,dpz),n.yaw)));
+    if(R||(dP<2.3&&name!=='dance'))P.ny=Math.max(-1.1,Math.min(1.1,angDiff(R&&R.at?Math.atan2(R.at.pos.x-n.pos.x,R.at.pos.z-n.pos.z):Math.atan2(dpx,dpz),n.yaw)));
     if(R){if(R.pose==='wave'){P.arx=-2.7;P.arz=-.25+Math.sin(t*11)*.35;P.erx=-.35;}
       else if(R.pose==='startle'){P.alx=P.arx=-1.9;P.alz=.9;P.arz=-.9;P.elx=P.erx=-1.2;P.yo+=.03;P.sx=-.1;}
       else if(R.pose==='glare'){P.alz=.5;P.arz=-.5;P.elx=P.erx=-1.3;P.sx=.06;}}
@@ -234,11 +240,34 @@ function autoHome(){
     const wl=dark>.5&&awake;
     if(wl!==H.wantLamp){H.wantLamp=wl;if(H.S.lamp!==wl){H.S.lamp=wl;applySwitches();}}
     if(watching!==H.wantTv){H.wantTv=watching;if(H.S.tv!==watching){H.S.tv=watching;applySwitches();}}}
-  updateStreetLamps();
+  updateStreetLamps();neighbourChat();
   const here=roomAt(pos.x,pos.z);if(bakeKey()!==bakedKey){envDirty=true;envTimer=0;}                // walked somewhere new: redo the reflections
   const txt=here?'你在 '+here.house.no+' 號的'+here.name+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家'):'你在街上 · 外面有 '+out+' 個人';
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
   if(!$('minds').hidden)$('minds').textContent=people.filter(n=>!n.hidden).sort((a,b)=>Math.hypot(a.pos.x-pos.x,a.pos.z-pos.z)-Math.hypot(b.pos.x-pos.x,b.pos.z-pos.z)).slice(0,3).map(n=>{const pr=progress(n);
     return n.o.name+' '+moodFace(n)+'　目標：'+GOALS[n.goal.id].label+(pr>=0?' '+Math.round(pr*100)+'%':'')+(n.resume?'（之後回去'+GOALS[n.resume.id].label+'）':'')+
       '\n　'+Object.keys(NEED_ZH).map(k=>NEED_ZH[k]+' '+String(Math.round(n.need[k]*100)).padStart(2,' ')).join('　');}).join('\n');
+}
+
+// neighbours stop for a word when they meet. What they say depends on the weather, the hour and who they are.
+function chatLines(a,b){
+  if(rainOn)return['雨好大！','對啊，快回家吧。'];
+  if(a.guard||b.guard){const g=a.guard?0:1;const L=['今天街上還平靜嗎？','很平靜，辛苦了！'];return g?[L[1],L[0]]:L;}
+  if(dark>.7)return['這麼晚還在外面？','睡不著，出來走走。'];
+  const sets=[['早安！要去哪？','去'+GOALS[b.goal.id].label+'。'],['今天天氣真好。','是啊，適合散步。'],['吃飽了嗎？','吃飽了，謝謝！'],
+    ['你家的盆栽長得真好。','有空來看看！'],['最近工作忙嗎？',b.o.shift?'還好，就是有點累。':'我退休啦，天天放假。'],['那個開黃色車的人你認識嗎？',rep>2?'認識，人很好。':rep<-2?'小心點，他很愛亂來。':'不太熟。']];
+  return sets[Math.floor(Math.random()*sets.length)];
+}
+function neighbourChat(){
+  const now=performance.now()/1000;
+  for(let i=0;i<people.length;i++){const a=people[i];if(a.hidden||a.lie||a.react||a.riding||(a.chatAt||0)>now||talkN===a)continue;
+    for(let j=i+1;j<people.length;j++){const b=people[j];if(b.hidden||b.lie||b.react||b.riding||(b.chatAt||0)>now||talkN===b)continue;
+      if(a.phase!=='go'&&b.phase!=='go')continue;                           // at least one of them is passing by
+      if(Math.hypot(a.pos.x-b.pos.x,a.pos.z-b.pos.z)>1.9)continue;
+      const ra=roomAt(a.pos.x,a.pos.z),rb=roomAt(b.pos.x,b.pos.z);if((ra&&ra.house)!==(rb&&rb.house))continue;   // not through a wall
+      if(Math.min(a.mood,b.mood)<.35)continue;                              // nobody chats with a grump
+      const L=chatLines(a,b);a.chatAt=now+rnd(70,140);b.chatAt=now+rnd(70,140);
+      a.react={say:L[0],t:3.4,pose:'wave',at:b};b.react={say:L[1],t:3.6,pose:null,at:a};
+      a.mood=Math.min(1,a.mood+.04);b.mood=Math.min(1,b.mood+.04);a.need.fun=Math.min(1,a.need.fun+.05);b.need.fun=Math.min(1,b.need.fun+.05);
+      break;}}
 }

@@ -20,6 +20,7 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
+  rideQuest();
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
 function moveSpeed(dt,want){const run=(keys.ShiftLeft||keys.ShiftRight)&&want>.1&&stam>0&&!ride&&!seat;
@@ -32,9 +33,11 @@ function describe(n){const g=n.goal,G=GOALS[g.id],pr=progress(n);
   const feel={energy:'我有點累了。',fun:'我好無聊。',fit:'我想動一動。',calm:'我想安靜一下。',care:'我還有家事沒做。'}[low];
   return(n.phase==='at'?'我在'+G.label+(pr>=0?'，做了 '+Math.round(pr*100)+'% 了。':'。'):'我正要去'+G.label+'。')+(n.need[low]<.35?feel:'其他都還好。');}
 function offer(n){                                                          // think of something this person would like done
-  const others=people.filter(m=>m!==n&&!m.visitor&&!m.hidden&&m.home!==n.home);
+  const others=people.filter(m=>m!==n&&m.home>=0&&!m.hidden&&m.home!==n.home);     // only people with an address can get a letter
   if(others.length&&Math.random()<.55){const to=others[Math.floor(Math.random()*others.length)];
     return{type:'letter',from:n,to,reward:50,text:'把'+n.o.name+'的信拿給 '+houses[to.home].no+' 號的'+to.o.name,ask:'可以幫我把這封信拿給 '+houses[to.home].no+' 號的'+to.o.name+'嗎？'};}
+  if(Math.random()<.5){const D=[['公園',19.5,11.3],['夕陽商店',36.5,11.3],['街的西邊',-30,7.8],['街的東邊',41,11.3]].filter(d=>Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z)>14),d=D[Math.floor(Math.random()*D.length)];
+    return{type:'ride',from:n,dest:d,reward:60,text:'開車載'+n.o.name+'去'+d[0]+'（他會走到你的黃色車旁邊等你，上車後他就會坐進來）',ask:'你有車對吧？可以載我去'+d[0]+'嗎？我走去你的車那邊等你。'};}
   const kind=Math.random()<.5?'tennis':'basket',name=BALLS[kind][0];
   return{type:'ball',from:n,kind,reward:40,text:'拿一顆'+name+'給'+n.o.name,ask:'我想要一顆'+name+'，可以幫我拿一顆過來嗎？'};}
 function ballFor(q){return bodies.find(b=>b.kind===q.kind&&(b===held||Math.hypot(b.p.x-q.from.pos.x,b.p.z-q.from.pos.z)<2.2));}
@@ -76,4 +79,17 @@ function shopMenu(line){
   for(const G of GOODS){if(G[3]&&G[3]())continue;add(G[0]+' $'+G[1],()=>{if(cash<G[1]){shopMenu('錢不夠喔。'+G[0]+'要 $'+G[1]+'，你只有 $'+cash+'。');return;}
     cash-=G[1];G[2]();sfxCoin();actKey='';shopMenu('謝謝！'+G[0]+'給你。你還有 $'+cash+'。');});}
   add('不買了',()=>{el.hidden=true;});
+}
+// --- giving someone a lift ---
+// Park your car next to them and they get in; drive to the place and stop, and they get out and pay you.
+function rideQuest(){const q=quest;if(!q||q.type!=='ride')return;const n=q.from,car=ride&&ride.kind==='car'?ride:null;
+  if(!q.in){if(n.hidden&&!n.riding){quest=null;say(n.o.name+'等不及先走了，任務取消。');return;}
+    if(car&&Math.abs(car.v)<.6&&Math.hypot(car.x-n.pos.x,car.z-n.pos.z)<3.6){q.in=true;n.riding=true;n.hidden=true;n.root.visible=false;n.react=null;closeTalk();sfxDoor(car.x,car.z);
+      q.text='載'+n.o.name+'去'+q.dest[0]+'（到了就停車）';say(n.o.name+'上車了：「麻煩你了，去'+q.dest[0]+'。」');}
+    return;}
+  if(!car){n.riding=false;n.hidden=false;n.root.visible=true;n.phase='go';n.act=n.want;begin(n);quest=null;say('你下車了，'+n.o.name+'也下車自己走。任務取消。');return;}
+  if(Math.abs(car.v)<.6&&Math.hypot(car.x-q.dest[1],car.z-q.dest[2])<5){
+    const fx=Math.cos(car.h),fz=-Math.sin(car.h);n.riding=false;n.hidden=false;n.root.visible=true;n.pos.set(car.x-fz*1.8,0,car.z+fx*1.8);n.phase='go';n.act=n.want;begin(n);
+    quest=null;cash+=q.reward;addRep(2);n.mood=Math.min(1,n.mood+.2);sfxCoin();sfxDoor(car.x,car.z);n.react={say:'到了，謝謝你！',t:2.5,pose:'wave'};
+    say('任務完成！'+n.o.name+'下車了，給你 $'+q.reward+'。');}
 }

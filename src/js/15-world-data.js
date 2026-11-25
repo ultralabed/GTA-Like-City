@@ -140,6 +140,7 @@ const WORLD={
     {type:'spot',kind:'patrol',x:-31,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:38,z:14.3,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:-16,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:14,z:5,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},
     {type:'spot',kind:'patrol',x:-14,z:14,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:20,z:14.4,yaw:0,pose:'window',shared:true,label:'巡邏'},
     {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
+    {type:'spot',kind:'lift',chase:true,lift:true,pose:'idle',shared:true,label:'等你開車載他'},
     // places to walk to
     {type:'spot',kind:'stroll',x:8.8,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
     {type:'spot',kind:'stroll',x:-4.7,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},

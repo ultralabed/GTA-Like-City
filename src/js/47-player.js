@@ -48,7 +48,8 @@ function drawMap(){
   for(const c2 of cars)if(c2.on&&c2.x>WB.x0&&c2.x<WB.x1){g.fillStyle='#d9d3c8';g.fillRect(X(c2.x)-k*2.1,Y(c2.z)-k*.9,k*4.2,k*1.8);}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
-  if(quest){const n=quest.type==='letter'?quest.to:quest.from;if(!n.hidden){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(n.pos.x),Y(n.pos.z),k*1.6,0,7);g.stroke();}}   // where your job is
+  if(quest&&quest.type==='ride'&&quest.in){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(quest.dest[1]),Y(quest.dest[2]),k*2.2,0,7);g.stroke();}
+  else if(quest){const n=quest.type==='letter'?quest.to:quest.from;if(!n.hidden){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(n.pos.x),Y(n.pos.z),k*1.6,0,7);g.stroke();}}   // where your job is
   g.save();g.translate(X(pos.x),Y(pos.z));g.rotate(-yaw);g.fillStyle='#fff';g.strokeStyle='#111';g.lineWidth=2;      // you: an arrow showing which way you face
   g.beginPath();g.moveTo(0,-k*1.5);g.lineTo(k*.95,k*1.1);g.lineTo(0,k*.5);g.lineTo(-k*.95,k*1.1);g.closePath();g.fill();g.stroke();g.restore();
 }
@@ -151,8 +152,10 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
-const ACTS={jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const KEY={radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
+function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
+const ACTS={radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -160,12 +163,13 @@ function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='
 function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
   if(ride)list.push('out');
+  if(ride&&ride.kind==='car')list.push('radio');
   else{if(nr)list.push('in');
     if(seat)list.push('stand');else if(nearSeat())list.push('sit');
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat)list.push('jump');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks;
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx;
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
   for(const id of list)el.appendChild(mkBtn(id==='in'?(nr.kind==='car'?'上車':'騎腳踏車'):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
@@ -182,5 +186,6 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='Digit2')toggleItem('umbrella');
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
+  else if(e.code==='KeyR'&&ride&&ride.kind==='car')nextRadio();
 });
 showItems();
