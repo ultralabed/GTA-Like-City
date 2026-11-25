@@ -31,7 +31,7 @@ function moveSpeed(dt,want){const wd=waterDepth();
     if(deep&&performance.now()-swimNote>30000){swimNote=performance.now();say('你在游泳。游泳很累，體力快沒了就回岸邊。');}
     if(deep&&stam<=0){vel.z+=2.2*dt;if(performance.now()-swimNote>4000){swimNote=performance.now();say('太累了，海浪把你慢慢推回岸邊。');}}
     return 1.9*(1-.5*Math.min(1,wd/1.3));}
-  const run=(keys.ShiftLeft||keys.ShiftRight)&&want>.1&&stam>0&&!ride&&!seat;
+  const run=(keys.ShiftLeft||keys.ShiftRight||runLock||Math.hypot(joy.x,joy.y)>.93)&&want>.1&&stam>0&&!ride&&!seat;
   stam=Math.max(0,Math.min(1,stam+(run?-.09:seat?.14:.05)*dt));return run?3.3:1.9;}
 function buyDrink(){if(cash<20){say('飲料一罐 $20，你的錢不夠。幫鄰居做事可以賺錢。');return;}
   cash-=20;drinks++;sfxCoin();actKey='';say('你買了一罐飲料（剩 $'+cash+'）。按右下角「喝飲料」補體力，或在聊天時請別人喝。');}
@@ -115,3 +115,9 @@ function parcelQuest(){const q=quest;if(!q||q.type!=='parcel')return;const left=
     say(left>0?'準時送到！工資 $'+q.reward+'，加上獎金 $'+bonus+'。':'送到了，可是遲到了。只有工資 $'+q.reward+'，沒有獎金。');}
   else if(left<-60){quest=null;say('包裹太晚了，小芳找別人送了。任務取消。');}
 }
+// --- first-time tips: one at a time, so the big things you can do are not missed ---
+const TIPS=['想跑步：按住 Shift，或按右下角的「跑」。','想開車：黃色的車就停在 1 號房子前面，走到旁邊按 F。粉紅色腳踏車在門的另一邊。','想睡覺：走進任何一間房子的臥室，在床邊按 Z。時間會快轉到早上。',
+  '點一下人可以說話、接任務賺錢。點門可以開門。','按 V 可以看到自己。按 M 打開地圖。更多功能在左上角「設定」。'];
+let tipNo=0;
+function nextTip(){if(tipNo>=TIPS.length)return;say('小提示 '+(tipNo+1)+'/'+TIPS.length+'：'+TIPS[tipNo]);tipNo++;setTimeout(nextTip,9000);}
+setTimeout(nextTip,5000);

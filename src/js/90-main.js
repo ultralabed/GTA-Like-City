@@ -20,6 +20,7 @@ function tick(now){
   const nx=pos.x+vel.x*dt;if(!blocked(nx,pos.z))pos.x=nx;else vel.x=0;
   const nz=pos.z+vel.z*dt;if(!blocked(pos.x,nz))pos.z=nz;else vel.z=0;
   const v=Math.hypot(vel.x,vel.z);bob+=v*dt*3.6;
+  {const base=camera.aspect<1?82:68,want=base+(v>2.6?7:0);if(Math.abs(camera.fov-want)>.1){camera.fov+=(want-camera.fov)*Math.min(1,dt*6);camera.updateProjectionMatrix();}}   // the view widens a little when you run
   if(v>.6&&jumpY===0){const sn2=Math.floor(bob*2/Math.PI);if(sn2!==stepNo){stepNo=sn2;sfxStep();}}
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY-waterDepth()+(waterDepth()>1?Math.sin(t*2.2)*.05:0);}

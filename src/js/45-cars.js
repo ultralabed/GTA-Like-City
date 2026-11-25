@@ -4,12 +4,24 @@
 const ST=WORLD.street,ZEBRA=[1.9-3.3,1.9+3.3],CAR_SPEED=7;
 const onRoad=z=>z>ST.z0&&z<ST.z1;
 const cars=[];
+// A wheel: a tyre lying on its side so its axle runs across the car, with a pale hub and a bar across it so you can see it turn.
+// It sits in a little holder (w.hold) so front wheels can also turn left and right for steering.
+// Spinning must go around the axle (the tyre's own middle line), which is its local y, not z. Turning z made the wheels tumble.
+const hubMat=new THREE.MeshStandardMaterial({color:0xc9c9cf,roughness:.35,metalness:.8});
+function wheel(r,wide,x,z){
+  const hold=new THREE.Group();hold.position.set(x,r,z);cur.add(hold);
+  const w=new THREE.Mesh(new THREE.CylinderGeometry(r,r,wide,20),carTyre);w.rotation.x=Math.PI/2;w.castShadow=true;w.receiveShadow=true;hold.add(w);
+  const hub=new THREE.Mesh(new THREE.CylinderGeometry(r*.55,r*.55,wide+.02,14),hubMat);w.add(hub);
+  const bar=new THREE.Mesh(new THREE.BoxGeometry(r*1.5,wide+.03,r*.2),carTyre);w.add(bar);
+  w.hold=hold;w.r=r;return w;
+}
+function spinWheels(c,v,dt,steer){for(const w of c.wheels){w.rotation.y-=v*dt/w.r;if(w.front)w.hold.rotation.y+=((steer||0)*.45-w.hold.rotation.y)*Math.min(1,dt*10);}}
 const carGlass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:.15,metalness:.6}),carTyre=new THREE.MeshStandardMaterial({color:0x111114,roughness:.9});
 function carMesh(col){                                                   // a car facing +x, built around its own middle
   const g=new THREE.Group();scene.add(g);cur=g;
   const paint=new THREE.MeshStandardMaterial({color:col,roughness:.35,metalness:.4});
   box(4.2,.62,1.78,paint,0,.66,0,{r:.12});box(2.3,.56,1.6,carGlass,-.15,1.22,0,{r:.14});box(2.1,.05,1.5,paint,-.15,1.5,0,{r:.02});
-  const wheels=[[-1.35,-.82],[-1.35,.82],[1.35,-.82],[1.35,.82]].map(p=>{const w=cyl(.33,.33,.22,carTyre,p[0],.33,p[1],16);w.rotation.x=Math.PI/2;return w;});
+  const wheels=[[-1.35,-.82],[-1.35,.82],[1.35,-.82],[1.35,.82]].map(p=>{const w=wheel(.33,.22,p[0],p[1]);w.front=p[0]>0;return w;});
   const headMat=new THREE.MeshBasicMaterial({color:0x222222}),tailMat=new THREE.MeshBasicMaterial({color:0x330000});
   [-.6,.6].forEach(z=>{box(.06,.14,.34,headMat,2.1,.72,z).castShadow=false;box(.06,.12,.34,tailMat,-2.1,.74,z).castShadow=false;});
   const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
@@ -27,7 +39,7 @@ function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
 function busMesh(col){const g=new THREE.Group();scene.add(g);cur=g;
   const paint=new THREE.MeshStandardMaterial({color:col,roughness:.4,metalness:.3});
   box(7,2.1,2.3,paint,0,1.45,0,{r:.14});box(7.02,.75,2.32,carGlass,0,1.9,0,{r:.1});box(7.04,.16,2.34,paint,0,2.45,0,{r:.05});
-  const wheels=[[-2.3,-1.05],[-2.3,1.05],[2.3,-1.05],[2.3,1.05]].map(p=>{const w=cyl(.45,.45,.28,carTyre,p[0],.45,p[1],16);w.rotation.x=Math.PI/2;return w;});
+  const wheels=[[-2.3,-1.05],[-2.3,1.05],[2.3,-1.05],[2.3,1.05]].map(p=>{const w=wheel(.45,.28,p[0],p[1]);w.front=p[0]>0;return w;});
   const headMat=new THREE.MeshBasicMaterial({color:0x222222}),tailMat=new THREE.MeshBasicMaterial({color:0x330000});
   [-.8,.8].forEach(z=>{box(.06,.16,.4,headMat,3.52,.8,z).castShadow=false;box(.06,.14,.4,tailMat,-3.52,.85,z).castShadow=false;});
   const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
@@ -85,7 +97,7 @@ function updateCars(dt){
     if(c.v<.2&&gap<4&&!(c.dwell>0)){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
     c.honk-=dt;
     if(c.x*c.dir>105){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.bus?rnd(14,26):rnd(5,16)*(1+dark*1.5);continue;}
-    c.g.position.set(c.x,0,c.z);for(const w of c.wheels)w.rotation.z-=c.v*dt/.33;
+    c.g.position.set(c.x,0,c.z);spinWheels(c,c.v,dt,0);
     c.box[0]=c.x-c.hl-.05;c.box[1]=c.x+c.hl+.05;c.box[2]=c.z-c.hw;c.box[3]=c.z+c.hw;
     carLights(c,want<c.v-.5);
     c.tag.hidden=c.honk<=0;
