@@ -67,6 +67,9 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   background:rgba(255,255,255,.06);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,154,77,.55)}
 .minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
+body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .acts,body.photo #map,body.photo #talk{display:none!important}
+.photoend{position:absolute;left:max(16px, env(safe-area-inset-left, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));font:600 12px/1 var(--body);color:var(--text);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:9px 12px;opacity:.55;cursor:pointer}
+.photoend:hover,.photoend:focus-visible{opacity:1}
 .quest{color:var(--text);border-color:var(--sun)}
 .talk{position:absolute;left:50%;bottom:calc(86px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);width:min(calc(100% - 32px),26rem);pointer-events:auto;
   background:var(--glass);border:1px solid var(--sun);border-radius:14px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -104,7 +107,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
     <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
@@ -115,6 +118,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>
 </div>
+<button id="bPhotoEnd" type="button" class="photoend" hidden>結束拍照</button>
 <div id="err" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -391,7 +395,7 @@ const WORLD={
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
   visitors:[
-    person('阿寬',1.8,0xb98a62,0x101010,0xf25c3d,0x1c1c22,0xf4f4f4,false,null,[23,6],.5,.8,{energy:1,fun:1,fit:1.6,calm:.8,care:.5}),
+    Object.assign(person('阿寬',1.8,0xb98a62,0x101010,0xf25c3d,0x1c1c22,0xf4f4f4,false,null,[23,6],.5,.8,{energy:1,fun:1,fit:1.6,calm:.8,care:.5}),{jog:true}),   // 阿寬 is out for a run: he moves at jogging speed outdoors
     person('婷婷',1.62,0xf0cfb2,0x5a3418,0x9ad0c2,0x34405a,0xe8e0d0,true,null,[23,6],.75,.5,{energy:1,fun:1,fit:.9,calm:1.4,care:.5}),
     person('老王',1.7,0xd2a078,0x8a8a8a,0x5a4a6a,0x2a2a2a,0x1a1a1a,false,null,[23,6],.9,.2,{energy:1,fun:1,fit:.8,calm:1.5,care:.5})
   ],
@@ -1477,9 +1481,10 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h])}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
+  for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
@@ -1508,12 +1513,12 @@ function offer(n){                                                          // t
   const kind=Math.random()<.5?'tennis':'basket',name=BALLS[kind][0];
   return{type:'ball',from:n,kind,reward:40,text:'拿一顆'+name+'給'+n.o.name,ask:'我想要一顆'+name+'，可以幫我拿一顆過來嗎？'};}
 function ballFor(q){return bodies.find(b=>b.kind===q.kind&&(b===held||Math.hypot(b.p.x-q.from.pos.x,b.p.z-q.from.pos.z)<2.2));}
-function finishQuest(n,line){const q=quest;quest=null;cash+=q.reward;addRep(2);n.mood=Math.min(1,n.mood+.2);sfxCoin();
+function finishQuest(n,line){const q=quest;quest=null;q.from.like=Math.min(5,q.from.like+2);if(n!==q.from)n.like=Math.min(5,n.like+1);cash+=q.reward;addRep(2);n.mood=Math.min(1,n.mood+.2);sfxCoin();
   say('任務完成！你拿到 $'+q.reward+'，名聲變好了。');showTalk(n,line);}
 function closeTalk(){if(talkN&&talkN.react&&talkN.react.talk)talkN.react.t=0;talkN=null;$('talk').hidden=true;}
 function showTalk(n,line,opts){
   talkN=n;const el=$('talk');el.hidden=false;el.textContent='';
-  const h=document.createElement('strong');h.textContent=n.o.name+' '+moodFace(n);const p=document.createElement('p');p.textContent=line;el.append(h,p);
+  const h=document.createElement('strong');h.textContent=n.o.name+' '+moodFace(n)+(n.like>0?' '+'♥'.repeat(Math.min(5,Math.round(n.like))):n.like<=-2?' （他不太喜歡你）':'');const p=document.createElement('p');p.textContent=line;el.append(h,p);
   if(!n.react||n.react.talk)n.react={say:'在跟你說話',t:45,pose:null,talk:true};       // they stop and face you while you talk
   const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
   if(opts){opts.forEach(o=>add(o[0],o[1]));return;}
@@ -1524,15 +1529,17 @@ function showTalk(n,line,opts){
   else if(quest&&quest.type==='ball'&&quest.from===n){const b=ballFor(quest);
     if(b)add('你要的'+b.name+'我拿來了',()=>{if(b===held)putDown();finishQuest(n,'太好了，謝謝你！');});
     else add('你要的東西是什麼？',()=>showTalk(n,'我想要一顆'+BALLS[quest.kind][0]+'。拿在手上或放在我旁邊都可以。'));}
-  else if(!quest)add('需要幫忙嗎？',()=>{if(n.mood<.35){showTalk(n,'現在不用，謝謝。');return;}const q=offer(n);
+  else if(!quest)add('需要幫忙嗎？',()=>{if(n.mood<.35||n.like<=-2){showTalk(n,'現在不用，謝謝。');return;}const q=offer(n);
     showTalk(n,q.ask,[['好，我幫你',()=>{quest=q;showTalk(n,'謝謝！做完我給你 $'+q.reward+'。');}],['下次吧',()=>showTalk(n,'沒關係。')]]);});
-  if(drinks)add('請你喝飲料',()=>{if(!drinks){showTalk(n,'咦，你的飲料呢？');return;}drinks--;actKey='';n.mood=Math.min(1,n.mood+.2);n.need.fun=Math.min(1,n.need.fun+.2);addRep(1);showTalk(n,'哇，謝謝！你人真好。');});
+  if(drinks)add('請你喝飲料',()=>{if(!drinks){showTalk(n,'咦，你的飲料呢？');return;}drinks--;actKey='';n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);n.need.fun=Math.min(1,n.need.fun+.2);addRep(1);showTalk(n,'哇，謝謝！你人真好。');});
   add('再見',closeTalk);
 }
 function talk(n){
   if(n.lie||ride||n.react&&!n.react.talk){notify(n,'greet');return;}          // asleep, or busy reacting to something: just a wave
   if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>3.4){say('太遠了，走近一點再跟'+n.o.name+'說話。');return;}
-  showTalk(n,rep<=-4?'我不想跟你說話。你最近太誇張了。':n.mood>.6?'嗨！有什麼事嗎？':n.mood>.38?'嗯？':'…什麼事？');
+  if(n.like<=-4){showTalk(n,'我不想跟你說話。你上次那樣對我。',[['對不起',()=>{n.like+=.5;showTalk(n,'…下次小心一點。',[['好',closeTalk]]);}],['走開',closeTalk]]);return;}
+  n.like=Math.min(5,n.like+.15);                                            // just stopping to talk helps a little
+  showTalk(n,rep<=-4?'我不想跟你說話。你最近太誇張了。':n.like>=3?'嗨，老朋友！今天好嗎？':n.mood>.6?'嗨！有什麼事嗎？':n.mood>.38?'嗯？':'…什麼事？');
 }
 // --- the shop ---
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
@@ -1557,7 +1564,7 @@ function rideQuest(){const q=quest;if(!q||q.type!=='ride')return;const n=q.from,
   if(!car){n.riding=false;n.hidden=false;n.root.visible=true;n.phase='go';n.act=n.want;begin(n);quest=null;say('你下車了，'+n.o.name+'也下車自己走。任務取消。');return;}
   if(Math.abs(car.v)<.6&&Math.hypot(car.x-q.dest[1],car.z-q.dest[2])<5){
     const fx=Math.cos(car.h),fz=-Math.sin(car.h);n.riding=false;n.hidden=false;n.root.visible=true;n.pos.set(car.x-fz*1.8,0,car.z+fx*1.8);n.phase='go';n.act=n.want;begin(n);
-    quest=null;cash+=q.reward;addRep(2);n.mood=Math.min(1,n.mood+.2);sfxCoin();sfxDoor(car.x,car.z);n.react={say:'到了，謝謝你！',t:2.5,pose:'wave'};
+    quest=null;cash+=q.reward;addRep(2);n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);sfxCoin();sfxDoor(car.x,car.z);n.react={say:'到了，謝謝你！',t:2.5,pose:'wave'};
     say('任務完成！'+n.o.name+'下車了，給你 $'+q.reward+'。');}
 }
 
@@ -1636,6 +1643,11 @@ function makePerson(o){
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
   JK.forEach(k=>n.cur[k]=0);
   hit.userData={npc:n,tip:'點一下：跟'+o.name+'說話',act:()=>talk(n)};interact.push(hit);
+  // some people carry an umbrella: it only shows when they are out in the rain
+  n.brolly=Math.round(o.h*50)%2===0;n.like=0;                             // like: what this person thinks of you, from -5 to 5
+  const um=new THREE.Group(),cloth=new THREE.MeshStandardMaterial({color:o.top,roughness:.8,side:THREE.DoubleSide});
+  const canopy=new THREE.Mesh(new THREE.ConeGeometry(.62,.2,10,1,true),cloth);canopy.position.set(.12,1.2,.05);canopy.castShadow=true;
+  const stick=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.8,6),eye);stick.position.set(.12,.8,.05);um.add(canopy,stick);um.visible=false;body.add(um);n.um=um;
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
@@ -1753,16 +1765,17 @@ function notify(n,type,b){
   }else if(type==='hit'){
     if(g.id==='ball')return;                              // playing ball already: getting bumped is part of the game
     if(!(b.kickBy==='你'&&now-b.kickAt<4)){react(n,'哇！',1,'startle');return;}       // nobody to blame
-    addRep(-1);                                           // word gets around
+    addRep(-1);n.like=Math.max(-5,n.like-2);              // word gets around, and this person will not forget
     n.hits=(now-n.hitAt<60?n.hits:0)+1;n.hitAt=now;
     if(n.o.playful>.6&&n.mood>.4&&g.id!=='work'&&freeAct(n,'ball'))react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
     else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
     else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
   else if(type==='car'){n.cars=(now-(n.carAt||-99)<60?n.cars||0:0)+1;n.carAt=now;n.mood-=.1;      // nearly run over: a fright the first times, then real anger
-    const vb=b&&b.S?b.S.verb:'開車';addRep(-1);
+    const vb=b&&b.S?b.S.verb:'開車';addRep(-1);n.like=Math.max(-5,n.like-2);
     react(n,n.cars<3?'哇！小心'+vb+'！':'你到底會不會'+vb+'！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
+    if(n.brolly){react(n,'下雨了，還好我有帶傘。',1.6,null);return;}        // people with an umbrella just open it and carry on
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
   else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
     n.tvOffs=(now-n.tvOffAt<90?n.tvOffs:0)+1;n.tvOffAt=now;
@@ -1835,7 +1848,7 @@ function updNPC(n,dt,t){
       else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
         if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
       else{if(dP>.9){n.wait=0;n.said=false;}
-        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=rainOn&&!roomAt(n.pos.x,n.pos.z)?1.7:1,stp=1.15*hurry*(n.guard&&heat?1.25+.3*heat:1)*dt;
+        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=(rainOn&&!n.brolly&&!roomAt(n.pos.x,n.pos.z)?1.7:1)*(n.o.jog&&!roomAt(n.pos.x,n.pos.z)?2.1:1),stp=1.15*hurry*(n.guard&&heat?1.25+.3*heat:1)*dt;
         n.atCurb=carDanger(n,q);
         if(n.atCurb){label=n.waitWhy;tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
         else{if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
@@ -1862,7 +1875,7 @@ function updNPC(n,dt,t){
   J.spine.rotation.set(c.sx,0,c.sz);J.neck.rotation.set(c.nx,c.ny,0);
   J.al.rotation.set(c.alx,0,c.alz);J.ar.rotation.set(c.arx,0,c.arz);J.el.rotation.x=c.elx;J.er.rotation.x=c.erx;
   J.hl.rotation.x=c.hlx;J.hr.rotation.x=c.hrx;J.kl.rotation.x=c.klx;J.kr.rotation.x=c.krx;
-  n.book.visible=name==='read';
+  n.book.visible=name==='read';n.um.visible=n.brolly&&rain>.25&&!lie&&!roomAt(n.pos.x,n.pos.z);
   n.root.position.set(n.pos.x,n.y+c.yo,n.pos.z);
   n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
   // name tag above the head
@@ -1886,7 +1899,7 @@ function autoHome(){
     const wl=dark>.5&&awake;
     if(wl!==H.wantLamp){H.wantLamp=wl;if(H.S.lamp!==wl){H.S.lamp=wl;applySwitches();}}
     if(watching!==H.wantTv){H.wantTv=watching;if(H.S.tv!==watching){H.S.tv=watching;applySwitches();}}}
-  updateStreetLamps();neighbourChat();
+  updateStreetLamps();neighbourChat();passingHello();
   const here=roomAt(pos.x,pos.z);if(bakeKey()!==bakedKey){envDirty=true;envTimer=0;}                // walked somewhere new: redo the reflections
   const txt=here?'你在 '+here.house.no+' 號的'+here.name+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家'):'你在街上 · 外面有 '+out+' 個人';
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
@@ -1916,6 +1929,17 @@ function neighbourChat(){
       a.react={say:L[0],t:3.4,pose:'wave',at:b};b.react={say:L[1],t:3.6,pose:null,at:a};
       a.mood=Math.min(1,a.mood+.04);b.mood=Math.min(1,b.mood+.04);a.need.fun=Math.min(1,a.need.fun+.05);b.need.fun=Math.min(1,b.need.fun+.05);
       break;}}
+}
+
+// people who know you say something when you walk past: friends wave, people you have upset turn away
+function passingHello(){
+  if(ride||talkN)return;const now=performance.now()/1000;
+  for(const n of people){if(n.hidden||n.lie||n.react||n.riding||Math.abs(n.like)<2||(n.helloAt||0)>now)continue;
+    if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>2.4)continue;
+    const a=roomAt(n.pos.x,n.pos.z),b=roomAt(pos.x,pos.z);if((a&&a.house)!==(b&&b.house))continue;
+    n.helloAt=now+90;
+    if(n.like>0)react(n,n.like>=4?'嗨，老朋友！':'嗨！又見面了。',1.8,'wave');else react(n,n.like<=-4?'離我遠一點。':'哼。',1.6,'glare');
+    return;}
 }
 
 /* ---------- reflections: photograph the room itself and use it as the mirror image ---------- */
@@ -2095,9 +2119,18 @@ scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.env
 // things that stand outside take much more of their light from the sky
 [M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
 M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
+// photo mode: everything on screen goes away so you can take a clean picture
+function photo(on){document.body.classList.toggle('photo',on);$('bPhotoEnd').hidden=!on;if(on){$('panel').hidden=true;$('bSet').setAttribute('aria-expanded',false);}}
+$('bPhoto').onclick=()=>photo(true);$('bPhotoEnd').onclick=()=>photo(false);
+addEventListener('keydown',e=>{if(e.code==='KeyP'&&!e.repeat)photo(!document.body.classList.contains('photo'));});
+// picture quality: fewer pixels, a smaller shadow picture and no glow make slow devices run smoother
+const QUAL=[['高',2,2048,true],['中',1.25,1024,true],['低',.8,512,false]];let qIdx=0;
+$('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textContent='畫質：'+Q[0];
+  pr=Math.min(window.devicePixelRatio||1,Q[1]);sun.shadow.mapSize.set(Q[2],Q[2]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}
+  if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,neighbourChat,rideQuest,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,neighbourChat,rideQuest,passingHello,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

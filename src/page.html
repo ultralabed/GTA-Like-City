@@ -67,6 +67,9 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   background:rgba(255,255,255,.06);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,154,77,.55)}
 .minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
+body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .acts,body.photo #map,body.photo #talk{display:none!important}
+.photoend{position:absolute;left:max(16px, env(safe-area-inset-left, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));font:600 12px/1 var(--body);color:var(--text);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:9px 12px;opacity:.55;cursor:pointer}
+.photoend:hover,.photoend:focus-visible{opacity:1}
 .quest{color:var(--text);border-color:var(--sun)}
 .talk{position:absolute;left:50%;bottom:calc(86px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);width:min(calc(100% - 32px),26rem);pointer-events:auto;
   background:var(--glass);border:1px solid var(--sun);border-radius:14px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -104,7 +107,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
     <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
@@ -115,6 +118,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>
 </div>
+<button id="bPhotoEnd" type="button" class="photoend" hidden>結束拍照</button>
 <div id="err" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>

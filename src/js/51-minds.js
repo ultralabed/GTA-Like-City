@@ -107,16 +107,17 @@ function notify(n,type,b){
   }else if(type==='hit'){
     if(g.id==='ball')return;                              // playing ball already: getting bumped is part of the game
     if(!(b.kickBy==='你'&&now-b.kickAt<4)){react(n,'哇！',1,'startle');return;}       // nobody to blame
-    addRep(-1);                                           // word gets around
+    addRep(-1);n.like=Math.max(-5,n.like-2);              // word gets around, and this person will not forget
     n.hits=(now-n.hitAt<60?n.hits:0)+1;n.hitAt=now;
     if(n.o.playful>.6&&n.mood>.4&&g.id!=='work'&&freeAct(n,'ball'))react(n,'來啊！看我的',1.3,'startle',()=>{n.resume=n.goal;setGoal(n,'ball');});   // joins in, comes back later
     else if(n.hits>=3){n.mood-=.3;n.hits=0;react(n,'夠了喔！我要離你遠一點',2,'glare',()=>{n.cool[g.id]=.5;n.resume=null;setGoal(n,g.id==='window'?'read':'window');});}
     else{n.mood-=.12;react(n,n.hits===1?'小心一點啦':'欸！又來',1.8,'glare');}                // warns, then carries on
   }else if(type==='blocked')react(n,n.o.patience>.6?'不好意思，借過一下':'借過！',1.3);
   else if(type==='car'){n.cars=(now-(n.carAt||-99)<60?n.cars||0:0)+1;n.carAt=now;n.mood-=.1;      // nearly run over: a fright the first times, then real anger
-    const vb=b&&b.S?b.S.verb:'開車';addRep(-1);
+    const vb=b&&b.S?b.S.verb:'開車';addRep(-1);n.like=Math.max(-5,n.like-2);
     react(n,n.cars<3?'哇！小心'+vb+'！':'你到底會不會'+vb+'！',n.cars<3?1.6:2.2,n.cars<3?'startle':'glare');}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
+    if(n.brolly){react(n,'下雨了，還好我有帶傘。',1.6,null);return;}        // people with an umbrella just open it and carry on
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
   else if(type==='tvOff'&&g.id==='tv'&&n.phase==='at'){
     n.tvOffs=(now-n.tvOffAt<90?n.tvOffs:0)+1;n.tvOffAt=now;
@@ -189,7 +190,7 @@ function updNPC(n,dt,t){
       else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
         if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
       else{if(dP>.9){n.wait=0;n.said=false;}
-        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=rainOn&&!roomAt(n.pos.x,n.pos.z)?1.7:1,stp=1.15*hurry*(n.guard&&heat?1.25+.3*heat:1)*dt;
+        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=(rainOn&&!n.brolly&&!roomAt(n.pos.x,n.pos.z)?1.7:1)*(n.o.jog&&!roomAt(n.pos.x,n.pos.z)?2.1:1),stp=1.15*hurry*(n.guard&&heat?1.25+.3*heat:1)*dt;
         n.atCurb=carDanger(n,q);
         if(n.atCurb){label=n.waitWhy;tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
         else{if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
@@ -216,7 +217,7 @@ function updNPC(n,dt,t){
   J.spine.rotation.set(c.sx,0,c.sz);J.neck.rotation.set(c.nx,c.ny,0);
   J.al.rotation.set(c.alx,0,c.alz);J.ar.rotation.set(c.arx,0,c.arz);J.el.rotation.x=c.elx;J.er.rotation.x=c.erx;
   J.hl.rotation.x=c.hlx;J.hr.rotation.x=c.hrx;J.kl.rotation.x=c.klx;J.kr.rotation.x=c.krx;
-  n.book.visible=name==='read';
+  n.book.visible=name==='read';n.um.visible=n.brolly&&rain>.25&&!lie&&!roomAt(n.pos.x,n.pos.z);
   n.root.position.set(n.pos.x,n.y+c.yo,n.pos.z);
   n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
   // name tag above the head
@@ -240,7 +241,7 @@ function autoHome(){
     const wl=dark>.5&&awake;
     if(wl!==H.wantLamp){H.wantLamp=wl;if(H.S.lamp!==wl){H.S.lamp=wl;applySwitches();}}
     if(watching!==H.wantTv){H.wantTv=watching;if(H.S.tv!==watching){H.S.tv=watching;applySwitches();}}}
-  updateStreetLamps();neighbourChat();
+  updateStreetLamps();neighbourChat();passingHello();
   const here=roomAt(pos.x,pos.z);if(bakeKey()!==bakedKey){envDirty=true;envTimer=0;}                // walked somewhere new: redo the reflections
   const txt=here?'你在 '+here.house.no+' 號的'+here.name+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家'):'你在街上 · 外面有 '+out+' 個人';
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
@@ -270,4 +271,15 @@ function neighbourChat(){
       a.react={say:L[0],t:3.4,pose:'wave',at:b};b.react={say:L[1],t:3.6,pose:null,at:a};
       a.mood=Math.min(1,a.mood+.04);b.mood=Math.min(1,b.mood+.04);a.need.fun=Math.min(1,a.need.fun+.05);b.need.fun=Math.min(1,b.need.fun+.05);
       break;}}
+}
+
+// people who know you say something when you walk past: friends wave, people you have upset turn away
+function passingHello(){
+  if(ride||talkN)return;const now=performance.now()/1000;
+  for(const n of people){if(n.hidden||n.lie||n.react||n.riding||Math.abs(n.like)<2||(n.helloAt||0)>now)continue;
+    if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>2.4)continue;
+    const a=roomAt(n.pos.x,n.pos.z),b=roomAt(pos.x,pos.z);if((a&&a.house)!==(b&&b.house))continue;
+    n.helloAt=now+90;
+    if(n.like>0)react(n,n.like>=4?'嗨，老朋友！':'嗨！又見面了。',1.8,'wave');else react(n,n.like<=-4?'離我遠一點。':'哼。',1.6,'glare');
+    return;}
 }

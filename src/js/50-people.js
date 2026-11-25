@@ -73,6 +73,11 @@ function makePerson(o){
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
   JK.forEach(k=>n.cur[k]=0);
   hit.userData={npc:n,tip:'點一下：跟'+o.name+'說話',act:()=>talk(n)};interact.push(hit);
+  // some people carry an umbrella: it only shows when they are out in the rain
+  n.brolly=Math.round(o.h*50)%2===0;n.like=0;                             // like: what this person thinks of you, from -5 to 5
+  const um=new THREE.Group(),cloth=new THREE.MeshStandardMaterial({color:o.top,roughness:.8,side:THREE.DoubleSide});
+  const canopy=new THREE.Mesh(new THREE.ConeGeometry(.62,.2,10,1,true),cloth);canopy.position.set(.12,1.2,.05);canopy.castShadow=true;
+  const stick=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.8,6),eye);stick.position.set(.12,.8,.05);um.add(canopy,stick);um.visible=false;body.add(um);n.um=um;
   return n;
 }
 const up3=new THREE.Vector3(0,1,0);
