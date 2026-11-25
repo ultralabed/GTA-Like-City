@@ -57,7 +57,7 @@ function drawMap(radar){
     if(!radar){g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
   for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
-  for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
+  for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':r.kind==='boat'?'#f4efe4':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
   g.fillStyle='#35c9a0';g.fillRect(X(PUMP.x)-k*.7,Y(PUMP.z)-k*.7,k*1.4,k*1.4);                        // the petrol pump
@@ -110,8 +110,17 @@ function standUp(){if(!seat)return;if(seat.lie){speedIdx=napSpeed<0?1:napSpeed;$
 const SPEC={
   car:{name:'車',verb:'開車',tank:900,full:40,max:13,acc:5.5,rev:4,turn:1.5,pts:[1.15,-1.15],R:.95,back:6.4,up:3.2,mass:1200,len:2.4,exit:1.75},
   moto:{name:'機車',verb:'騎車',tank:1300,full:20,max:16,acc:7.5,rev:1.5,turn:2.1,pts:[.5,-.5],R:.4,back:5,up:2.5,mass:180,len:1,exit:.9},
+  boat:{name:'小船',verb:'開船',water:true,max:9,acc:3.2,rev:2,turn:1.15,pts:[.9,-.9],R:.75,back:7.5,up:3.4,mass:350,len:1.7,exit:1.4},
   bike:{name:'腳踏車',verb:'騎車',max:6.5,acc:3.6,rev:1.5,turn:2.6,pts:[.42,-.42],R:.36,back:4.4,up:2.3,mass:95,len:.9,exit:.85}
 };
+const SEA={x0:-95,x1:125,z0:-95};                                          // how far out the boat may go
+function boatMesh(){
+  const g=new THREE.Group();scene.add(g);cur=g;
+  const hull=new THREE.MeshStandardMaterial({color:0xf4efe4,roughness:.45}),trim=new THREE.MeshStandardMaterial({color:0xd9623f,roughness:.5});
+  box(3.3,.42,1.3,hull,0,.12,0,{r:.16});box(.9,.36,1.05,hull,1.75,.16,0,{r:.16});box(3.36,.08,1.36,trim,0,.34,0,{r:.03});   // hull, bow, a coloured rail
+  box(2.6,.06,.98,M.wood||trim,-.1,.2,0);box(.3,.1,1,M.wood||trim,-.5,.42,0);box(.3,.1,1,M.wood||trim,.6,.42,0);              // floor and two benches
+  box(.26,.5,.3,M.black,-1.75,.38,0,{r:.05});cyl(.03,.03,.5,M.steel,-1.75,-.05,0,8);                                          // the little motor at the back
+  cur=scene;return{g,wheels:[]};}
 function bikeMesh(moto){
   const g=new THREE.Group();scene.add(g);cur=g;
   const paint=new THREE.MeshStandardMaterial({color:moto?0x2a8fb0:0xff5fa8,roughness:.4,metalness:.5});
@@ -129,12 +138,13 @@ function bikeMesh(moto){
   rider.visible=false;cur=scene;g.rotation.order='YXZ';
   return{g,wheels,rider};
 }
-const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):bikeMesh(o.kind==='moto');          // your car is the yellow one
+const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):o.kind==='boat'?boatMesh():bikeMesh(o.kind==='moto');          // your car is the yellow one
   m.g.rotation.order='YXZ';m.g.position.set(o.x,0,o.z);m.g.rotation.y=o.h;
   if(o.kind==='car'){cur=scene;const along=Math.abs(Math.cos(o.h))>.5;flat(along?5.6:2.8,along?2.8:5.6,M.concrete,o.x,-.011,o.z,1.4);}   // a parking pad under it
   return Object.assign(m,{kind:o.kind,S:SPEC[o.kind],x:o.x,z:o.z,h:o.h,v:0,bumped:0,fuel:o.kind==='car'?.5:.7});});
 function rideHit(r,x,z,h){
   const fx=Math.cos(h),fz=-Math.sin(h),R=r.S.R;
+  if(r.S.water){for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k;if(cz>WORLD.shore-1.1||cz<SEA.z0||cx<SEA.x0||cx>SEA.x1)return true;}return false;}   // a boat only minds the beach and the edge of the map
   for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k;
     if(!inWorld(cx,cz,R)||cz<WORLD.shore+.4)return true;                   // no driving into the sea
     for(const c of colliders)if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;
@@ -146,8 +156,9 @@ function rideHit(r,x,z,h){
 }
 function nearRide(){let best=null,bd=1e9;for(const r of rides){const d=Math.hypot(r.x-pos.x,r.z-pos.z)-r.S.R;if(d<2&&d<bd){bd=d;best=r;}}return best;}
 function getIn(){const r=nearRide();if(!r||ride)return;putDown();standUp();ride=r;r.v=0;vel.x=vel.z=0;jumpY=jumpV=0;if(r.rider)r.rider.visible=true;showItems();
-  say(r.kind==='car'?'你上車了。W 或往前推是油門，S 是煞車和倒車，A D 是方向盤。':r.kind==='moto'?'你騎上機車了。W 催油門，S 煞車，A D 轉彎。它比車子還快，小心騎。':'你騎上腳踏車了。W 踩踏板，S 煞車，A D 轉彎。腳踏車可以騎上人行道。');}
+  say(r.kind==='car'?'你上車了。W 或往前推是油門，S 是煞車和倒車，A D 是方向盤。':r.kind==='moto'?'你騎上機車了。W 催油門，S 煞車，A D 轉彎。它比車子還快，小心騎。':r.kind==='boat'?'你坐上小船了。W 往前，S 煞車和倒退，A D 轉彎。船在水上會滑比較久才停。要下船請開回沙灘旁邊。':'你騎上腳踏車了。W 踩踏板，S 煞車，A D 轉彎。腳踏車可以騎上人行道。');}
 function getOut(){const r=ride;if(!r)return;if(Math.abs(r.v)>1.5){say('先停下來再下車。');return;}
+  if(r.S.water){if(r.z<WORLD.shore-4.5){say('這裡水太深了。把船開回沙灘旁邊再下船。');return;}ride=null;r.v=0;pos.x=r.x;pos.z=WORLD.shore+.7;yaw=0;pitch=-.05;showItems();say('你下船了，船停在岸邊。');return;}
   const fx=Math.cos(r.h),fz=-Math.sin(r.h);ride=null;                                          // (blocked() treats the vehicle as parked from here on)
   for(const side of[1,-1]){const x=r.x+fz*r.S.exit*side,z=r.z-fx*r.S.exit*side;                 // try the left side, then the right
     if(!blocked(x,z)){r.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();return;}}
@@ -166,7 +177,7 @@ function rideStep(dt,f,s){
     if(was>.15&&r.fuel<=.15)say('油快沒了！大馬路南邊、公園西邊有加油機（綠色的），把'+S.name+'停在旁邊加油。');
     if(r.fuel<=0){if(was>0)say('沒油了。'+S.name+'沒有油就沒有力氣，只能慢慢滑到停下來。可以下車用走的，或推到加油機旁邊。');if(a>0)a=Math.min(a,.12);}}
   const st=-Math.max(-1,Math.min(1,s));
-  r.v+=a*(a*r.v<0?14:a>0?S.acc:S.rev*.9)*dt;r.v*=Math.exp(-.5*dt);r.v=Math.max(-S.rev,Math.min(S.max,r.v));
+  r.v+=a*(a*r.v<0?14:a>0?S.acc:S.rev*.9)*dt;r.v*=Math.exp(-(S.water?.25:.5)*dt);r.v=Math.max(-S.rev,Math.min(S.max,r.v));
   if(Math.abs(a)<.05&&Math.abs(r.v)<.2)r.v=0;
   const nh=r.h+st*Math.max(-1,Math.min(1,r.v/4))*S.turn*dt,nx=r.x+Math.cos(nh)*r.v*dt,nz=r.z-Math.sin(nh)*r.v*dt;
   const hit=r.v?rideHit(r,nx,nz,nh):false;r.bumped-=dt;
@@ -177,6 +188,7 @@ function rideStep(dt,f,s){
   if(sigCars==='r'&&onRoad(r.z)&&r.x>ZEBRA[0]&&r.x<ZEBRA[1]&&Math.abs(r.v)>2&&performance.now()/1000-redAt>20){redAt=performance.now()/1000;   // driving through on red
     const g=people.find(n=>n.guard);if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<32){say('你闖紅燈，被巡邏員看到了！');addRep(-1);}else say('你闖紅燈了。這次巡邏員沒看到。');}
   r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;spinWheels(r,r.v,dt,st);
+  if(S.water){const tt=performance.now()/1000;r.g.position.y=-.03+Math.sin(tt*1.7)*.04;r.g.rotation.z=Math.sin(tt*1.3)*.03+Math.min(.12,r.v*.012);}   // bobs on the waves, nose up when fast
   if(r.g.userData.lamp){const k=Math.max(0,Math.min(1,(dark-.2)/.4));r.g.userData.lamp.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);}
   if(r.kind!=='car')r.g.rotation.x+=(-st*Math.min(1,Math.abs(r.v)/S.max)*.38*Math.sign(r.v||1)-r.g.rotation.x)*(1-Math.exp(-dt*6));   // lean into the turn
   // the camera follows behind and above
@@ -290,7 +302,7 @@ function updateActs(){
   const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(nbus&&nbus.taxi?'tx':'')+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='bus'&&nbus.taxi?'上計程車':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='bus'&&nbus.taxi?'上計程車':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':nr.kind==='boat'?'上船':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
