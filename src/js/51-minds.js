@@ -1,8 +1,8 @@
 /* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
 // Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
 // walk to it, and stay until the goal is finished. Nobody follows a timetable except for going to work.
-const NEED_ZH={energy:'體力',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
-const DECAY={energy:.05,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
+const NEED_ZH={energy:'體力',food:'吃飽',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
+const DECAY={energy:.05,food:.085,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
 const GOALS={                                                           // type = which kind of spot it needs; gain is per game hour, dur is game hours
   work:{label:'上班',type:'exit'},
   sleep:{label:'睡覺',type:'sleep',need:'energy',gain:.13},
@@ -15,6 +15,8 @@ const GOALS={                                                           // type 
   plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25},
   bench:{label:'去公園坐坐',type:'bench',need:'calm',gain:.9,dur:.5,outside:true},
   stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true},
+  snack:{label:'吃點心',type:'snack',need:'food',gain:2.4,dur:.3},
+  eatout:{label:'去小吃攤吃東西',type:'eat',need:'food',gain:3,dur:.3,outside:true},
   shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
@@ -43,6 +45,7 @@ function utility(n,id){
   if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
+  if(g.need==='food')u=nd<.3?1.6-nd:(1-nd)*.8;                            // hunger gets loud when it is bad
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
   if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}
@@ -141,6 +144,7 @@ function pose(P,name,n,t){
   JK.forEach(k=>P[k]=0);P.alz=.07;P.arz=-.07;P.sx=Math.sin(t*1.4+n.stand*9)*.012;
   if(name==='walk'){const w=Math.sin(n.ph);P.hlx=-w*.55;P.hrx=w*.55;P.klx=Math.max(0,Math.sin(n.ph+.9))*.9;P.krx=Math.max(0,Math.sin(n.ph+.9+Math.PI))*.9;
     P.alx=w*.45;P.arx=-w*.45;P.elx=P.erx=-.3;P.sx=.05;P.yo=Math.abs(Math.cos(n.ph))*.02-.02;}
+  else if(name==='eat'){P.hlx=P.hrx=-1.5;P.klx=P.krx=1.45;P.sx=.06;P.alx=-.45;P.elx=-.7;P.arx=-1.2+Math.sin(t*3)*.25;P.erx=-1.9+Math.sin(t*3)*.3;P.nx=.12;}   // sitting, one hand going to the mouth
   else if(name==='sit'){P.hlx=P.hrx=-1.5;P.klx=P.krx=1.45;P.sx=-.14;P.alx=P.arx=-.45;P.elx=P.erx=-.7;P.nx=.08;}
   else if(name==='lie'){P.alz=.14;P.arz=-.14;P.sx=0;P.yo=Math.sin(t*1.1)*.006;}
   else if(name==='dance'){const b=t*6+n.stand*5;P.yo=Math.abs(Math.sin(b))*.04-.03;P.sz=Math.sin(b*.5)*.13;P.alx=-2.4+Math.sin(b)*.4;P.arx=-2.4+Math.sin(b+1.5)*.4;
@@ -201,7 +205,7 @@ function updNPC(n,dt,t){
     n.pos.x+=(q[0]-n.pos.x)*k4;n.pos.z+=(q[2]-n.pos.z)*k4;ty=q[1];tyaw=A.yaw||0;name=A.pose;lie=!!A.lie;n.settle+=dt;
     if(n.phase==='in'&&n.settle>1){n.phase='at';if(A.hide){n.hidden=true;n.root.visible=false;n.tag.hidden=true;return;}}
   }
-  n.lie=lie;n.sit=name==='sit';
+  n.lie=lie;n.sit=name==='sit'||name==='eat';
   n.vx=(n.pos.x-ox)/dt;n.vz=(n.pos.z-oz)/dt;
   n.yaw+=angDiff(tyaw,n.yaw)*(1-Math.exp(-dt*8));
   n.y+=(ty-n.y)*(1-Math.exp(-dt*6));

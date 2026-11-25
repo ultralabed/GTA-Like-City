@@ -44,7 +44,9 @@ PREFAB.coffeeTable=()=>{
   cyl(.045,.036,.09,M.ceramic,.1,.455,-.25,24);                        // mug
   box(.2,.025,.27,M.teal,-.08,.423,.25,{ry:.3});box(.19,.02,.26,M.coral,-.08,.446,.25,{ry:.1});
   cyl(.1,.07,.05,M.brass,0,.435,-.1,28);                              // bowl
-  return{solid:[[-.33,.33,-.6,.6]],boxes:[[-.31,.31,.39,.41,-.575,.575],[-.28,.28,.145,.175,-.545,.545]]};
+  box(.2,.02,.2,M.ceramic,-.12,.42,-.42);box(.1,.05,.1,M.coral,-.12,.45,-.42,{r:.02});                  // a plate with a snack
+  return{solid:[[-.33,.33,-.6,.6]],boxes:[[-.31,.31,.39,.41,-.575,.575],[-.28,.28,.145,.175,-.545,.545]],
+    spots:[{type:'snack',ap:[-.75,-.3],an:[-.72,.3,-.3],yaw:Math.PI/2,pose:'eat',label:'坐在地毯上吃點心'}]};
 };
 
 // tall shelf full of books. Stands against a wall; the books face -x.
@@ -186,4 +188,15 @@ PREFAB.vending=()=>{
   box(.6,.12,.02,M.black,0,.35,.36);
   front.userData={tip:'點一下：買飲料（$20）',act:buyDrink};interact.push(front);
   return{solid:[[-.52,.52,-.37,.37]],boxes:[[-.5,.5,0,1.9,-.35,.35]]};
+};
+// street-food stall with two stools. You eat facing -z (toward the stall). Click the counter to buy a snack.
+PREFAB.stall=()=>{
+  box(2.2,.9,.7,M.coral,0,.45,-.6,{r:.03});box(2.3,.05,.8,M.ceramic,0,.925,-.6);
+  [-1.05,1.05].forEach(x=>cyl(.03,.03,2.3,M.steel,x,1.15,-.95,8));
+  const aw=box(2.6,.06,1.5,M.teal,0,2.3,-.45);aw.rotation.x=.12;
+  [-.5,0,.5].forEach((x,i)=>cyl(.12,.1,.1,[M.brass,M.ceramic,M.terracotta][i],x,1,-.6,14));
+  const till=box(.3,.2,.25,M.black,.85,1.05,-.6,{r:.02});till.userData={tip:'點一下：買點心（$15）',act:buySnack};interact.push(till);
+  const seat=x=>{cyl(.17,.17,.05,M.walnut,x,.5,.25,16);cyl(.03,.04,.5,M.steel,x,.25,.25,8);
+    return{type:'eat',ap:[x,.95],an:[x,.58,.25],yaw:Math.PI,pose:'eat',label:'在小吃攤吃東西',pub:true};};
+  return{solid:[[-1.15,1.15,-1,-.2],[-.7,-.3,.05,.45],[.3,.7,.05,.45]],boxes:[[-1.1,1.1,0,.95,-.95,-.25],[-1.3,1.3,2.25,2.35,-1.2,.3]],spots:[seat(-.5),seat(.5)]};
 };

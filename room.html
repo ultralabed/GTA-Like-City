@@ -411,6 +411,7 @@ const WORLD={
     {type:'streetLamp',x:-36,z:13.2,rot:2},{type:'streetLamp',x:-24,z:13.2,rot:2},{type:'streetLamp',x:36,z:13.2,rot:2},{type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
     // the little park
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
+    {type:'stall',x:23.5,z:16.2,rot:2},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // where people leave for work and come back
     {type:'spot',kind:'exit',x:-37.2,z:5,yaw:-Math.PI/2,pose:'idle',hide:true,shared:true,label:'上班'},
@@ -552,7 +553,9 @@ PREFAB.coffeeTable=()=>{
   cyl(.045,.036,.09,M.ceramic,.1,.455,-.25,24);                        // mug
   box(.2,.025,.27,M.teal,-.08,.423,.25,{ry:.3});box(.19,.02,.26,M.coral,-.08,.446,.25,{ry:.1});
   cyl(.1,.07,.05,M.brass,0,.435,-.1,28);                              // bowl
-  return{solid:[[-.33,.33,-.6,.6]],boxes:[[-.31,.31,.39,.41,-.575,.575],[-.28,.28,.145,.175,-.545,.545]]};
+  box(.2,.02,.2,M.ceramic,-.12,.42,-.42);box(.1,.05,.1,M.coral,-.12,.45,-.42,{r:.02});                  // a plate with a snack
+  return{solid:[[-.33,.33,-.6,.6]],boxes:[[-.31,.31,.39,.41,-.575,.575],[-.28,.28,.145,.175,-.545,.545]],
+    spots:[{type:'snack',ap:[-.75,-.3],an:[-.72,.3,-.3],yaw:Math.PI/2,pose:'eat',label:'坐在地毯上吃點心'}]};
 };
 
 // tall shelf full of books. Stands against a wall; the books face -x.
@@ -694,6 +697,17 @@ PREFAB.vending=()=>{
   box(.6,.12,.02,M.black,0,.35,.36);
   front.userData={tip:'點一下：買飲料（$20）',act:buyDrink};interact.push(front);
   return{solid:[[-.52,.52,-.37,.37]],boxes:[[-.5,.5,0,1.9,-.35,.35]]};
+};
+// street-food stall with two stools. You eat facing -z (toward the stall). Click the counter to buy a snack.
+PREFAB.stall=()=>{
+  box(2.2,.9,.7,M.coral,0,.45,-.6,{r:.03});box(2.3,.05,.8,M.ceramic,0,.925,-.6);
+  [-1.05,1.05].forEach(x=>cyl(.03,.03,2.3,M.steel,x,1.15,-.95,8));
+  const aw=box(2.6,.06,1.5,M.teal,0,2.3,-.45);aw.rotation.x=.12;
+  [-.5,0,.5].forEach((x,i)=>cyl(.12,.1,.1,[M.brass,M.ceramic,M.terracotta][i],x,1,-.6,14));
+  const till=box(.3,.2,.25,M.black,.85,1.05,-.6,{r:.02});till.userData={tip:'點一下：買點心（$15）',act:buySnack};interact.push(till);
+  const seat=x=>{cyl(.17,.17,.05,M.walnut,x,.5,.25,16);cyl(.03,.04,.5,M.steel,x,.25,.25,8);
+    return{type:'eat',ap:[x,.95],an:[x,.58,.25],yaw:Math.PI,pose:'eat',label:'在小吃攤吃東西',pub:true};};
+  return{solid:[[-1.15,1.15,-1,-.2],[-.7,-.3,.05,.45],[.3,.7,.05,.45]],boxes:[[-1.1,1.1,0,.95,-.95,-.25],[-1.3,1.3,2.25,2.35,-1.2,.3]],spots:[seat(-.5),seat(.5)]};
 };
 
 /* ---------- build the houses from their data ---------- */
@@ -1236,12 +1250,18 @@ function carryHeld(){if(!held)return;camera.getWorldDirection(camDir);
   held.p.set(camera.position.x+camDir.x*.55,camera.position.y-.32+camDir.y*.4,camera.position.z+camDir.z*.55);held.v.set(vel.x,0,vel.z);held.mesh.position.copy(held.p);}
 
 // --- sitting ---
-function nearSeat(){let best=null,bd=1.5;
-  for(const k in ACT){const A=ACT[k];if(A.pose!=='sit'||!A.an)continue;if(people.some(n=>n.want===k))continue;
+function nearSpot(pose){let best=null,bd=1.6;
+  for(const k in ACT){const A=ACT[k];if(A.pose!==pose&&!(pose==='sit'&&A.pose==='eat')||!A.an)continue;if(people.some(n=>n.want===k))continue;
     const d=Math.min(Math.hypot(A.ap[0]-pos.x,A.ap[1]-pos.z),Math.hypot(A.an[0]-pos.x,A.an[2]-pos.z));if(d<bd){bd=d;best=k;}}
   return best;}
+const nearSeat=()=>nearSpot('sit'),nearBed=()=>nearSpot('lie');
 function sitDown(){const k=nearSeat();if(!k)return;seat={k,A:ACT[k]};vel.x=vel.z=0;yaw=seat.A.yaw+Math.PI;pitch=-.05;}   // face the way the seat faces
-function standUp(){if(!seat)return;pos.x=seat.A.ap[0];pos.z=seat.A.ap[1];seat=null;}
+// lying down: time runs fast until morning (or until you move), and you wake up rested
+let napSpeed=-1;
+function lieDown(){const k=nearBed();if(!k)return;seat={k,A:ACT[k],lie:true};vel.x=vel.z=0;pitch=1.15;napSpeed=speedIdx;speedIdx=2;$('bSpeed').textContent='時間：'+SPEEDS[2][1];
+  say('你躺下來睡覺了。時間會過得很快，早上 7 點會自己醒來；動一下也會醒。');}
+function standUp(){if(!seat)return;if(seat.lie){speedIdx=napSpeed<0?1:napSpeed;$('bSpeed').textContent='時間：'+SPEEDS[speedIdx][1];stam=1;pitch=-.05;say('你睡醒了，體力全滿。現在是 '+$('clk').textContent+'。');}
+  pos.x=seat.A.ap[0];pos.z=seat.A.ap[1];seat=null;}
 
 // --- riding: a car and a bicycle ---
 // For bumping into things, a vehicle is a row of circles (pts = where along its length, R = how big).
@@ -1312,15 +1332,17 @@ function playerStep(dt,f,s){
     if(jumpY>top){jumpY=top;jumpV=Math.min(0,jumpV);}if(jumpY<=0){jumpY=0;jumpV=0;}}
   for(const r of rides)if(r.kind==='car')carLights(r,ride===r&&f<-.1);
   if(ride){rideStep(dt,f,s);return true;}
+  if(seat&&seat.lie&&clock>=7&&clock<7.3){standUp();return false;}        // morning: wake up
+  if(seat&&seat.lie){const A=seat.A;pos.x=A.an[0];pos.z=A.an[2];camera.position.set(A.an[0],A.an[1]+.3,A.an[2]);camera.rotation.set(pitch,yaw,0);if(Math.abs(f)+Math.abs(s)>.4){standUp();return false;}return true;}
   if(seat){if(Math.abs(f)+Math.abs(s)>.4){standUp();return false;}
     const A=seat.A;pos.x=A.an[0];pos.z=A.an[2];camera.position.set(A.an[0],A.an[1]+.62,A.an[2]);camera.rotation.set(pitch,yaw,0);return true;}
   return false;
 }
 // --- the action buttons ---
-const KEY={radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const KEY={nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
-const ACTS={radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const ACTS={nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -1330,7 +1352,7 @@ function updateActs(){
   if(ride)list.push('out');
   if(ride&&ride.kind==='car')list.push('radio');
   else{if(nr)list.push('in');
-    if(seat)list.push('stand');else if(nearSeat())list.push('sit');
+    if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat)list.push('jump');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
@@ -1347,6 +1369,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyE'){if(held)putDown();else pickUp();}
   else if(e.code==='KeyF'){if(ride)getOut();else getIn();}
   else if(e.code==='KeyQ'){if(seat)standUp();else sitDown();}
+  else if(e.code==='KeyZ'){if(seat)standUp();else lieDown();}
   else if(e.code==='Digit1')toggleItem('flashlight');
   else if(e.code==='Digit2')toggleItem('umbrella');
   else if(e.code==='KeyM')toggleItem('phone');
@@ -1505,7 +1528,7 @@ function buyDrink(){if(cash<20){say('飲料一罐 $20，你的錢不夠。幫鄰
 function drinkUp(){if(!drinks)return;drinks--;stam=1;actKey='';say('咕嚕咕嚕。體力補滿了，可以繼續跑。');}
 function describe(n){const g=n.goal,G=GOALS[g.id],pr=progress(n);
   let low='energy';for(const k in NEED_ZH)if(n.need[k]<n.need[low])low=k;
-  const feel={energy:'我有點累了。',fun:'我好無聊。',fit:'我想動一動。',calm:'我想安靜一下。',care:'我還有家事沒做。'}[low];
+  const feel={food:'我肚子餓了。',energy:'我有點累了。',fun:'我好無聊。',fit:'我想動一動。',calm:'我想安靜一下。',care:'我還有家事沒做。'}[low];
   return(n.phase==='at'?'我在'+G.label+(pr>=0?'，做了 '+Math.round(pr*100)+'% 了。':'。'):'我正要去'+G.label+'。')+(n.need[low]<.35?feel:'其他都還好。');}
 function offer(n){                                                          // think of something this person would like done
   const others=people.filter(m=>m!==n&&m.home>=0&&!m.hidden&&m.home!==n.home);     // only people with an address can get a letter
@@ -1570,6 +1593,7 @@ function rideQuest(){const q=quest;if(!q||q.type!=='ride')return;const n=q.from,
     quest=null;cash+=q.reward;addRep(2);n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);sfxCoin();sfxDoor(car.x,car.z);n.react={say:'到了，謝謝你！',t:2.5,pose:'wave'};
     say('任務完成！'+n.o.name+'下車了，給你 $'+q.reward+'。');}
 }
+function buySnack(){if(cash<15){say('點心一份 $15，你的錢不夠。');return;}cash-=15;stam=Math.min(1,stam+.6);sfxCoin();say('你買了一份點心吃掉了（剩 $'+cash+'）。體力恢復了一些。');}
 
 /* ---------- people who live here ---------- */
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
@@ -1642,7 +1666,7 @@ function makePerson(o){
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
   const n={o,root,J,head,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
     hidden:false,lie:false,sit:false,ph:0,wait:0,kickCd:0,repath:0,settle:9,cur:{},tagText:'',
-    need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
+    need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6,food:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
   JK.forEach(k=>n.cur[k]=0);
   hit.userData={npc:n,tip:'點一下：跟'+o.name+'說話',act:()=>talk(n)};interact.push(hit);
@@ -1662,8 +1686,8 @@ const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home
 /* ---------- minds: needs -> goals -> actions, and what happens when someone gets interrupted ---------- */
 // Each person has needs that slowly run down. They pick the goal that helps the emptiest need the most,
 // walk to it, and stay until the goal is finished. Nobody follows a timetable except for going to work.
-const NEED_ZH={energy:'體力',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
-const DECAY={energy:.05,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
+const NEED_ZH={energy:'體力',food:'吃飽',fun:'好玩',fit:'運動',calm:'平靜',care:'照顧'};
+const DECAY={energy:.05,food:.085,fun:.11,fit:.07,calm:.09,care:.045};           // lost per game hour
 const GOALS={                                                           // type = which kind of spot it needs; gain is per game hour, dur is game hours
   work:{label:'上班',type:'exit'},
   sleep:{label:'睡覺',type:'sleep',need:'energy',gain:.13},
@@ -1676,6 +1700,8 @@ const GOALS={                                                           // type 
   plant:{label:'照顧盆栽',type:'plant',need:'care',gain:3.5,dur:.25},
   bench:{label:'去公園坐坐',type:'bench',need:'calm',gain:.9,dur:.5,outside:true},
   stroll:{label:'出門散步',type:'stroll',need:'fit',gain:1.6,dur:.3,outside:true},
+  snack:{label:'吃點心',type:'snack',need:'food',gain:2.4,dur:.3},
+  eatout:{label:'去小吃攤吃東西',type:'eat',need:'food',gain:3,dur:.3,outside:true},
   shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
@@ -1704,6 +1730,7 @@ function utility(n,id){
   if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
+  if(g.need==='food')u=nd<.3?1.6-nd:(1-nd)*.8;                            // hunger gets loud when it is bad
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
   if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}
@@ -1802,6 +1829,7 @@ function pose(P,name,n,t){
   JK.forEach(k=>P[k]=0);P.alz=.07;P.arz=-.07;P.sx=Math.sin(t*1.4+n.stand*9)*.012;
   if(name==='walk'){const w=Math.sin(n.ph);P.hlx=-w*.55;P.hrx=w*.55;P.klx=Math.max(0,Math.sin(n.ph+.9))*.9;P.krx=Math.max(0,Math.sin(n.ph+.9+Math.PI))*.9;
     P.alx=w*.45;P.arx=-w*.45;P.elx=P.erx=-.3;P.sx=.05;P.yo=Math.abs(Math.cos(n.ph))*.02-.02;}
+  else if(name==='eat'){P.hlx=P.hrx=-1.5;P.klx=P.krx=1.45;P.sx=.06;P.alx=-.45;P.elx=-.7;P.arx=-1.2+Math.sin(t*3)*.25;P.erx=-1.9+Math.sin(t*3)*.3;P.nx=.12;}   // sitting, one hand going to the mouth
   else if(name==='sit'){P.hlx=P.hrx=-1.5;P.klx=P.krx=1.45;P.sx=-.14;P.alx=P.arx=-.45;P.elx=P.erx=-.7;P.nx=.08;}
   else if(name==='lie'){P.alz=.14;P.arz=-.14;P.sx=0;P.yo=Math.sin(t*1.1)*.006;}
   else if(name==='dance'){const b=t*6+n.stand*5;P.yo=Math.abs(Math.sin(b))*.04-.03;P.sz=Math.sin(b*.5)*.13;P.alx=-2.4+Math.sin(b)*.4;P.arx=-2.4+Math.sin(b+1.5)*.4;
@@ -1862,7 +1890,7 @@ function updNPC(n,dt,t){
     n.pos.x+=(q[0]-n.pos.x)*k4;n.pos.z+=(q[2]-n.pos.z)*k4;ty=q[1];tyaw=A.yaw||0;name=A.pose;lie=!!A.lie;n.settle+=dt;
     if(n.phase==='in'&&n.settle>1){n.phase='at';if(A.hide){n.hidden=true;n.root.visible=false;n.tag.hidden=true;return;}}
   }
-  n.lie=lie;n.sit=name==='sit';
+  n.lie=lie;n.sit=name==='sit'||name==='eat';
   n.vx=(n.pos.x-ox)/dt;n.vz=(n.pos.z-oz)/dt;
   n.yaw+=angDiff(tyaw,n.yaw)*(1-Math.exp(-dt*8));
   n.y+=(ty-n.y)*(1-Math.exp(-dt*6));
@@ -2189,7 +2217,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,neighbourChat,rideQuest,passingHello,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,do:{jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,neighbourChat,rideQuest,passingHello,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,do:{lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

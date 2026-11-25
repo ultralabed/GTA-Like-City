@@ -72,12 +72,18 @@ function carryHeld(){if(!held)return;camera.getWorldDirection(camDir);
   held.p.set(camera.position.x+camDir.x*.55,camera.position.y-.32+camDir.y*.4,camera.position.z+camDir.z*.55);held.v.set(vel.x,0,vel.z);held.mesh.position.copy(held.p);}
 
 // --- sitting ---
-function nearSeat(){let best=null,bd=1.5;
-  for(const k in ACT){const A=ACT[k];if(A.pose!=='sit'||!A.an)continue;if(people.some(n=>n.want===k))continue;
+function nearSpot(pose){let best=null,bd=1.6;
+  for(const k in ACT){const A=ACT[k];if(A.pose!==pose&&!(pose==='sit'&&A.pose==='eat')||!A.an)continue;if(people.some(n=>n.want===k))continue;
     const d=Math.min(Math.hypot(A.ap[0]-pos.x,A.ap[1]-pos.z),Math.hypot(A.an[0]-pos.x,A.an[2]-pos.z));if(d<bd){bd=d;best=k;}}
   return best;}
+const nearSeat=()=>nearSpot('sit'),nearBed=()=>nearSpot('lie');
 function sitDown(){const k=nearSeat();if(!k)return;seat={k,A:ACT[k]};vel.x=vel.z=0;yaw=seat.A.yaw+Math.PI;pitch=-.05;}   // face the way the seat faces
-function standUp(){if(!seat)return;pos.x=seat.A.ap[0];pos.z=seat.A.ap[1];seat=null;}
+// lying down: time runs fast until morning (or until you move), and you wake up rested
+let napSpeed=-1;
+function lieDown(){const k=nearBed();if(!k)return;seat={k,A:ACT[k],lie:true};vel.x=vel.z=0;pitch=1.15;napSpeed=speedIdx;speedIdx=2;$('bSpeed').textContent='時間：'+SPEEDS[2][1];
+  say('你躺下來睡覺了。時間會過得很快，早上 7 點會自己醒來；動一下也會醒。');}
+function standUp(){if(!seat)return;if(seat.lie){speedIdx=napSpeed<0?1:napSpeed;$('bSpeed').textContent='時間：'+SPEEDS[speedIdx][1];stam=1;pitch=-.05;say('你睡醒了，體力全滿。現在是 '+$('clk').textContent+'。');}
+  pos.x=seat.A.ap[0];pos.z=seat.A.ap[1];seat=null;}
 
 // --- riding: a car and a bicycle ---
 // For bumping into things, a vehicle is a row of circles (pts = where along its length, R = how big).
@@ -148,15 +154,17 @@ function playerStep(dt,f,s){
     if(jumpY>top){jumpY=top;jumpV=Math.min(0,jumpV);}if(jumpY<=0){jumpY=0;jumpV=0;}}
   for(const r of rides)if(r.kind==='car')carLights(r,ride===r&&f<-.1);
   if(ride){rideStep(dt,f,s);return true;}
+  if(seat&&seat.lie&&clock>=7&&clock<7.3){standUp();return false;}        // morning: wake up
+  if(seat&&seat.lie){const A=seat.A;pos.x=A.an[0];pos.z=A.an[2];camera.position.set(A.an[0],A.an[1]+.3,A.an[2]);camera.rotation.set(pitch,yaw,0);if(Math.abs(f)+Math.abs(s)>.4){standUp();return false;}return true;}
   if(seat){if(Math.abs(f)+Math.abs(s)>.4){standUp();return false;}
     const A=seat.A;pos.x=A.an[0];pos.z=A.an[2];camera.position.set(A.an[0],A.an[1]+.62,A.an[2]);camera.rotation.set(pitch,yaw,0);return true;}
   return false;
 }
 // --- the action buttons ---
-const KEY={radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const KEY={nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
-const ACTS={radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const ACTS={nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -166,7 +174,7 @@ function updateActs(){
   if(ride)list.push('out');
   if(ride&&ride.kind==='car')list.push('radio');
   else{if(nr)list.push('in');
-    if(seat)list.push('stand');else if(nearSeat())list.push('sit');
+    if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat)list.push('jump');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
@@ -183,6 +191,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyE'){if(held)putDown();else pickUp();}
   else if(e.code==='KeyF'){if(ride)getOut();else getIn();}
   else if(e.code==='KeyQ'){if(seat)standUp();else sitDown();}
+  else if(e.code==='KeyZ'){if(seat)standUp();else lieDown();}
   else if(e.code==='Digit1')toggleItem('flashlight');
   else if(e.code==='Digit2')toggleItem('umbrella');
   else if(e.code==='KeyM')toggleItem('phone');

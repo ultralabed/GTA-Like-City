@@ -69,7 +69,7 @@ function makePerson(o){
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
   const n={o,root,J,head,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
     hidden:false,lie:false,sit:false,ph:0,wait:0,kickCd:0,repath:0,settle:9,cur:{},tagText:'',
-    need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
+    need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6,food:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
   JK.forEach(k=>n.cur[k]=0);
   hit.userData={npc:n,tip:'點一下：跟'+o.name+'說話',act:()=>talk(n)};interact.push(hit);

@@ -31,7 +31,7 @@ function buyDrink(){if(cash<20){say('飲料一罐 $20，你的錢不夠。幫鄰
 function drinkUp(){if(!drinks)return;drinks--;stam=1;actKey='';say('咕嚕咕嚕。體力補滿了，可以繼續跑。');}
 function describe(n){const g=n.goal,G=GOALS[g.id],pr=progress(n);
   let low='energy';for(const k in NEED_ZH)if(n.need[k]<n.need[low])low=k;
-  const feel={energy:'我有點累了。',fun:'我好無聊。',fit:'我想動一動。',calm:'我想安靜一下。',care:'我還有家事沒做。'}[low];
+  const feel={food:'我肚子餓了。',energy:'我有點累了。',fun:'我好無聊。',fit:'我想動一動。',calm:'我想安靜一下。',care:'我還有家事沒做。'}[low];
   return(n.phase==='at'?'我在'+G.label+(pr>=0?'，做了 '+Math.round(pr*100)+'% 了。':'。'):'我正要去'+G.label+'。')+(n.need[low]<.35?feel:'其他都還好。');}
 function offer(n){                                                          // think of something this person would like done
   const others=people.filter(m=>m!==n&&m.home>=0&&!m.hidden&&m.home!==n.home);     // only people with an address can get a letter
@@ -96,3 +96,4 @@ function rideQuest(){const q=quest;if(!q||q.type!=='ride')return;const n=q.from,
     quest=null;cash+=q.reward;addRep(2);n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);sfxCoin();sfxDoor(car.x,car.z);n.react={say:'到了，謝謝你！',t:2.5,pose:'wave'};
     say('任務完成！'+n.o.name+'下車了，給你 $'+q.reward+'。');}
 }
+function buySnack(){if(cash<15){say('點心一份 $15，你的錢不夠。');return;}cash-=15;stam=Math.min(1,stam+.6);sfxCoin();say('你買了一份點心吃掉了（剩 $'+cash+'）。體力恢復了一些。');}
