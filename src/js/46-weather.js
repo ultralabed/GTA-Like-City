@@ -28,14 +28,24 @@ function setWeather(k){if(k===wx)return;const was=wx;wx=k;storm=k==='storm';fogO
   say(k==='rain'?'下雨了：在外面的人會嚇一跳，放下手邊的事，跑回家。':k==='storm'?'雷雨來了：雨很大，天空還會閃電打雷。':k==='fog'?'起霧了：空氣裡有很多很小的水滴，遠的東西變得白白的看不清楚。':was==='fog'?'霧散了。':'雨停了。');}
 function setRain(on){setWeather(on?'rain':'sun');}
 $('bRain').onclick=()=>setWeather({sun:'rain',rain:'storm',storm:'fog',fog:'sun'}[wx]);
+// puddles: they fill while it rains and dry slowly afterwards (water turns into vapour and floats away)
+let wet=0,toldDry=true;
+const puddleMat=new THREE.MeshStandardMaterial({color:0x0b0f14,roughness:.03,metalness:0,transparent:true,opacity:0,depthWrite:false});
+const puddles=new THREE.Group();puddles.visible=false;scene.add(puddles);
+{let sd=7;const r=()=>(sd=(sd*16807)%2147483647)/2147483647,S=WORLD.street;
+  for(let i=0;i<26;i++){const m=new THREE.Mesh(new THREE.CircleGeometry(1,14),puddleMat);m.rotation.x=-Math.PI/2;
+    m.position.set(-36+r()*80,.016,i%4===0?(i%8===0?S.z0-1:S.z1+1)+(r()-.5)*.8:S.z0+.8+r()*(S.z1-S.z0-1.6));m.scale.set(.5+r()*1.1,.35+r()*.7,1);m.rotation.z=r()*3;m.renderOrder=2;puddles.add(m);}}
 function updateWeather(dt){
+  wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
+  puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
+  if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}
   rainT-=dt;if(rainT<=0){const r=Math.random(),early=clock>4&&clock<9;setWeather(wx!=='sun'?(wx==='rain'&&r<.3?'storm':'sun'):r<(early?.45:.12)?'fog':r<.6?'rain':r<.75?'storm':'sun');}
   mist+=((fogOn?1:0)-mist)*(1-Math.exp(-dt*.5));
   flash*=Math.exp(-dt*10);if(flash2>0){flash2-=dt;if(flash2<=0)flash=.8;}          // a flash flickers twice
   if(boltShow>0){boltShow-=dt;if(boltShow<=0)bolt.visible=false;}
   if(storm&&rain>.5){boltT-=dt;if(boltT<=0){boltT=rnd(7,18);strike();}}
   rain+=((rainOn?1:0)-rain)*(1-Math.exp(-dt*.8));
-  M.asphalt.roughness=.85-.5*rain;M.concrete.roughness=.9-.4*rain;               // wet ground shines
+  {const w=Math.max(rain,wet);M.asphalt.roughness=.85-.5*w;M.concrete.roughness=.9-.4*w;}               // wet ground shines
   rainPts.visible=rain>.03;if(!rainPts.visible)return;
   rainPts.material.opacity=.4*rain;rainPts.position.set(pos.x,0,pos.z);
   for(let i=0;i<RN;i++){const k=i*6;let x=rPos[k],y=rPos[k+1]-15*dt,z=rPos[k+2];
