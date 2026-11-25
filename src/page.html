@@ -56,6 +56,8 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 .map{position:absolute;top:calc(14px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));border:1px solid var(--line);border-radius:12px;overflow:hidden;
   box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none;line-height:0}
 .map canvas{width:min(208px,46vw);height:auto;display:block}
+.radar{border-radius:50%;border-width:2px}
+.radar canvas{width:104px;height:104px}
 .acts kbd{font:600 11px/1 var(--body);color:var(--sun);border:1px solid var(--line);border-radius:5px;padding:3px 5px}
 .hint{align-self:center;text-align:center;font-size:13px;line-height:1.5;color:var(--text);background:var(--glass);
   border:1px solid var(--line);border-radius:12px;padding:8px 14px;max-width:100%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -68,7 +70,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   background:rgba(255,255,255,.06);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,154,77,.55)}
 .minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
-body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .acts,body.photo #map,body.photo #talk{display:none!important}
+body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .acts,body.photo #map,body.photo #radar,body.photo #talk{display:none!important}
 .photoend{position:absolute;left:max(16px, env(safe-area-inset-left, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));font:600 12px/1 var(--body);color:var(--text);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:9px 12px;opacity:.55;cursor:pointer}
 .photoend:hover,.photoend:focus-visible{opacity:1}
 .quest{color:var(--text);border-color:var(--sun)}
@@ -108,7 +110,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bView" type="button" class="plain">視角：第一人稱</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bRadar" type="button" class="plain">小地圖：開</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bView" type="button" class="plain">視角：第一人稱</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
     <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
@@ -116,6 +118,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
   </div>
   <div class="acts"><output id="speed" class="speed" hidden>0 km/h</output><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
   <div id="talk" class="talk" hidden></div>
+  <div id="radar" class="map radar"><canvas id="radarc" width="208" height="208" aria-label="小雷達地圖"></canvas></div>
   <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>
 </div>

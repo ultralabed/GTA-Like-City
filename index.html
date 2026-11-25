@@ -64,6 +64,8 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 .map{position:absolute;top:calc(14px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));border:1px solid var(--line);border-radius:12px;overflow:hidden;
   box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none;line-height:0}
 .map canvas{width:min(208px,46vw);height:auto;display:block}
+.radar{border-radius:50%;border-width:2px}
+.radar canvas{width:104px;height:104px}
 .acts kbd{font:600 11px/1 var(--body);color:var(--sun);border:1px solid var(--line);border-radius:5px;padding:3px 5px}
 .hint{align-self:center;text-align:center;font-size:13px;line-height:1.5;color:var(--text);background:var(--glass);
   border:1px solid var(--line);border-radius:12px;padding:8px 14px;max-width:100%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -76,7 +78,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   background:rgba(255,255,255,.06);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,154,77,.55)}
 .minds{white-space:pre-line;font-variant-numeric:tabular-nums;color:var(--text)}
-body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .acts,body.photo #map,body.photo #talk{display:none!important}
+body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .acts,body.photo #map,body.photo #radar,body.photo #talk{display:none!important}
 .photoend{position:absolute;left:max(16px, env(safe-area-inset-left, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));font:600 12px/1 var(--body);color:var(--text);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:9px 12px;opacity:.55;cursor:pointer}
 .photoend:hover,.photoend:focus-visible{opacity:1}
 .quest{color:var(--text);border-color:var(--sun)}
@@ -116,7 +118,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bView" type="button" class="plain">視角：第一人稱</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bRadar" type="button" class="plain">小地圖：開</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bView" type="button" class="plain">視角：第一人稱</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
     <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
@@ -124,6 +126,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
   </div>
   <div class="acts"><output id="speed" class="speed" hidden>0 km/h</output><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
   <div id="talk" class="talk" hidden></div>
+  <div id="radar" class="map radar"><canvas id="radarc" width="208" height="208" aria-label="小雷達地圖"></canvas></div>
   <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
   <div class="hint" id="hint"></div>
 </div>
@@ -1447,28 +1450,42 @@ function takeItem(it){it.taken=true;it.mesh.visible=false;
   if(bag[it.item]){say('你已經有'+ITEM[it.item].name+'了，這個就留著吧。');it.taken=false;it.mesh.visible=true;return;}
   bag[it.item]=true;say('你拿到了'+ITEM[it.item].name+'，放進背包了。按右下角的「'+ITEM[it.item].name+'」來用它。');actKey='';}
 // the phone map: the whole street from above
-function drawMap(){
-  const c=$('mapc'),hh=Math.round(c.width*(BB.z1-BB.z0)/(BB.x1-BB.x0));if(c.height!==hh)c.height=hh;
-  const g=c.getContext('2d'),k=c.width/(BB.x1-BB.x0),X=x=>(x-BB.x0)*k,Y=z=>(z-BB.z0)*k,S=WORLD.street;
-  g.fillStyle='#3d5a34';g.fillRect(0,0,c.width,c.height);
-  g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WORLD.shore));g.fillStyle='#cdbb92';g.fillRect(0,Y(WORLD.shore),c.width,k*6.5);
-  g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),c.height);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),c.height);   // the side street
-  g.fillStyle='#9b958c';g.fillRect(0,Y(S.z0-S.walk),c.width,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(0,Y(S.z0),c.width,k*(S.z1-S.z0));
+let radarOn=true;
+$('bRadar').onclick=()=>{radarOn=!radarOn;$('bRadar').textContent='小地圖：'+(radarOn?'開':'關');};
+// The same drawing serves two maps: the phone map (the whole town, north up) and the little round radar
+// (30 metres around you, turned so that the way you face is always up).
+function drawMap(radar){
+  const c=$(radar?'radarc':'mapc');if(!radar){const hh=Math.round(c.width*(BB.z1-BB.z0)/(BB.x1-BB.x0));if(c.height!==hh)c.height=hh;}
+  const g=c.getContext('2d'),k=radar?c.width/60:c.width/(BB.x1-BB.x0),X=radar?x=>x*k:x=>(x-BB.x0)*k,Y=radar?z=>z*k:z=>(z-BB.z0)*k,S=WORLD.street;
+  const W0=radar?X(BB.x0-90):0,WW=radar?k*(BB.x1-BB.x0+180):c.width,T0=radar?Y(BB.z0-90):0,HH=radar?k*(BB.z1-BB.z0+180):c.height;
+  g.setTransform(1,0,0,1,0,0);
+  if(radar){g.clearRect(0,0,c.width,c.height);g.save();g.beginPath();g.arc(c.width/2,c.height/2,c.width/2,0,7);g.clip();g.translate(c.width/2,c.height/2);g.rotate(yaw);g.translate(-X(pos.x),-Y(pos.z));}
+  g.fillStyle='#3d5a34';g.fillRect(W0,T0,WW,HH);
+  g.fillStyle='#2a6f9a';g.fillRect(W0,T0,WW,Y(WORLD.shore)-T0);g.fillStyle='#cdbb92';g.fillRect(W0,Y(WORLD.shore),WW,k*6.5);
+  g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),HH);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),HH);   // the side street
+  g.fillStyle='#9b958c';g.fillRect(W0,Y(S.z0-S.walk),WW,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(W0,Y(S.z0),WW,k*(S.z1-S.z0));
   g.fillStyle='#e8e4d8';for(let i=0;i<7;i++)g.fillRect(X(-1.1+i)-k*.25,Y(S.z0)+2,k*.5,k*(S.z1-S.z0)-4);
   g.font='bold '+Math.round(k*2.2)+'px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
   for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
-    g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}
+    if(!radar){g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
   for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
+  g.fillStyle='#35c9a0';g.fillRect(X(PUMP.x)-k*.7,Y(PUMP.z)-k*.7,k*1.4,k*1.4);                        // the petrol pump
+  let qt=null;if(quest){const q=quest;qt=q.type==='ride'?(q.in?[q.dest[1],q.dest[2]]:[q.from.pos.x,q.from.pos.z]):q.type==='parcel'?[q.house.front.x,q.house.front.z]:(q.type==='find'||q.type==='dog')&&!q.got?[q.at[1],q.at[2]]:q.type==='letter'?[q.to.pos.x,q.to.pos.z]:[q.from.pos.x,q.from.pos.z];}
   if(quest&&quest.type==='ride'&&quest.in){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(quest.dest[1]),Y(quest.dest[2]),k*2.2,0,7);g.stroke();}
   else if(quest&&quest.type==='parcel'){const f=quest.house.front;g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(f.x),Y(f.z),k*2,0,7);g.stroke();}
   else if(quest&&(quest.type==='find'||quest.type==='dog')&&!quest.got){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.setLineDash([4,3]);g.beginPath();g.arc(X(quest.at[1]),Y(quest.at[2]),k*5,0,7);g.stroke();g.setLineDash([]);}   // roughly where the lost thing is
   else if(quest){const n=quest.type==='letter'?quest.to:quest.from;if(!n.hidden){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(n.pos.x),Y(n.pos.z),k*1.6,0,7);g.stroke();}}   // where your job is
   g.save();g.translate(X(pos.x),Y(pos.z));g.rotate(-yaw);g.fillStyle='#fff';g.strokeStyle='#111';g.lineWidth=2;      // you: an arrow showing which way you face
   g.beginPath();g.moveTo(0,-k*1.5);g.lineTo(k*.95,k*1.1);g.lineTo(0,k*.5);g.lineTo(-k*.95,k*1.1);g.closePath();g.fill();g.stroke();g.restore();
+  if(radar){g.restore();g.setTransform(1,0,0,1,0,0);const R=c.width/2;                                              // the job marker sticks to the rim when it is further away than the radar shows
+    if(qt){const dx=qt[0]-pos.x,dz=qt[1]-pos.z,L=Math.hypot(dx,dz);if(L*k>R-10){const cs=Math.cos(yaw),sn=Math.sin(yaw),ux=(dx*cs-dz*sn)/L,uy=(dx*sn+dz*cs)/L;
+      g.fillStyle='#ff9a4d';g.strokeStyle='#111';g.lineWidth=2;g.beginPath();g.arc(R+ux*(R-9),R+uy*(R-9),7,0,7);g.fill();g.stroke();}}
+    g.fillStyle='#fff';g.font='bold 20px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';const cs=Math.cos(yaw),sn=Math.sin(yaw);
+    g.strokeStyle='#111';g.lineWidth=3;g.strokeText('北',R+sn*(R-14),R-cs*(R-14));g.fillText('北',R+sn*(R-14),R-cs*(R-14));}
 }
 
 // --- carrying and throwing ---
@@ -2646,7 +2663,7 @@ function tick(now){
   if(v>.6&&jumpY===0){const sn2=Math.floor(bob*2/Math.PI);if(sn2!==stepNo){stepNo=sn2;sfxStep();}}
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY-waterDepth()+(waterDepth()>1?Math.sin(t*2.2)*.05:0);}
-  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);fishStep(dt,t);findQuest();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();if(frame%15===0){hudStats();updateAudio();}
+  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);fishStep(dt,t);findQuest();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();$('radar').hidden=!radarOn||!!use.phone;if(radarOn&&!use.phone&&frame%3===0)drawMap(true);if(frame%15===0){hudStats();updateAudio();}
   // the people, then the physics in small fixed steps
   const p0=performance.now();
   for(const n of people)updNPC(n,dt,t);

@@ -25,7 +25,7 @@ function tick(now){
   if(v>.6&&jumpY===0){const sn2=Math.floor(bob*2/Math.PI);if(sn2!==stepNo){stepNo=sn2;sfxStep();}}
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY-waterDepth()+(waterDepth()>1?Math.sin(t*2.2)*.05:0);}
-  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);fishStep(dt,t);findQuest();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();if(frame%15===0){hudStats();updateAudio();}
+  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);fishStep(dt,t);findQuest();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();$('radar').hidden=!radarOn||!!use.phone;if(radarOn&&!use.phone&&frame%3===0)drawMap(true);if(frame%15===0){hudStats();updateAudio();}
   // the people, then the physics in small fixed steps
   const p0=performance.now();
   for(const n of people)updNPC(n,dt,t);

@@ -37,28 +37,42 @@ function takeItem(it){it.taken=true;it.mesh.visible=false;
   if(bag[it.item]){say('你已經有'+ITEM[it.item].name+'了，這個就留著吧。');it.taken=false;it.mesh.visible=true;return;}
   bag[it.item]=true;say('你拿到了'+ITEM[it.item].name+'，放進背包了。按右下角的「'+ITEM[it.item].name+'」來用它。');actKey='';}
 // the phone map: the whole street from above
-function drawMap(){
-  const c=$('mapc'),hh=Math.round(c.width*(BB.z1-BB.z0)/(BB.x1-BB.x0));if(c.height!==hh)c.height=hh;
-  const g=c.getContext('2d'),k=c.width/(BB.x1-BB.x0),X=x=>(x-BB.x0)*k,Y=z=>(z-BB.z0)*k,S=WORLD.street;
-  g.fillStyle='#3d5a34';g.fillRect(0,0,c.width,c.height);
-  g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WORLD.shore));g.fillStyle='#cdbb92';g.fillRect(0,Y(WORLD.shore),c.width,k*6.5);
-  g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),c.height);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),c.height);   // the side street
-  g.fillStyle='#9b958c';g.fillRect(0,Y(S.z0-S.walk),c.width,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(0,Y(S.z0),c.width,k*(S.z1-S.z0));
+let radarOn=true;
+$('bRadar').onclick=()=>{radarOn=!radarOn;$('bRadar').textContent='小地圖：'+(radarOn?'開':'關');};
+// The same drawing serves two maps: the phone map (the whole town, north up) and the little round radar
+// (30 metres around you, turned so that the way you face is always up).
+function drawMap(radar){
+  const c=$(radar?'radarc':'mapc');if(!radar){const hh=Math.round(c.width*(BB.z1-BB.z0)/(BB.x1-BB.x0));if(c.height!==hh)c.height=hh;}
+  const g=c.getContext('2d'),k=radar?c.width/60:c.width/(BB.x1-BB.x0),X=radar?x=>x*k:x=>(x-BB.x0)*k,Y=radar?z=>z*k:z=>(z-BB.z0)*k,S=WORLD.street;
+  const W0=radar?X(BB.x0-90):0,WW=radar?k*(BB.x1-BB.x0+180):c.width,T0=radar?Y(BB.z0-90):0,HH=radar?k*(BB.z1-BB.z0+180):c.height;
+  g.setTransform(1,0,0,1,0,0);
+  if(radar){g.clearRect(0,0,c.width,c.height);g.save();g.beginPath();g.arc(c.width/2,c.height/2,c.width/2,0,7);g.clip();g.translate(c.width/2,c.height/2);g.rotate(yaw);g.translate(-X(pos.x),-Y(pos.z));}
+  g.fillStyle='#3d5a34';g.fillRect(W0,T0,WW,HH);
+  g.fillStyle='#2a6f9a';g.fillRect(W0,T0,WW,Y(WORLD.shore)-T0);g.fillStyle='#cdbb92';g.fillRect(W0,Y(WORLD.shore),WW,k*6.5);
+  g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),HH);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),HH);   // the side street
+  g.fillStyle='#9b958c';g.fillRect(W0,Y(S.z0-S.walk),WW,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(W0,Y(S.z0),WW,k*(S.z1-S.z0));
   g.fillStyle='#e8e4d8';for(let i=0;i<7;i++)g.fillRect(X(-1.1+i)-k*.25,Y(S.z0)+2,k*.5,k*(S.z1-S.z0)-4);
   g.font='bold '+Math.round(k*2.2)+'px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
   for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
-    g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}
+    if(!radar){g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
   for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
+  g.fillStyle='#35c9a0';g.fillRect(X(PUMP.x)-k*.7,Y(PUMP.z)-k*.7,k*1.4,k*1.4);                        // the petrol pump
+  let qt=null;if(quest){const q=quest;qt=q.type==='ride'?(q.in?[q.dest[1],q.dest[2]]:[q.from.pos.x,q.from.pos.z]):q.type==='parcel'?[q.house.front.x,q.house.front.z]:(q.type==='find'||q.type==='dog')&&!q.got?[q.at[1],q.at[2]]:q.type==='letter'?[q.to.pos.x,q.to.pos.z]:[q.from.pos.x,q.from.pos.z];}
   if(quest&&quest.type==='ride'&&quest.in){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(quest.dest[1]),Y(quest.dest[2]),k*2.2,0,7);g.stroke();}
   else if(quest&&quest.type==='parcel'){const f=quest.house.front;g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(f.x),Y(f.z),k*2,0,7);g.stroke();}
   else if(quest&&(quest.type==='find'||quest.type==='dog')&&!quest.got){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.setLineDash([4,3]);g.beginPath();g.arc(X(quest.at[1]),Y(quest.at[2]),k*5,0,7);g.stroke();g.setLineDash([]);}   // roughly where the lost thing is
   else if(quest){const n=quest.type==='letter'?quest.to:quest.from;if(!n.hidden){g.strokeStyle='#ff9a4d';g.lineWidth=3;g.beginPath();g.arc(X(n.pos.x),Y(n.pos.z),k*1.6,0,7);g.stroke();}}   // where your job is
   g.save();g.translate(X(pos.x),Y(pos.z));g.rotate(-yaw);g.fillStyle='#fff';g.strokeStyle='#111';g.lineWidth=2;      // you: an arrow showing which way you face
   g.beginPath();g.moveTo(0,-k*1.5);g.lineTo(k*.95,k*1.1);g.lineTo(0,k*.5);g.lineTo(-k*.95,k*1.1);g.closePath();g.fill();g.stroke();g.restore();
+  if(radar){g.restore();g.setTransform(1,0,0,1,0,0);const R=c.width/2;                                              // the job marker sticks to the rim when it is further away than the radar shows
+    if(qt){const dx=qt[0]-pos.x,dz=qt[1]-pos.z,L=Math.hypot(dx,dz);if(L*k>R-10){const cs=Math.cos(yaw),sn=Math.sin(yaw),ux=(dx*cs-dz*sn)/L,uy=(dx*sn+dz*cs)/L;
+      g.fillStyle='#ff9a4d';g.strokeStyle='#111';g.lineWidth=2;g.beginPath();g.arc(R+ux*(R-9),R+uy*(R-9),7,0,7);g.fill();g.stroke();}}
+    g.fillStyle='#fff';g.font='bold 20px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';const cs=Math.cos(yaw),sn=Math.sin(yaw);
+    g.strokeStyle='#111';g.lineWidth=3;g.strokeText('北',R+sn*(R-14),R-cs*(R-14));g.fillText('北',R+sn*(R-14),R-cs*(R-14));}
 }
 
 // --- carrying and throwing ---
