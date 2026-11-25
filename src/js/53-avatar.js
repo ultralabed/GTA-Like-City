@@ -12,7 +12,7 @@ function setView(on){third=on;ray.far=on?8:4.5;$('bView').textContent='視角：
 $('bView').onclick=()=>setView(!third);
 addEventListener('keydown',e=>{if(e.code==='KeyV'&&!e.repeat)setView(!third);});
 function thirdCam(dt,t){
-  const on=third&&!ride;me.root.visible=on;hand.visible=!on;
+  const on=third&&!ride&&!onBus;me.root.visible=on;hand.visible=!on;
   if(!on)return;
   const sp=Math.hypot(vel.x,vel.z),moving=sp>.3&&!seat;
   if(moving)meYaw+=angDiff(Math.atan2(vel.x,vel.z),meYaw)*(1-Math.exp(-dt*10));      // turn to face the way you walk

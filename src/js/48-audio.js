@@ -26,6 +26,7 @@ function sfxStep(){if(waterDepth()>.05){noise(.16,900,.6,.12);return;}noise(.06,
 function sfxHonk(x,z){const v=.22*hear(x,z,45);tone(392,.4,v,'square');tone(494,.4,v,'square');}
 function sfxDoor(x,z){noise(.14,240,2,.3*hear(x,z,10));}
 function sfxCoin(){tone(880,.08,.2,'triangle');setTimeout(()=>tone(1320,.16,.2,'triangle'),80);}
+function sfxBell(){tone(1568,.5,.18,'sine');setTimeout(()=>tone(1245,.7,.16,'sine'),180);}
 function sfxBump(){noise(.18,140,.8,.4);tone(60,.2,.3,'sine',.5);}
 function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
@@ -89,6 +90,7 @@ function playStep(T,n,t,d){
 function musicScene(){
   if(heat>0)return'chase';
   if(ride&&ride.kind==='car')return RADIO[radioIdx];
+  if(onBus)return'drive';
   const r=roomAt(pos.x,pos.z);
   if(r)return r.id==='shop'?'shop':'home';
   if(rain>.4)return'rain';

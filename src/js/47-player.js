@@ -184,12 +184,29 @@ function fishStep(dt,t){
   if(fish.bite&&!was){actKey='';noise(.25,700,.7,.3);say('有魚咬了！快按「拉！」');}
   if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10);say('魚跑掉了。再等一下。');}
   bobber.position.set(fish.x,fish.bite?-.06:.04+Math.sin(t*3)*.02,fish.z);}
+// --- taking the bus: get on while it waits at a stop, ring the bell (or wait for the next stop) to get off ---
+let onBus=null,busBell=false;
+function nearBus(){if(ride||onBus)return null;for(const c of cars)if(c.bus&&c.on&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<5.2)return c;return null;}
+function boardBus(){const c=nearBus();if(!c)return;if(cash<5){say('公車票要 $5，你的錢不夠。');return;}
+  putDown();standUp();cash-=5;sfxCoin();onBus=c;busBell=false;c.dwell=Math.max(c.dwell,1.5);vel.x=vel.z=0;jumpY=jumpV=0;busTrips++;
+  say('你上公車了（車票 $5）。到下一站會停；想提早下車就按「下車鈴」。');}
+let busTrips=0;
+function leaveBus(){const c=onBus;if(!c)return;
+  if(!(c.dwell>0)){if(!busBell){busBell=true;sfxBell();say('叮！司機聽到了，會在前面安全的路邊停車。');}return;}
+  const fx=Math.cos(c.h),fz=-Math.sin(c.h);
+  for(const d of[2.6,3.3,-2.6,-3.3]){const x=c.x-fz*d,z=c.z+fx*d;                              // the kerb side first
+    if(!blocked(x,z)){onBus=null;busBell=false;pos.x=x;pos.z=z;yaw=Math.atan2(fz*Math.sign(d),-fx*Math.sign(d));pitch=-.05;say('你下公車了。');return;}}
+  say('車門外面被擋住了，等一下再下車。');}
+function busStep(dt){const c=onBus;if(!c.on){onBus=null;return;}
+  pos.x=c.x;pos.z=c.z;const fx=Math.cos(c.h),fz=-Math.sin(c.h);
+  camGoal.set(c.x-fx*9,4.6,c.z-fz*9);camera.position.lerp(camGoal,1-Math.exp(-dt*5));camera.lookAt(c.x+fx*3,1.6,c.z+fz*3);yaw=Math.atan2(-fx,-fz);}
 // --- one step of you. Returns true when it has already placed the camera (riding or sitting) ---
 function playerStep(dt,f,s){
   const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
   if(jumpY>0||jumpV>0){jumpV-=g*dt;jumpY+=jumpV*dt;const top=roomAt(pos.x,pos.z)?RH-1.78:7;
     if(jumpY>top){jumpY=top;jumpV=Math.min(0,jumpV);}if(jumpY<=0){jumpY=0;jumpV=0;}}
   for(const r of rides)if(r.kind==='car')carLights(r,ride===r&&f<-.1);
+  if(onBus){busStep(dt);if(onBus)return true;}
   if(ride){rideStep(dt,f,s);return true;}
   if(seat&&seat.lie&&clock>=7&&clock<7.3){standUp();return false;}        // morning: wake up
   if(seat&&seat.lie){const A=seat.A;pos.x=A.an[0];pos.z=A.an[2];camera.position.set(A.an[0],A.an[1]+.3,A.an[2]);camera.rotation.set(pitch,yaw,0);if(Math.abs(f)+Math.abs(s)>.4){standUp();return false;}return true;}
@@ -198,32 +215,32 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],off:['',leaveBus]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
   b.onclick=()=>{fn();actKey='';updateActs();canvas.focus({preventScroll:true});};return b;}
 function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
-  if(ride)list.push('out');
-  if(ride)list.push('horn');
-  if(ride&&ride.kind==='car')list.push('radio');
-  else{if(nr)list.push('in');
+  const nbus=nearBus();
+  if(onBus)list.push('off');
+  else if(ride){list.push('out','horn');if(ride.kind==='car')list.push('radio');}
+  else{if(nbus)list.push('bus');if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat&&waterDepth()<.5)list.push('jump');
     if(!seat)list.push('run');
     if(fish||atShore())list.push('fish');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(fish?fish.bite:'');
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
@@ -231,7 +248,7 @@ function updateActs(){
 addEventListener('keydown',e=>{if(e.repeat)return;
   if(e.code==='Space')jump();
   else if(e.code==='KeyE'){if(held)putDown();else pickUp();}
-  else if(e.code==='KeyF'){if(ride)getOut();else getIn();}
+  else if(e.code==='KeyF'){if(onBus)leaveBus();else if(ride)getOut();else if(nearBus())boardBus();else getIn();}
   else if(e.code==='KeyQ'){if(seat)standUp();else sitDown();}
   else if(e.code==='KeyZ'){if(seat)standUp();else lieDown();}
   else if(e.code==='Digit1')toggleItem('flashlight');

@@ -1147,7 +1147,7 @@ function physStep(dt){
     for(const rd of rides){const fx=Math.cos(rd.h),fz=-Math.sin(rd.h),mv=rd===ride?rd.v:0;                   // your car and bike, parked or moving
       for(const k of rd.S.pts)hitPerson(b,rd.x+fx*k,rd.z+fz*k,rd.S.R,1.5,fx*mv,fz*mv,rd.S.mass,'你的'+rd.S.name);}
     for(const d of pets)hitPerson(b,d.x,d.z,.28,.6,d.vx,d.vz,0,d.name);
-    const hp=ride?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
+    const hp=ride||onBus?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
     for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption
       if(hitPerson(b,n.pos.x,n.pos.z,n.lie?.45:.2,n.lie?.85:n.sit?1.2:n.o.h,n.vx,n.vz,0,n.o.name)&&spd>1.5)notify(n,'hit',b);}
@@ -1210,7 +1210,7 @@ function busMesh(col){const g=new THREE.Group();scene.add(g);cur=g;
 const BUS_STOP={'-1':-25.3,'1':18.5};   // where the front of each bus ends up, so its middle is level with the stop                                         // where each direction's bus stops (x along the street)
 [-1,1].forEach((dir,i)=>{const m=busMesh(0xe8a23a);m.g.visible=false;
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
-  cars.push(Object.assign(m,{dir,busDir:dir,z:0,x:0,h:0,v:0,on:false,t:6+i*9,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,stopX:BUS_STOP[dir],dwell:0,served:false}));});
+  cars.push(Object.assign(m,{dir,busDir:dir,z:0,x:0,h:0,v:0,on:false,t:6+i*9,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,home:dir,stopX:BUS_STOP[dir],dwell:0,served:false}));});
 const busAt=dir=>cars.some(c=>c.bus&&c.busDir===dir&&c.on&&c.dwell>0);
 // --- the traffic light at the zebra crossing ---
 // One clock runs it: cars get green, then yellow, then red while the walkers get their green figure.
@@ -1274,6 +1274,11 @@ function startCar(c){
   const R=ROUTES[name];if(cars.some(o=>o!==c&&o.on&&Math.hypot(o.x-R[0][0],o.z-R[0][1])<24))return false;
   c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=false;c.dwell=0;return true;
 }
+// you are aboard: the bus goes round the block off the end of the street and comes back the other way
+function busTurn(c){const nd=-c.busDir,R2=ROUTES[nd>0?'east':'west'],sx=-nd*76,sz=R2[0][1];
+  if(cars.some(o=>o!==c&&o.on&&Math.abs(o.z-sz)<1.6&&Math.abs(o.x-sx)<16)){c.v=0;return;}          // wait for a gap in the other lane
+  c.busDir=nd;c.stopX=BUS_STOP[nd];c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=CAR_SPEED;c.served=false;c.dwell=0;c.dir=nd;
+  camera.position.set(c.x-nd*9,4.6,c.z);say('公車在街尾繞了一圈，現在往回開，下一站是對面的公車站。');}
 let carClock=0;
 const cv3=new THREE.Vector3();
 function updateCars(dt){
@@ -1281,8 +1286,12 @@ function updateCars(dt){
   for(const c of cars){
     if(!c.on){c.t-=dt;if(c.t<=0&&!startCar(c))c.t=2;continue;}
     // steer toward the next point on the route
+    if(c===onBus&&c.dir!==0&&c.x*c.busDir>76){busTurn(c);continue;}                    // with you aboard the bus turns back just outside town
     let tp=c.route[c.wi],dist=Math.hypot(tp[0]-c.x,tp[1]-c.z);
-    if(dist<1.6+c.v*.12){c.wi++;if(c.wi>=c.route.length){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
+    if(dist<1.6+c.v*.12){c.wi++;if(c.wi>=c.route.length){
+      if(c===onBus){busTurn(c);continue;}
+      if(c.bus){c.busDir=c.home;c.stopX=BUS_STOP[c.home];}
+      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
     const turn=angDiff(Math.atan2(-(tp[1]-c.z),tp[0]-c.x),c.h),maxT=(c.v/3.3+.05)*dt;c.h+=Math.max(-maxT,Math.min(maxT,turn));
     const fx=Math.cos(c.h),fz=-Math.sin(c.h),px0=c.x+fx*c.hl,pz0=c.z+fz*c.hl;c.dir=Math.abs(fx)>.9&&onRoad(c.z)?Math.sign(fx):0;   // dir: +1/-1 while running along the main street, 0 otherwise
     let gap=1e9;
@@ -1300,6 +1309,8 @@ function updateCars(dt){
     if(c.bus){const d=(c.stopX-px0)*c.busDir;                                          // a bus pulls up at its stop, waits with the doors open, then goes on
       if(c.dwell>0){c.dwell-=dt;gap=0;}
       else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=6;c.served=true;sfxDoor(c.x,c.z);}}}
+    if(c===onBus&&busBell&&!(c.dwell>0)&&c.dir!==0&&(c.x<JX0-8||c.x>JX1+8)&&(c.x<ZEBRA[0]-6||c.x>ZEBRA[1]+6)){gap=0;   // you rang the bell: pull up at the next safe bit of kerb
+      if(c.v<.15){c.dwell=4;busBell=false;sfxDoor(c.x,c.z);leaveBus();}}
     let want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
     if(Math.abs(turn)>.2)want=Math.min(want,3.6);                                      // slow down for corners
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=fx*c.v*dt;c.z+=fz*c.v*dt;
@@ -1528,12 +1539,29 @@ function fishStep(dt,t){
   if(fish.bite&&!was){actKey='';noise(.25,700,.7,.3);say('有魚咬了！快按「拉！」');}
   if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10);say('魚跑掉了。再等一下。');}
   bobber.position.set(fish.x,fish.bite?-.06:.04+Math.sin(t*3)*.02,fish.z);}
+// --- taking the bus: get on while it waits at a stop, ring the bell (or wait for the next stop) to get off ---
+let onBus=null,busBell=false;
+function nearBus(){if(ride||onBus)return null;for(const c of cars)if(c.bus&&c.on&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<5.2)return c;return null;}
+function boardBus(){const c=nearBus();if(!c)return;if(cash<5){say('公車票要 $5，你的錢不夠。');return;}
+  putDown();standUp();cash-=5;sfxCoin();onBus=c;busBell=false;c.dwell=Math.max(c.dwell,1.5);vel.x=vel.z=0;jumpY=jumpV=0;busTrips++;
+  say('你上公車了（車票 $5）。到下一站會停；想提早下車就按「下車鈴」。');}
+let busTrips=0;
+function leaveBus(){const c=onBus;if(!c)return;
+  if(!(c.dwell>0)){if(!busBell){busBell=true;sfxBell();say('叮！司機聽到了，會在前面安全的路邊停車。');}return;}
+  const fx=Math.cos(c.h),fz=-Math.sin(c.h);
+  for(const d of[2.6,3.3,-2.6,-3.3]){const x=c.x-fz*d,z=c.z+fx*d;                              // the kerb side first
+    if(!blocked(x,z)){onBus=null;busBell=false;pos.x=x;pos.z=z;yaw=Math.atan2(fz*Math.sign(d),-fx*Math.sign(d));pitch=-.05;say('你下公車了。');return;}}
+  say('車門外面被擋住了，等一下再下車。');}
+function busStep(dt){const c=onBus;if(!c.on){onBus=null;return;}
+  pos.x=c.x;pos.z=c.z;const fx=Math.cos(c.h),fz=-Math.sin(c.h);
+  camGoal.set(c.x-fx*9,4.6,c.z-fz*9);camera.position.lerp(camGoal,1-Math.exp(-dt*5));camera.lookAt(c.x+fx*3,1.6,c.z+fz*3);yaw=Math.atan2(-fx,-fz);}
 // --- one step of you. Returns true when it has already placed the camera (riding or sitting) ---
 function playerStep(dt,f,s){
   const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
   if(jumpY>0||jumpV>0){jumpV-=g*dt;jumpY+=jumpV*dt;const top=roomAt(pos.x,pos.z)?RH-1.78:7;
     if(jumpY>top){jumpY=top;jumpV=Math.min(0,jumpV);}if(jumpY<=0){jumpY=0;jumpV=0;}}
   for(const r of rides)if(r.kind==='car')carLights(r,ride===r&&f<-.1);
+  if(onBus){busStep(dt);if(onBus)return true;}
   if(ride){rideStep(dt,f,s);return true;}
   if(seat&&seat.lie&&clock>=7&&clock<7.3){standUp();return false;}        // morning: wake up
   if(seat&&seat.lie){const A=seat.A;pos.x=A.an[0];pos.z=A.an[2];camera.position.set(A.an[0],A.an[1]+.3,A.an[2]);camera.rotation.set(pitch,yaw,0);if(Math.abs(f)+Math.abs(s)>.4){standUp();return false;}return true;}
@@ -1542,32 +1570,32 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],off:['',leaveBus]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
   b.onclick=()=>{fn();actKey='';updateActs();canvas.focus({preventScroll:true});};return b;}
 function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
-  if(ride)list.push('out');
-  if(ride)list.push('horn');
-  if(ride&&ride.kind==='car')list.push('radio');
-  else{if(nr)list.push('in');
+  const nbus=nearBus();
+  if(onBus)list.push('off');
+  else if(ride){list.push('out','horn');if(ride.kind==='car')list.push('radio');}
+  else{if(nbus)list.push('bus');if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat&&waterDepth()<.5)list.push('jump');
     if(!seat)list.push('run');
     if(fish||atShore())list.push('fish');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(fish?fish.bite:'');
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
@@ -1575,7 +1603,7 @@ function updateActs(){
 addEventListener('keydown',e=>{if(e.repeat)return;
   if(e.code==='Space')jump();
   else if(e.code==='KeyE'){if(held)putDown();else pickUp();}
-  else if(e.code==='KeyF'){if(ride)getOut();else getIn();}
+  else if(e.code==='KeyF'){if(onBus)leaveBus();else if(ride)getOut();else if(nearBus())boardBus();else getIn();}
   else if(e.code==='KeyQ'){if(seat)standUp();else sitDown();}
   else if(e.code==='KeyZ'){if(seat)standUp();else lieDown();}
   else if(e.code==='Digit1')toggleItem('flashlight');
@@ -1616,6 +1644,7 @@ function sfxStep(){if(waterDepth()>.05){noise(.16,900,.6,.12);return;}noise(.06,
 function sfxHonk(x,z){const v=.22*hear(x,z,45);tone(392,.4,v,'square');tone(494,.4,v,'square');}
 function sfxDoor(x,z){noise(.14,240,2,.3*hear(x,z,10));}
 function sfxCoin(){tone(880,.08,.2,'triangle');setTimeout(()=>tone(1320,.16,.2,'triangle'),80);}
+function sfxBell(){tone(1568,.5,.18,'sine');setTimeout(()=>tone(1245,.7,.16,'sine'),180);}
 function sfxBump(){noise(.18,140,.8,.4);tone(60,.2,.3,'sine',.5);}
 function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
@@ -1679,6 +1708,7 @@ function playStep(T,n,t,d){
 function musicScene(){
   if(heat>0)return'chase';
   if(ride&&ride.kind==='car')return RADIO[radioIdx];
+  if(onBus)return'drive';
   const r=roomAt(pos.x,pos.z);
   if(r)return r.id==='shop'?'shop':'home';
   if(rain>.4)return'rain';
@@ -2307,7 +2337,7 @@ function setView(on){third=on;ray.far=on?8:4.5;$('bView').textContent='視角：
 $('bView').onclick=()=>setView(!third);
 addEventListener('keydown',e=>{if(e.code==='KeyV'&&!e.repeat)setView(!third);});
 function thirdCam(dt,t){
-  const on=third&&!ride;me.root.visible=on;hand.visible=!on;
+  const on=third&&!ride&&!onBus;me.root.visible=on;hand.visible=!on;
   if(!on)return;
   const sp=Math.hypot(vel.x,vel.z),moving=sp>.3&&!seat;
   if(moving)meYaw+=angDiff(Math.atan2(vel.x,vel.z),meYaw)*(1-Math.exp(-dt*10));      // turn to face the way you walk
@@ -2533,7 +2563,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,prof,renderer,busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
