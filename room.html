@@ -107,7 +107,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
       <h2>物理</h2>
       <div class="row"><button id="bGrav" type="button" class="plain">重力：地球</button><button id="bOrb" type="button" aria-pressed="false">引力球</button></div>
       <h2>看更多</h2>
-      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
+      <div class="row"><button id="bMind" type="button" aria-pressed="false">居民的想法</button><button id="bSound" type="button" class="plain">聲音：開</button><button id="bMusic" type="button" class="plain">音樂：開</button><button id="bQual" type="button" class="plain">畫質：高</button><button id="bView" type="button" class="plain">視角：第一人稱</button><button id="bPhoto" type="button" class="plain">拍照模式</button><button id="bReset" type="button" class="plain">重新開始</button><button id="bHelp" type="button" class="plain">操作說明</button></div>
     </div>
     <div id="quest" class="phys quest" hidden></div>
     <div id="phys" class="phys" hidden></div>
@@ -136,7 +136,7 @@ const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
   ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕：跳、撿、坐、開車、騎車、手電筒、雨傘、地圖'
-  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>點人</b>：說話　<b>點</b>門、球、人　<b>Esc</b> 放開滑鼠';
+  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>V</b> 換視角　<b>點人</b>：說話　<b>點</b>門、球、人　<b>Esc</b> 放開滑鼠';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}
 
@@ -1508,10 +1508,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),third,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
+  if(d.third)setView(true);
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
@@ -2041,6 +2042,46 @@ function updatePets(dt,t){
   }
 }
 
+/* ---------- you, seen from outside ---------- */
+// Press V to step back and see your own character. The camera circles behind you and moves closer when a wall is in the way.
+const me=makePerson({name:'你',h:1.72,skin:0xe8b996,hair:0x3a2a1c,top:0xf2c23d,bottom:0x2b3a67,shoe:0xffffff,long:false});
+interact.pop();me.tag.remove();me.root.visible=false;                       // not a neighbour: no name tag, nothing to click
+let third=false,meYaw=0;
+const meQ=new THREE.Quaternion();
+function camBlocked(x,z){if(!inWorld(x,z,.2))return true;
+  for(const c of colliders)if(x>c[0]-.15&&x<c[1]+.15&&z>c[2]-.15&&z<c[3]+.15)return true;
+  for(const d of doors){const c=doorArea(d);if(x>c[0]-.1&&x<c[1]+.1&&z>c[2]-.1&&z<c[3]+.1)return true;}
+  return false;}
+function setView(on){third=on;ray.far=on?8:4.5;$('bView').textContent='視角：'+(on?'第三人稱':'第一人稱');}
+$('bView').onclick=()=>setView(!third);
+addEventListener('keydown',e=>{if(e.code==='KeyV'&&!e.repeat)setView(!third);});
+function thirdCam(dt,t){
+  const on=third&&!ride;me.root.visible=on;hand.visible=!on;
+  if(!on)return;
+  const sp=Math.hypot(vel.x,vel.z),moving=sp>.3&&!seat;
+  if(moving)meYaw+=angDiff(Math.atan2(vel.x,vel.z),meYaw)*(1-Math.exp(-dt*10));      // turn to face the way you walk
+  let name='idle',y=me.stand+jumpY,lieQ2=null,hy=1.55+jumpY;
+  if(seat){const A=seat.A;name=A.pose;y=A.an[1];meYaw=A.yaw||0;hy=A.an[1]+.55;if(seat.lie)lieQ2=A.q;}
+  else if(moving){name='walk';me.ph+=dt*sp*3.9;}
+  pose(P,name,me,t);
+  if(held){P.alx=P.arx=-1.15;P.elx=P.erx=-.7;}else if(use.umbrella){P.arx=-1.5;P.erx=-1.1;}else if(use.flashlight){P.arx=-1.2;P.erx=-.3;}
+  const kp=1-Math.exp(-dt*(name==='walk'?20:9));JK.forEach(k=>me.cur[k]+=(P[k]-me.cur[k])*kp);
+  const c=me.cur,J=me.J;
+  J.spine.rotation.set(c.sx,0,c.sz);J.neck.rotation.set(c.nx,c.ny,0);
+  J.al.rotation.set(c.alx,0,c.alz);J.ar.rotation.set(c.arx,0,c.arz);J.el.rotation.x=c.elx;J.er.rotation.x=c.erx;
+  J.hl.rotation.x=c.hlx;J.hr.rotation.x=c.hrx;J.kl.rotation.x=c.klx;J.kr.rotation.x=c.krx;
+  me.root.position.set(pos.x,y+c.yo,pos.z);me.root.quaternion.slerp(lieQ2||meQ.setFromAxisAngle(up3,meYaw),1-Math.exp(-dt*8));
+  me.um.visible=use.umbrella;
+  // the camera sits behind and a little above, as far back as it can get without going through a wall
+  const cp=Math.cos(pitch),bx=Math.sin(yaw)*cp,by=-Math.sin(pitch),bz=Math.cos(yaw)*cp,far=3.4,indoors=!!roomAt(pos.x,pos.z);
+  let dist=far;
+  for(let i=1;i<=10;i++){const d=far*i/10,yy=hy+by*d+.25;if(camBlocked(pos.x+bx*d,pos.z+bz*d)||yy<.3||(indoors&&yy>RH-.12)){dist=far*(i-1)/10;break;}}
+  dist=Math.max(.45,dist-.12);const lift=seat?.55:.25;
+  if(seat)dist=Math.max(dist,1.9);                                           // the seat itself would count as a wall: stay back and look over it
+  camera.position.set(pos.x+bx*dist,Math.min(hy+by*dist+lift,indoors?RH-.15:99),pos.z+bz*dist);camera.rotation.set(pitch,yaw,0);camera.updateMatrixWorld();
+  if(held){held.p.set(pos.x+Math.sin(meYaw)*.42,y+.18,pos.z+Math.cos(meYaw)*.42);held.v.set(vel.x,0,vel.z);held.mesh.position.copy(held.p);}   // the ball goes in your hands, not in front of the camera
+}
+
 /* ---------- reflections: photograph the room itself and use it as the mirror image ---------- */
 const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null,bakedKey='';
 // reflections are re-photographed when you enter another room, or walk a good way down the street
@@ -2192,7 +2233,7 @@ function tick(now){
   if(v>.6&&jumpY===0){const sn2=Math.floor(bob*2/Math.PI);if(sn2!==stepNo){stepNo=sn2;sfxStep();}}
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY;}
-  camera.updateMatrixWorld();carryHeld();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();if(frame%15===0){hudStats();updateAudio();}
+  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();if(frame%15===0){hudStats();updateAudio();}
   // the people, then the physics in small fixed steps
   for(const n of people)updNPC(n,dt,t);
   updateDoors(dt);updateCars(dt);updateWeather(dt);updatePets(dt,t);
@@ -2229,7 +2270,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,do:{lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,get third(){return third;},me,do:{lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
