@@ -48,6 +48,12 @@ const BUS_STOP={'-1':-25.3,'1':18.5};   // where the front of each bus ends up, 
 [-1,1].forEach((dir,i)=>{const m=busMesh(0xe8a23a);m.g.visible=false;
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir,busDir:dir,z:0,x:0,h:0,v:0,on:false,t:6+i*9,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,home:dir,stopX:BUS_STOP[dir],dwell:0,served:false}));});
+// one taxi: it only comes when you wave for it, stops beside you, and takes you along the main street
+{const m=carMesh(0x2fb89a);m.g.visible=false;const sign=new THREE.Mesh(new THREE.BoxGeometry(.4,.3,.95),new THREE.MeshBasicMaterial({color:new THREE.Color(1.5,.85,.05)}));sign.position.set(-.15,1.69,0);m.g.add(sign);
+  const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
+  cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:1e9,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,taxi:true,busDir:1,stopX:0,served:true,dwell:0,dest:null}));}
+const taxi=cars[cars.length-1];
+const kerbX=(x,dir)=>x>ZEBRA[0]-3&&x<ZEBRA[1]+3?(dir>0?ZEBRA[1]+3.5:ZEBRA[0]-3.5):x;      // never pull up on the zebra crossing: go just past it
 const busAt=dir=>cars.some(c=>c.bus&&c.busDir===dir&&c.on&&c.dwell>0);
 // --- the traffic light at the zebra crossing ---
 // One clock runs it: cars get green, then yellow, then red while the walkers get their green figure.
@@ -107,15 +113,15 @@ const STOPS={east:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jE}],eastSouth:[zebraE,{p:[JX
   northLeft:[{p:[LN.n,ST.z1+2.6],st:()=>jS},zebraW],northRight:[{p:[LN.n,ST.z1+2.6],st:()=>jS}]};
 const onAnyRoad=(x,z)=>onRoad(z)||(x>JX0&&x<JX1&&z>=ST.z1);
 function startCar(c){
-  const name=c.bus?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
+  const name=c.bus||c.taxi?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
   const R=ROUTES[name];if(cars.some(o=>o!==c&&o.on&&Math.hypot(o.x-R[0][0],o.z-R[0][1])<24))return false;
-  c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=false;c.dwell=0;return true;
+  c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=!!c.taxi&&c.served;c.dwell=0;return true;
 }
 // you are aboard: the bus goes round the block off the end of the street and comes back the other way
 function busTurn(c){const nd=-c.busDir,R2=ROUTES[nd>0?'east':'west'],sx=-nd*76,sz=R2[0][1];
   if(cars.some(o=>o!==c&&o.on&&Math.abs(o.z-sz)<1.6&&Math.abs(o.x-sx)<16)){c.v=0;return;}          // wait for a gap in the other lane
-  c.busDir=nd;c.stopX=BUS_STOP[nd];c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=CAR_SPEED;c.served=false;c.dwell=0;c.dir=nd;
-  camera.position.set(c.x-nd*9,4.6,c.z);say('公車在街尾繞了一圈，現在往回開，下一站是對面的公車站。');}
+  c.busDir=nd;if(c.bus)c.stopX=BUS_STOP[nd];c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=CAR_SPEED;c.served=false;c.dwell=0;c.dir=nd;
+  camera.position.set(c.x-nd*9,4.6,c.z);say(c.taxi?'計程車在街尾掉頭，往回開。':'公車在街尾繞了一圈，現在往回開，下一站是對面的公車站。');}
 let carClock=0;
 const cv3=new THREE.Vector3();
 function updateCars(dt){
@@ -128,7 +134,7 @@ function updateCars(dt){
     if(dist<1.6+c.v*.12){c.wi++;if(c.wi>=c.route.length){
       if(c===onBus){busTurn(c);continue;}
       if(c.bus){c.busDir=c.home;c.stopX=BUS_STOP[c.home];}
-      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
+      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.taxi?1e9:c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
     const turn=angDiff(Math.atan2(-(tp[1]-c.z),tp[0]-c.x),c.h),maxT=(c.v/3.3+.05)*dt;c.h+=Math.max(-maxT,Math.min(maxT,turn));
     const fx=Math.cos(c.h),fz=-Math.sin(c.h),px0=c.x+fx*c.hl,pz0=c.z+fz*c.hl;c.dir=Math.abs(fx)>.9&&onRoad(c.z)?Math.sign(fx):0;   // dir: +1/-1 while running along the main street, 0 otherwise
     let gap=1e9;
@@ -143,9 +149,9 @@ function updateCars(dt){
       const ox=Math.cos(o.h),oz=-Math.sin(o.h);for(const q of[-1,0,1])see(o.x+ox*o.hl*q,o.z+oz*o.hl*q,1.7);}
     for(const sp of c.stops){const st=sp.st();if(st==='g')continue;                     // red or yellow light: stop at the line (on yellow only if there is room to stop gently)
       const dx=sp.p[0]-px0,dz=sp.p[1]-pz0,d=dx*fx+dz*fz;if(d>(st==='y'?5:-.6)&&d<gap&&Math.abs(-dx*fz+dz*fx)<2)gap=d;}
-    if(c.bus){const d=(c.stopX-px0)*c.busDir;                                          // a bus pulls up at its stop, waits with the doors open, then goes on
+    if(c.bus||c.taxi){const d=(c.stopX-px0)*c.busDir;                                          // a bus pulls up at its stop, waits with the doors open, then goes on
       if(c.dwell>0){c.dwell-=dt;gap=0;}
-      else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=6;c.served=true;sfxDoor(c.x,c.z);}}}
+      else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=c.taxi?(onBus===c?3:25):6;c.served=true;sfxDoor(c.x,c.z);if(c.taxi)taxiStopped(c);}}}
     if(c===onBus&&busBell&&!(c.dwell>0)&&c.dir!==0&&(c.x<JX0-8||c.x>JX1+8)&&(c.x<ZEBRA[0]-6||c.x>ZEBRA[1]+6)){gap=0;   // you rang the bell: pull up at the next safe bit of kerb
       if(c.v<.15){c.dwell=4;busBell=false;sfxDoor(c.x,c.z);leaveBus();}}
     let want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time

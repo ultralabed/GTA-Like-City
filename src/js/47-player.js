@@ -187,8 +187,10 @@ function fishStep(dt,t){
   bobber.position.set(fish.x,fish.bite?-.06:.04+Math.sin(t*3)*.02,fish.z);}
 // --- taking the bus: get on while it waits at a stop, ring the bell (or wait for the next stop) to get off ---
 let onBus=null,busBell=false;
-function nearBus(){if(ride||onBus)return null;for(const c of cars)if(c.bus&&c.on&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<5.2)return c;return null;}
-function boardBus(){const c=nearBus();if(!c)return;if(cash<5){say('公車票要 $5，你的錢不夠。');return;}
+function nearBus(){if(ride||onBus)return null;for(const c of cars)if((c.bus||c.taxi)&&c.on&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<5.2)return c;return null;}
+function boardBus(){const c=nearBus();if(!c)return;
+  if(c.taxi){putDown();standUp();onBus=c;busBell=false;vel.x=vel.z=0;jumpY=jumpV=0;sfxDoor(c.x,c.z);taxiMenu();return;}
+  if(cash<5){say('公車票要 $5，你的錢不夠。');return;}
   putDown();standUp();cash-=5;sfxCoin();onBus=c;busBell=false;c.dwell=Math.max(c.dwell,1.5);vel.x=vel.z=0;jumpY=jumpV=0;busTrips++;
   say('你上公車了（車票 $5）。到下一站會停；想提早下車就按「下車鈴」。');}
 let busTrips=0;
@@ -199,8 +201,27 @@ function leaveBus(){const c=onBus;if(!c)return;
     if(!blocked(x,z)){onBus=null;busBell=false;pos.x=x;pos.z=z;yaw=Math.atan2(fz*Math.sign(d),-fx*Math.sign(d));pitch=-.05;say('你下公車了。');return;}}
   say('車門外面被擋住了，等一下再下車。');}
 function busStep(dt){const c=onBus;if(!c.on){onBus=null;return;}
+  if(c.taxi&&!c.dest&&c.dwell>0&&!$('talk').hidden)c.dwell=Math.max(c.dwell,2);              // the driver waits while you choose
   pos.x=c.x;pos.z=c.z;const fx=Math.cos(c.h),fz=-Math.sin(c.h);
   camGoal.set(c.x-fx*9,4.6,c.z-fz*9);camera.position.lerp(camGoal,1-Math.exp(-dt*5));camera.lookAt(c.x+fx*3,1.6,c.z+fz*3);yaw=Math.atan2(-fx,-fz);}
+// --- the taxi: wave for it beside the main street, tell the driver where to, pay, and ride ---
+const TAXI_TO=[['公園',19.5],['夕陽商店',36.5],['街的西邊',-30],['1 號門口',0],['西邊的公車站',-21.8],['第二條馬路口',42.5]];
+function canHail(){const S=WORLD.street;return!ride&&!onBus&&!taxi.on&&taxi.t>1e8&&!roomAt(pos.x,pos.z)&&pos.z>S.z0-3.6&&pos.z<S.z1+3.6&&pos.x>-34&&pos.x<44;}
+function hail(){if(!canHail()){if(taxi.on||taxi.t<1e8)say('計程車已經在路上了，在路邊等一下。');else say('要站在大馬路旁邊的人行道上，才招得到計程車。');return;}
+  const S=WORLD.street,dir=pos.z>(S.z0+S.z1)/2?1:-1;taxi.busDir=dir;taxi.stopX=kerbX(pos.x,dir)+dir*taxi.hl;taxi.served=false;taxi.dest=null;taxi.t=0;actKey='';
+  say('你舉手招計程車。綠色、車頂有亮燈的車會開過來，停在你旁邊。');}
+function taxiStopped(c){
+  if(onBus===c&&c.dest){const nm=c.dest;c.dest=null;leaveBus();if(!onBus)say('到'+nm+'了。司機說：「謝謝，慢走！」');}
+  else if(onBus!==c)say('計程車停在你旁邊了。走過去按 F 上車（它會等你一下）。');}
+function taxiMenu(line){const c=onBus,el=$('talk');el.hidden=false;el.textContent='';talkN=null;
+  const h=document.createElement('strong');h.textContent='計程車司機';const p=document.createElement('p');p.textContent=line||'你好！要去哪裡？你有 $'+cash+'。';el.append(h,p);
+  const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
+  for(const D of TAXI_TO){const far=Math.abs(D[1]-c.x);if(far<9)continue;const fare=10+Math.round(far*.4);
+    add(D[0]+' $'+fare,()=>{if(cash<fare){taxiMenu('錢不夠喔，去'+D[0]+'要 $'+fare+'，你只有 $'+cash+'。');return;}
+      cash-=fare;sfxCoin();const ahead=(D[1]-c.x)*c.busDir>6,fd=ahead?c.busDir:-c.busDir;c.dest=D[0];c.stopX=kerbX(D[1],fd)+fd*c.hl;c.served=false;c.dwell=.6;el.hidden=true;taxiTrips++;
+      say('司機：「好，去'+D[0]+'。」車錢 $'+fare+(ahead?'':'。那個地方在後面，計程車會先開到街尾掉頭')+'。');});}
+  add('不坐了',()=>{el.hidden=true;leaveBus();});}
+let taxiTrips=0;
 // --- one step of you. Returns true when it has already placed the camera (riding or sitting) ---
 function playerStep(dt,f,s){
   const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
@@ -216,12 +237,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F'};
+const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],off:['',leaveBus]};
+const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],off:['',leaveBus]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -231,17 +252,17 @@ function updateActs(){
   const nbus=nearBus();
   if(onBus)list.push('off');
   else if(ride){list.push('out','horn');if(ride.kind==='car')list.push('radio');}
-  else{if(nbus)list.push('bus');if(nr)list.push('in');
+  else{if(nbus)list.push('bus');else if(canHail())list.push('taxi');if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat&&waterDepth()<.5)list.push('jump');
     if(!seat)list.push('run');
     if(fish||atShore())list.push('fish');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(fish?fish.bite:'');
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(nbus&&nbus.taxi?'tx':'')+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='bus'&&nbus.taxi?'上計程車':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
@@ -257,6 +278,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
   else if(e.code==='KeyH')horn();
+  else if(e.code==='KeyT'){if(!ride&&!onBus)hail();}
   else if(e.code==='KeyG')fishing();
   else if(e.code==='KeyR'&&ride&&ride.kind==='car')nextRadio();
 });
