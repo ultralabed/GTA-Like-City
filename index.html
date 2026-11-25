@@ -1533,7 +1533,13 @@ function boatMesh(){
   box(3.3,.42,1.3,hull,0,.12,0,{r:.16});box(.9,.36,1.05,hull,1.75,.16,0,{r:.16});box(3.36,.08,1.36,trim,0,.34,0,{r:.03});   // hull, bow, a coloured rail
   box(2.6,.06,.98,M.wood||trim,-.1,.2,0);box(.3,.1,1,M.wood||trim,-.5,.42,0);box(.3,.1,1,M.wood||trim,.6,.42,0);              // floor and two benches
   box(.26,.5,.3,M.black,-1.75,.38,0,{r:.05});cyl(.03,.03,.5,M.steel,-1.75,-.05,0,8);                                          // the little motor at the back
-  cur=scene;return{g,wheels:[]};}
+  const rider=new THREE.Group();g.add(rider);cur=rider;                                                                          // you, sitting on the back bench with a hand on the motor
+  const skin=new THREE.MeshStandardMaterial({color:0xe8b996,roughness:.85}),top=new THREE.MeshStandardMaterial({color:0x2b3a67,roughness:.85}),leg=new THREE.MeshStandardMaterial({color:0x3a3a3a,roughness:.85});
+  const cap=(r,l,m,x,y,z,rz)=>{const me=new THREE.Mesh(new THREE.CapsuleGeometry(r,l,4,10),m);me.position.set(x,y,z);me.rotation.z=rz||0;add(me);return me;};
+  cap(.13,.3,top,-.55,.86,0,-.08);add(new THREE.Mesh(new THREE.SphereGeometry(.105,16,12),skin)).position.set(-.5,1.27,0);
+  [-.15,.15].forEach(z=>{cap(.06,.34,leg,-.3,.52,z*.7,-1.5);cap(.05,.3,leg,-.06,.34,z*.7,-.1);});
+  cap(.04,.4,top,-.86,.88,-.2,.9);cap(.04,.36,top,-.42,.8,.2,-.6);
+  rider.visible=false;cur=scene;return{g,wheels:[],rider};}
 function bikeMesh(moto){
   const g=new THREE.Group();scene.add(g);cur=g;
   const paint=new THREE.MeshStandardMaterial({color:moto?0x2a8fb0:0xff5fa8,roughness:.4,metalness:.5});
@@ -1571,7 +1577,7 @@ function nearRide(){let best=null,bd=1e9;for(const r of rides){const d=Math.hypo
 function getIn(){const r=nearRide();if(!r||ride)return;putDown();standUp();ride=r;r.v=0;vel.x=vel.z=0;jumpY=jumpV=0;if(r.rider)r.rider.visible=true;showItems();
   say(r.kind==='car'?'你上車了。W 或往前推是油門，S 是煞車和倒車，A D 是方向盤。':r.kind==='moto'?'你騎上機車了。W 催油門，S 煞車，A D 轉彎。它比車子還快，小心騎。':r.kind==='boat'?'你坐上小船了。W 往前，S 煞車和倒退，A D 轉彎。船在水上會滑比較久才停。要下船請開回沙灘旁邊。':'你騎上腳踏車了。W 踩踏板，S 煞車，A D 轉彎。腳踏車可以騎上人行道。');}
 function getOut(){const r=ride;if(!r)return;if(Math.abs(r.v)>1.5){say('先停下來再下車。');return;}
-  if(r.S.water){if(r.z<WORLD.shore-4.5){say('這裡水太深了。把船開回沙灘旁邊再下船。');return;}ride=null;r.v=0;pos.x=r.x;pos.z=WORLD.shore+.7;yaw=0;pitch=-.05;showItems();say('你下船了，船停在岸邊。');return;}
+  if(r.S.water){if(r.z<WORLD.shore-4.5){say('這裡水太深了。把船開回沙灘旁邊再下船。');return;}ride=null;r.v=0;pos.x=r.x;pos.z=WORLD.shore+.7;yaw=0;pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();say('你下船了，船停在岸邊。');return;}
   const fx=Math.cos(r.h),fz=-Math.sin(r.h);ride=null;                                          // (blocked() treats the vehicle as parked from here on)
   for(const side of[1,-1]){const x=r.x+fz*r.S.exit*side,z=r.z-fx*r.S.exit*side;                 // try the left side, then the right
     if(!blocked(x,z)){r.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();return;}}
