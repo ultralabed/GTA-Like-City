@@ -110,6 +110,7 @@ function physStep(dt){
       if(J/b.m>1)say('車子 ⇄ '+b.name+'：兩邊各被推 '+J.toFixed(1)+' 牛頓·秒。車子有 1200 公斤，所以幾乎沒變慢。',true);}
     for(const rd of rides){const fx=Math.cos(rd.h),fz=-Math.sin(rd.h),mv=rd===ride?rd.v:0;                   // your car and bike, parked or moving
       for(const k of rd.S.pts)hitPerson(b,rd.x+fx*k,rd.z+fz*k,rd.S.R,1.5,fx*mv,fz*mv,rd.S.mass,'你的'+rd.S.name);}
+    for(const d of pets)hitPerson(b,d.x,d.z,.28,.6,d.vx,d.vz,0,d.name);
     const hp=ride?0:hitPerson(b,pos.x,pos.z,.3,1.7,vel.x,vel.z,PLAYER_M,'你');
     if(hp){vel.x-=hp[1]*hp[0]/PLAYER_M;vel.z-=hp[2]*hp[0]/PLAYER_M;}       // the ball pushes back on you
     for(const n of people){if(n.hidden)continue;const spd=b.v.length();   // a fast ball that hits someone is an interruption

@@ -58,6 +58,7 @@ function updateCars(dt){
     const front=c.x+c.dir*2.1;let gap=1e9;
     const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
     see(pos.x-(ride?c.dir*ride.S.len:0),pos.z);                                   // you, or the back of the car you are driving
+    for(const d of pets)see(d.x,d.z);                                              // drivers stop for the dog too
     for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);    }
     if(sigCars!=='g'){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;                    // red or yellow light: stop at the line (on yellow only if there is room to stop gently)
       if(d>(sigCars==='y'?5:-.6)&&d<gap)gap=d;}
