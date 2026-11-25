@@ -132,6 +132,7 @@ const WORLD={
   ],
   // the patrol officer: walks the street all day. If you keep being a nuisance he comes over and fines you.
   guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
+  balls:[{kind:'basket',x:19.2,z:20.6}],                             // balls lying around outside
   outdoor:[
     // big buildings along the side street (you cannot go inside these)
     {type:'block',x:43.6,z:60,w:5.6,d:14,h:9,col:0xb9a48c},
@@ -146,7 +147,7 @@ const WORLD={
     {type:'streetLamp',x:-36,z:13.2,rot:2},{type:'streetLamp',x:-24,z:13.2,rot:2},{type:'streetLamp',x:36,z:13.2,rot:2},{type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
     // the little park
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
-    {type:'stall',x:23.5,z:16.2,rot:2},
+    {type:'stall',x:23.5,z:16.2,rot:2},{type:'hoop',x:19.2,z:23.4,rot:2},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // bus stops: where people leave for work and come back
     {type:'busStop',x:-21.8,z:4.7,dir:-1},                           // dir = which way that stop's bus is heading (-1 = toward -x)

@@ -219,3 +219,11 @@ PREFAB.block=o=>{
   box(o.w,o.h,o.d,mat,0,o.h/2,0);box(o.w+.3,.25,o.d+.3,M.steel,0,o.h+.12,0);
   return{solid:[[-o.w/2,o.w/2,-o.d/2,o.d/2]],boxes:[[-o.w/2,o.w/2,0,o.h,-o.d/2,o.d/2]]};
 };
+// basketball hoop. The board faces +z. Get a ball down through the ring to score.
+const hoops=[];
+PREFAB.hoop=()=>{
+  cyl(.07,.09,2.9,M.steel,0,1.45,-.35,10);box(.08,.08,.5,M.steel,0,2.85,-.12);
+  box(1.3,.9,.05,M.trim,0,3.0,.1);box(.5,.36,.055,M.coral,0,2.82,.1);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.26,.02,8,24),M.coral);ring.rotation.x=Math.PI/2;ring.position.set(0,2.62,.42);ring.castShadow=true;cur.add(ring);
+  return{solid:[[-.15,.15,-.5,-.2]],boxes:[[-.65,.65,2.55,3.45,.07,.13],[-.1,.1,0,2.9,-.45,-.25]],marks:[{kind:'hoop',x:0,z:.42,y:2.62}]};
+};

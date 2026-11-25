@@ -166,6 +166,24 @@ function rideStep(dt,f,s){
   camera.lookAt(r.x+fx*2.5,1.1,r.z+fz*2.5);
   yaw=Math.atan2(-fx,-fz);
 }
+// --- fishing: stand at the water's edge, cast, wait for a bite, then pull in time ---
+let fish=null,fishBag=0,fishCount=0;
+const bobber=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),new THREE.MeshBasicMaterial({color:0xff5533}));bobber.visible=false;scene.add(bobber);
+const atShore=()=>!ride&&!seat&&pos.z<WORLD.shore+2.2&&pos.z>WORLD.shore-3&&inTown(pos.x,pos.z,0);
+function fishing(){
+  if(!fish){if(!atShore())return;camera.getWorldDirection(camDir);const fx=camDir.x,fz=Math.min(-.3,camDir.z),L=Math.hypot(fx,fz);
+    fish={x:pos.x+fx/L*4.5,z:Math.min(WORLD.shore-1.5,pos.z+fz/L*4.5),t:0,at:rnd(4,11),bite:false,px:pos.x,pz:pos.z};say('你把釣線甩出去了。等浮標沉下去，再按「拉！」。走開就會收線。');noise(.2,1200,.8,.15);return;}
+  if(fish.bite){const r=Math.random(),c=r<.12?['一隻舊鞋子',0]:r<.6?['一條小魚',8]:r<.9?['一條鯛魚',15]:['一條大魚',30];fishBag+=c[1];fishCount++;fish=null;sfxCoin();
+    say('釣到'+c[0]+'了！'+(c[1]?'值 $'+c[1]+'，拿去夕陽商店可以賣掉（現在魚簍裡共值 $'+fishBag+'）。':'沒人要買這個。'));}
+  else{fish=null;say('太早拉了，魚還沒咬。');}
+  actKey='';}
+function fishStep(dt,t){
+  bobber.visible=!!fish;if(!fish)return;
+  if(Math.hypot(pos.x-fish.px,pos.z-fish.pz)>1.2||ride){fish=null;actKey='';say('你收線了。');return;}
+  fish.t+=dt;const was=fish.bite;fish.bite=fish.t>fish.at&&fish.t<fish.at+1.7;
+  if(fish.bite&&!was){actKey='';noise(.25,700,.7,.3);say('有魚咬了！快按「拉！」');}
+  if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10);say('魚跑掉了。再等一下。');}
+  bobber.position.set(fish.x,fish.bite?-.06:.04+Math.sin(t*3)*.02,fish.z);}
 // --- one step of you. Returns true when it has already placed the camera (riding or sitting) ---
 function playerStep(dt,f,s){
   const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
@@ -180,12 +198,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -199,12 +217,13 @@ function updateActs(){
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat&&waterDepth()<.5)list.push('jump');
-    if(!seat)list.push('run');}
+    if(!seat)list.push('run');
+    if(fish||atShore())list.push('fish');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock;
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='run'?(runLock?'跑步中':'跑'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
@@ -220,6 +239,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
   else if(e.code==='KeyH')horn();
+  else if(e.code==='KeyG')fishing();
   else if(e.code==='KeyR'&&ride&&ride.kind==='car')nextRadio();
 });
 showItems();

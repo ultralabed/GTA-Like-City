@@ -23,6 +23,8 @@ const GOALS={                                                           // type 
   lift:{label:'等你開車載他',type:'lift'}
 };
 const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
+// at work right now? Weekends are free, except for people with a job on the street (the shop stays open) and visitors (their 'shift' is just time away)
+const onShift=n=>inSpan(n.o.shift,clock)&&(n.visitor||n.o.job||!isWeekend());
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
   const type=id==='work'&&n.o.job?'serve':GOALS[id].type;let best=null,bs=-1e9;   // someone with a job on the street works there instead of leaving
@@ -42,13 +44,13 @@ function utility(n,id){
   const g=GOALS[id];
   if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
   if(id==='patrol'||id==='catch'||id==='lift')return -1;
-  if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
+  if(id==='work')return onShift(n)?5:-1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(g.need==='food')u=nd<.3?1.6-nd:(1-nd)*.8;                            // hunger gets loud when it is bad
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}
+  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:isWeekend()?1.25:.85;}       // more people are out and about at the weekend
   if(id==='shop'&&!shopOpen())return -1;                                  // nobody behind the counter: closed                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
@@ -80,9 +82,9 @@ function brain(n,dt){
     if(heat>0&&g.id!=='catch'){setGoal(n,'catch');return;}if(heat===0&&g.id==='catch'){endGoal(n,false);return;}if(g.id==='catch')return;}
   if(n.visitor&&g.id!=='work'){n.stay-=dh;                                // visitors go home after a while, or when night falls, or when it rains
     if(n.stay<=0||dark>.75||rainOn){n.o.shift=[(clock+23.9)%24,(clock+rnd(.8,2.5)+dark*6)%24];n.resume=null;setGoal(n,'work');return;}}
-  if(g.id!=='work'&&inSpan(n.o.shift,clock)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
+  if(g.id!=='work'&&onShift(n)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
   if(g.id!=='sleep'&&g.id!=='work'&&n.need.energy<.06&&utility(n,'sleep')>0){setGoal(n,'sleep');return;}   // so does being worn out
-  const done=g.id==='work'?!inSpan(n.o.shift,clock):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
+  const done=g.id==='work'?!onShift(n):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
   if(done)endGoal(n,true);
 }
 function progress(n){const g=n.goal,G=GOALS[g.id];
@@ -138,7 +140,7 @@ function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
 people.forEach((n,i)=>{const H=houses[n.home];if(n.guard){setGoal(n,'patrol');const A=ACT[n.want];n.act=n.want;n.pos.set(A.ap[0],0,A.ap[1]);n.phase='at';n.root.position.set(A.ap[0],n.stand,A.ap[1]);return;}
   if(H)n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);else n.pos.set(i%2?WB.x1:WB.x0,0,i%3?5:14);       // start from home so 'nearest spot' means something
-  setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
+  setGoal(n,onShift(n)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
   else{const q=A.an||[A.ap[0],n.stand,A.ap[1]];n.pos.set(q[0],0,q[2]);n.y=q[1];n.yaw=A.yaw||0;n.phase='at';

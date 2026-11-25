@@ -28,6 +28,8 @@ $('bOrb').onclick=()=>{G.orb=!G.orb;applySwitches();
   say(G.orb?'引力球開了：它把別的球吸過來，別的球也用一樣大的力把它拉回去。':'引力球關了。');};
 
 /* ---------- time: the clock runs, the sun and moon move, the light changes ---------- */
+let day=5;                                                                // which day it is; day%7: 0 Sunday ... 5 Friday, 6 Saturday. The game starts on a Friday evening.
+const DOW='日一二三四五六',isWeekend=()=>day%7===0||day%7===6;
 let clock=WORLD.clock,speedIdx=1,sliding=false;
 const SPEEDS=[[0,'暫停'],[2/60,'正常'],[15/60,'快轉']];   // game hours per real second
 const ss=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
@@ -59,7 +61,7 @@ function applyTime(){
   if(isDay){disc.scale.setScalar(1);discMat.color.setRGB(5+hi,2.2+3.3*hi,.9+3.6*hi);glowMat.color.setRGB(1,.55+.4*hi,.3+.6*hi);glowMat.opacity=.9;}
   else{disc.scale.setScalar(.6);discMat.color.setRGB(1.7,1.8,2.1);glowMat.color.setRGB(.5,.6,.9);glowMat.opacity=.35;}
   dust.visible=isDay&&e>.03&&activeHouse===houses[0];
-  const hh=Math.floor(h),mm=Math.floor((h-hh)*60);$('clk').textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  const hh=Math.floor(h),mm=Math.floor((h-hh)*60);$('clk').textContent='週'+DOW[day%7]+' '+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
 }
 const slider=$('time');slider.value=clock;
 slider.addEventListener('input',()=>{clock=+slider.value;envDirty=true;envTimer=0;});

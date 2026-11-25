@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),third,outfit,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),third,outfit,day,fishBag,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
@@ -93,6 +93,7 @@ function shopMenu(line){
     const far=Math.hypot(H.front.x-pos.x,H.front.z-pos.z),secs=Math.round(25+far*1.6);                 // enough time on a bike, tight on foot
     quest={type:'parcel',house:H,until:performance.now()+secs*1000,secs,reward:30,text:''};parcelQuest();el.hidden=true;
     say('小芳：「麻煩把這個包裹送到 '+H.no+' 號門口，'+secs+' 秒內送到有獎金！」');});
+  if(fishBag)add('賣掉釣到的魚 +$'+fishBag,()=>{cash+=fishBag;const v=fishBag;fishBag=0;sfxCoin();shopMenu('這些魚很新鮮！$'+v+' 給你。你現在有 $'+cash+'。');});
   add('不買了',()=>{el.hidden=true;});
 }
 // --- giving someone a lift ---

@@ -36,7 +36,9 @@ const BALLS={                                            // name, radius (m), ma
   orb:['引力球',.14,30,.3,.02,()=>orbMat]
 };
 for(const H of houses)H.balls.forEach(q=>{const B=BALLS[q.kind],b=addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z);b.kind=q.kind;if(q.kind==='basket')H.basket=b;});
+for(const q of WORLD.balls){const B=BALLS[q.kind],b=addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z);b.kind=q.kind;}
 const orbs=bodies.filter(b=>b.kind==='orb');
+let baskets=0;
 const fwd=new THREE.Vector3();
 function kick(b){
   camera.getWorldDirection(fwd);
@@ -75,7 +77,9 @@ function physStep(dt){
     const dx=orb.p.x-b.p.x,dy=orb.p.y-b.p.y,dz=orb.p.z-b.p.z,min=orb.r+b.r,r2=Math.max(dx*dx+dy*dy+dz*dz,min*min),r=Math.sqrt(r2);
     const F=BIG_G*orb.m*b.m/r2,k=F*dt/r;
     b.v.x+=dx*k/b.m;b.v.y+=dy*k/b.m;b.v.z+=dz*k/b.m;orb.v.x-=dx*k/orb.m;orb.v.y-=dy*k/orb.m;orb.v.z-=dz*k/orb.m;}
-  for(const b of bodies){if(b.held)continue;b.p.addScaledVector(b.v,dt);b.ground=false;}
+  for(const b of bodies){if(b.held)continue;const y0=b.p.y;b.p.addScaledVector(b.v,dt);b.ground=false;
+    for(const h of marks.hoop)if(y0>=h.y&&b.p.y<h.y&&b.r<.2&&Math.hypot(b.p.x-h.x,b.p.z-h.z)<.27-b.r*.4){baskets++;sfxCoin();   // dropped down through the ring
+      const mine=b.kickBy==='你';if(mine)cash+=5;say('進球！'+b.name+'穿過籃框了。'+(mine?'你投進第 '+baskets+' 球，得到 $5。':''));}}
   for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){   // ball against ball
     const a=bodies[i],b=bodies[j],dx=b.p.x-a.p.x,dy=b.p.y-a.p.y,dz=b.p.z-a.p.z,min=a.r+b.r,d2=dx*dx+dy*dy+dz*dz;
     if(d2>=min*min||d2<1e-10||a.held||b.held)continue;

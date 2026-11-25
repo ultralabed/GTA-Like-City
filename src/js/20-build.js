@@ -7,7 +7,7 @@ const ACT={};                // places a person can do something, by name (tv1, 
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
 let root=scene;              // where new furniture groups go
-const marks={streetLamp:[],item:[]}; // special points furniture reports back, by kind
+const marks={streetLamp:[],item:[],hoop:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
 let cur=scene;               // where new meshes go: the scene, or the piece of furniture being built
 function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];

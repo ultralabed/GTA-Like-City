@@ -414,6 +414,7 @@ const WORLD={
   ],
   // the patrol officer: walks the street all day. If you keep being a nuisance he comes over and fines you.
   guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
+  balls:[{kind:'basket',x:19.2,z:20.6}],                             // balls lying around outside
   outdoor:[
     // big buildings along the side street (you cannot go inside these)
     {type:'block',x:43.6,z:60,w:5.6,d:14,h:9,col:0xb9a48c},
@@ -428,7 +429,7 @@ const WORLD={
     {type:'streetLamp',x:-36,z:13.2,rot:2},{type:'streetLamp',x:-24,z:13.2,rot:2},{type:'streetLamp',x:36,z:13.2,rot:2},{type:'streetLamp',x:-12,z:13.2,rot:2},{type:'streetLamp',x:0,z:13.2,rot:2},{type:'streetLamp',x:12,z:13.2,rot:2},{type:'streetLamp',x:24,z:13.2,rot:2},
     // the little park
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
-    {type:'stall',x:23.5,z:16.2,rot:2},
+    {type:'stall',x:23.5,z:16.2,rot:2},{type:'hoop',x:19.2,z:23.4,rot:2},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // bus stops: where people leave for work and come back
     {type:'busStop',x:-21.8,z:4.7,dir:-1},                           // dir = which way that stop's bus is heading (-1 = toward -x)
@@ -485,7 +486,7 @@ const ACT={};                // places a person can do something, by name (tv1, 
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
 let root=scene;              // where new furniture groups go
-const marks={streetLamp:[],item:[]}; // special points furniture reports back, by kind
+const marks={streetLamp:[],item:[],hoop:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
 let cur=scene;               // where new meshes go: the scene, or the piece of furniture being built
 function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
@@ -753,6 +754,14 @@ PREFAB.block=o=>{
   box(o.w,o.h,o.d,mat,0,o.h/2,0);box(o.w+.3,.25,o.d+.3,M.steel,0,o.h+.12,0);
   return{solid:[[-o.w/2,o.w/2,-o.d/2,o.d/2]],boxes:[[-o.w/2,o.w/2,0,o.h,-o.d/2,o.d/2]]};
 };
+// basketball hoop. The board faces +z. Get a ball down through the ring to score.
+const hoops=[];
+PREFAB.hoop=()=>{
+  cyl(.07,.09,2.9,M.steel,0,1.45,-.35,10);box(.08,.08,.5,M.steel,0,2.85,-.12);
+  box(1.3,.9,.05,M.trim,0,3.0,.1);box(.5,.36,.055,M.coral,0,2.82,.1);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.26,.02,8,24),M.coral);ring.rotation.x=Math.PI/2;ring.position.set(0,2.62,.42);ring.castShadow=true;cur.add(ring);
+  return{solid:[[-.15,.15,-.5,-.2]],boxes:[[-.65,.65,2.55,3.45,.07,.13],[-.1,.1,0,2.9,-.45,-.25]],marks:[{kind:'hoop',x:0,z:.42,y:2.62}]};
+};
 
 /* ---------- build the houses from their data ---------- */
 function hmat(H,name){return(H&&H.mats[name])||M[name];}
@@ -955,6 +964,8 @@ $('bOrb').onclick=()=>{G.orb=!G.orb;applySwitches();
   say(G.orb?'引力球開了：它把別的球吸過來，別的球也用一樣大的力把它拉回去。':'引力球關了。');};
 
 /* ---------- time: the clock runs, the sun and moon move, the light changes ---------- */
+let day=5;                                                                // which day it is; day%7: 0 Sunday ... 5 Friday, 6 Saturday. The game starts on a Friday evening.
+const DOW='日一二三四五六',isWeekend=()=>day%7===0||day%7===6;
 let clock=WORLD.clock,speedIdx=1,sliding=false;
 const SPEEDS=[[0,'暫停'],[2/60,'正常'],[15/60,'快轉']];   // game hours per real second
 const ss=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
@@ -986,7 +997,7 @@ function applyTime(){
   if(isDay){disc.scale.setScalar(1);discMat.color.setRGB(5+hi,2.2+3.3*hi,.9+3.6*hi);glowMat.color.setRGB(1,.55+.4*hi,.3+.6*hi);glowMat.opacity=.9;}
   else{disc.scale.setScalar(.6);discMat.color.setRGB(1.7,1.8,2.1);glowMat.color.setRGB(.5,.6,.9);glowMat.opacity=.35;}
   dust.visible=isDay&&e>.03&&activeHouse===houses[0];
-  const hh=Math.floor(h),mm=Math.floor((h-hh)*60);$('clk').textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  const hh=Math.floor(h),mm=Math.floor((h-hh)*60);$('clk').textContent='週'+DOW[day%7]+' '+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
 }
 const slider=$('time');slider.value=clock;
 slider.addEventListener('input',()=>{clock=+slider.value;envDirty=true;envTimer=0;});
@@ -1032,7 +1043,9 @@ const BALLS={                                            // name, radius (m), ma
   orb:['引力球',.14,30,.3,.02,()=>orbMat]
 };
 for(const H of houses)H.balls.forEach(q=>{const B=BALLS[q.kind],b=addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z);b.kind=q.kind;if(q.kind==='basket')H.basket=b;});
+for(const q of WORLD.balls){const B=BALLS[q.kind],b=addBall(B[0],B[1],B[2],B[3],B[4],B[5](),q.x,q.y||B[1],q.z);b.kind=q.kind;}
 const orbs=bodies.filter(b=>b.kind==='orb');
+let baskets=0;
 const fwd=new THREE.Vector3();
 function kick(b){
   camera.getWorldDirection(fwd);
@@ -1071,7 +1084,9 @@ function physStep(dt){
     const dx=orb.p.x-b.p.x,dy=orb.p.y-b.p.y,dz=orb.p.z-b.p.z,min=orb.r+b.r,r2=Math.max(dx*dx+dy*dy+dz*dz,min*min),r=Math.sqrt(r2);
     const F=BIG_G*orb.m*b.m/r2,k=F*dt/r;
     b.v.x+=dx*k/b.m;b.v.y+=dy*k/b.m;b.v.z+=dz*k/b.m;orb.v.x-=dx*k/orb.m;orb.v.y-=dy*k/orb.m;orb.v.z-=dz*k/orb.m;}
-  for(const b of bodies){if(b.held)continue;b.p.addScaledVector(b.v,dt);b.ground=false;}
+  for(const b of bodies){if(b.held)continue;const y0=b.p.y;b.p.addScaledVector(b.v,dt);b.ground=false;
+    for(const h of marks.hoop)if(y0>=h.y&&b.p.y<h.y&&b.r<.2&&Math.hypot(b.p.x-h.x,b.p.z-h.z)<.27-b.r*.4){baskets++;sfxCoin();   // dropped down through the ring
+      const mine=b.kickBy==='你';if(mine)cash+=5;say('進球！'+b.name+'穿過籃框了。'+(mine?'你投進第 '+baskets+' 球，得到 $5。':''));}}
   for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){   // ball against ball
     const a=bodies[i],b=bodies[j],dx=b.p.x-a.p.x,dy=b.p.y-a.p.y,dz=b.p.z-a.p.z,min=a.r+b.r,d2=dx*dx+dy*dy+dz*dz;
     if(d2>=min*min||d2<1e-10||a.held||b.held)continue;
@@ -1470,6 +1485,24 @@ function rideStep(dt,f,s){
   camera.lookAt(r.x+fx*2.5,1.1,r.z+fz*2.5);
   yaw=Math.atan2(-fx,-fz);
 }
+// --- fishing: stand at the water's edge, cast, wait for a bite, then pull in time ---
+let fish=null,fishBag=0,fishCount=0;
+const bobber=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),new THREE.MeshBasicMaterial({color:0xff5533}));bobber.visible=false;scene.add(bobber);
+const atShore=()=>!ride&&!seat&&pos.z<WORLD.shore+2.2&&pos.z>WORLD.shore-3&&inTown(pos.x,pos.z,0);
+function fishing(){
+  if(!fish){if(!atShore())return;camera.getWorldDirection(camDir);const fx=camDir.x,fz=Math.min(-.3,camDir.z),L=Math.hypot(fx,fz);
+    fish={x:pos.x+fx/L*4.5,z:Math.min(WORLD.shore-1.5,pos.z+fz/L*4.5),t:0,at:rnd(4,11),bite:false,px:pos.x,pz:pos.z};say('你把釣線甩出去了。等浮標沉下去，再按「拉！」。走開就會收線。');noise(.2,1200,.8,.15);return;}
+  if(fish.bite){const r=Math.random(),c=r<.12?['一隻舊鞋子',0]:r<.6?['一條小魚',8]:r<.9?['一條鯛魚',15]:['一條大魚',30];fishBag+=c[1];fishCount++;fish=null;sfxCoin();
+    say('釣到'+c[0]+'了！'+(c[1]?'值 $'+c[1]+'，拿去夕陽商店可以賣掉（現在魚簍裡共值 $'+fishBag+'）。':'沒人要買這個。'));}
+  else{fish=null;say('太早拉了，魚還沒咬。');}
+  actKey='';}
+function fishStep(dt,t){
+  bobber.visible=!!fish;if(!fish)return;
+  if(Math.hypot(pos.x-fish.px,pos.z-fish.pz)>1.2||ride){fish=null;actKey='';say('你收線了。');return;}
+  fish.t+=dt;const was=fish.bite;fish.bite=fish.t>fish.at&&fish.t<fish.at+1.7;
+  if(fish.bite&&!was){actKey='';noise(.25,700,.7,.3);say('有魚咬了！快按「拉！」');}
+  if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10);say('魚跑掉了。再等一下。');}
+  bobber.position.set(fish.x,fish.bite?-.06:.04+Math.sin(t*3)*.02,fish.z);}
 // --- one step of you. Returns true when it has already placed the camera (riding or sitting) ---
 function playerStep(dt,f,s){
   const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
@@ -1484,12 +1517,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
+const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
+const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -1503,12 +1536,13 @@ function updateActs(){
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat&&waterDepth()<.5)list.push('jump');
-    if(!seat)list.push('run');}
+    if(!seat)list.push('run');
+    if(fish||atShore())list.push('fish');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock;
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='run'?(runLock?'跑步中':'跑'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='in'?(nr.kind==='car'?'上車':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
@@ -1524,6 +1558,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
   else if(e.code==='KeyH')horn();
+  else if(e.code==='KeyG')fishing();
   else if(e.code==='KeyR'&&ride&&ride.kind==='car')nextRadio();
 });
 showItems();
@@ -1657,11 +1692,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),third,outfit,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h]),third,outfit,day,fishBag,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
@@ -1740,6 +1775,7 @@ function shopMenu(line){
     const far=Math.hypot(H.front.x-pos.x,H.front.z-pos.z),secs=Math.round(25+far*1.6);                 // enough time on a bike, tight on foot
     quest={type:'parcel',house:H,until:performance.now()+secs*1000,secs,reward:30,text:''};parcelQuest();el.hidden=true;
     say('小芳：「麻煩把這個包裹送到 '+H.no+' 號門口，'+secs+' 秒內送到有獎金！」');});
+  if(fishBag)add('賣掉釣到的魚 +$'+fishBag,()=>{cash+=fishBag;const v=fishBag;fishBag=0;sfxCoin();shopMenu('這些魚很新鮮！$'+v+' 給你。你現在有 $'+cash+'。');});
   add('不買了',()=>{el.hidden=true;});
 }
 // --- giving someone a lift ---
@@ -1885,6 +1921,8 @@ const GOALS={                                                           // type 
   lift:{label:'等你開車載他',type:'lift'}
 };
 const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
+// at work right now? Weekends are free, except for people with a job on the street (the shop stays open) and visitors (their 'shift' is just time away)
+const onShift=n=>inSpan(n.o.shift,clock)&&(n.visitor||n.o.job||!isWeekend());
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
   const type=id==='work'&&n.o.job?'serve':GOALS[id].type;let best=null,bs=-1e9;   // someone with a job on the street works there instead of leaving
@@ -1904,13 +1942,13 @@ function utility(n,id){
   const g=GOALS[id];
   if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
   if(id==='patrol'||id==='catch'||id==='lift')return -1;
-  if(id==='work')return inSpan(n.o.shift,clock)?5:-1;
+  if(id==='work')return onShift(n)?5:-1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(g.need==='food')u=nd<.3?1.6-nd:(1-nd)*.8;                            // hunger gets loud when it is bad
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:.85;}
+  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:isWeekend()?1.25:.85;}       // more people are out and about at the weekend
   if(id==='shop'&&!shopOpen())return -1;                                  // nobody behind the counter: closed                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
@@ -1942,9 +1980,9 @@ function brain(n,dt){
     if(heat>0&&g.id!=='catch'){setGoal(n,'catch');return;}if(heat===0&&g.id==='catch'){endGoal(n,false);return;}if(g.id==='catch')return;}
   if(n.visitor&&g.id!=='work'){n.stay-=dh;                                // visitors go home after a while, or when night falls, or when it rains
     if(n.stay<=0||dark>.75||rainOn){n.o.shift=[(clock+23.9)%24,(clock+rnd(.8,2.5)+dark*6)%24];n.resume=null;setGoal(n,'work');return;}}
-  if(g.id!=='work'&&inSpan(n.o.shift,clock)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
+  if(g.id!=='work'&&onShift(n)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
   if(g.id!=='sleep'&&g.id!=='work'&&n.need.energy<.06&&utility(n,'sleep')>0){setGoal(n,'sleep');return;}   // so does being worn out
-  const done=g.id==='work'?!inSpan(n.o.shift,clock):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
+  const done=g.id==='work'?!onShift(n):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
   if(done)endGoal(n,true);
 }
 function progress(n){const g=n.goal,G=GOALS[g.id];
@@ -2000,7 +2038,7 @@ function begin(n){const A=ACT[n.act];n.phase='go';n.repath=0;n.wait=0;
   n.path=A.chase?[]:(findPath(n.pos.x,n.pos.z,A.ap[0],A.ap[1])||[[A.ap[0],A.ap[1]]]);}
 people.forEach((n,i)=>{const H=houses[n.home];if(n.guard){setGoal(n,'patrol');const A=ACT[n.want];n.act=n.want;n.pos.set(A.ap[0],0,A.ap[1]);n.phase='at';n.root.position.set(A.ap[0],n.stand,A.ap[1]);return;}
   if(H)n.pos.set((H.x0+H.x1)/2,0,(H.z0+H.z1)/2);else n.pos.set(i%2?WB.x1:WB.x0,0,i%3?5:14);       // start from home so 'nearest spot' means something
-  setGoal(n,inSpan(n.o.shift,clock)?'work':'tv');
+  setGoal(n,onShift(n)?'work':'tv');
   n.act=sched(n);const A=ACT[n.act];                       // start the day already in place
   if(A.chase){n.pos.set(1.5,0,-1.2);n.phase='go';}
   else{const q=A.an||[A.ap[0],n.stand,A.ap[1]];n.pos.set(q[0],0,q[2]);n.y=q[1];n.yaw=A.yaw||0;n.phase='at';
@@ -2395,7 +2433,7 @@ function tick(now){
   requestAnimationFrame(tick);
   const dt=Math.max(.001,Math.min(.05,(now-last)/1000));last=now;frame++;const t=now/1000;
   // time passes
-  if(!sliding)clock=(clock+dt*SPEEDS[speedIdx][0])%24;
+  if(!sliding){clock+=dt*SPEEDS[speedIdx][0];if(clock>=24){clock-=24;day++;say('新的一天：星期'+DOW[day%7]+(isWeekend()?'。今天放假，大家不用上班。':'。'));}}
   applyTime();
   if(frame%20===0&&!sliding)slider.value=clock;
   let dc=Math.abs(clock-bakeClock);dc=Math.min(dc,24-dc);
@@ -2415,7 +2453,7 @@ function tick(now){
   if(v>.6&&jumpY===0){const sn2=Math.floor(bob*2/Math.PI);if(sn2!==stepNo){stepNo=sn2;sfxStep();}}
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY-waterDepth()+(waterDepth()>1?Math.sin(t*2.2)*.05:0);}
-  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();if(frame%15===0){hudStats();updateAudio();}
+  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);fishStep(dt,t);if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();if(frame%15===0){hudStats();updateAudio();}
   // the people, then the physics in small fixed steps
   for(const n of people)updNPC(n,dt,t);
   updateDoors(dt);updateCars(dt);updateWeather(dt);updatePets(dt,t);
@@ -2452,7 +2490,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,do:{horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
