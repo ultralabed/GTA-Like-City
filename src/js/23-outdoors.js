@@ -13,6 +13,12 @@
   // the beach behind the north houses, and the sea beyond it
   flat(LEN,7,M.sand,0,-.018,-9.5,3);
   flat(900,400,M.water,0,-.014,WORLD.shore-200);
+  // the side street: runs south from the main street
+  const SZ=S.z1,SL=130;flat(JX1-JX0,SL,M.asphalt,(JX0+JX1)/2,-.02,SZ+SL/2,4);
+  flat(JX1-JX0,S.walk+.3,M.asphalt,(JX0+JX1)/2,-.006,SZ+S.walk/2,4);                               // the mouth of the junction, over the sidewalk
+  flat(S.walk,SL-S.walk,M.concrete,JX0-S.walk/2,-.012,SZ+S.walk+(SL-S.walk)/2,1.5);flat(S.walk,SL-S.walk,M.concrete,JX1+S.walk/2,-.012,SZ+S.walk+(SL-S.walk)/2,1.5);
+  for(let z=SZ+5;z<SZ+SL;z+=4)flat(.14,1.7,M.paint,(JX0+JX1)/2,-.004,z);
+  flat(3,.3,M.paint,JX1-1.75,-.004,SZ+2.3);flat(.3,3,M.paint,JX0-2.3,-.008,S.z1-1.75);flat(.3,3,M.paint,JX1+2.3,-.008,S.z0+1.75);   // stop lines
   WORLD.outdoor.forEach(it=>place(it,null));
 })();
 // three real lights that jump to whichever street lamps are nearest to you, so the street can have any number of lamps

@@ -42,7 +42,7 @@ function updatePets(dt,t){
     const run=d.tgt?3.4:1.7;let moving=false;
     if(d.path.length){const q=d.path[0],dx=q[0]-d.x,dz=q[1]-d.z,L=Math.hypot(dx,dz),st=run*dt;
       const crossing=z=>z>S.z0&&z<S.z1;                                   // he waits at the kerb for cars, like the people do
-      if(!crossing(d.z)&&crossing(q[1])&&cars.some(c=>c.on&&c.v>1&&(d.x-c.x)*c.dir>-2&&(d.x-c.x)*c.dir<c.v*3+4)){d.mood='等車子過';}
+      if(!crossing(d.z)&&crossing(q[1])&&cars.some(c=>c.on&&c.dir&&c.v>1&&(d.x-c.x)*c.dir>-2&&(d.x-c.x)*c.dir<c.v*3+4)){d.mood='等車子過';}
       else{if(L<=st){d.x=q[0];d.z=q[1];d.path.shift();}else{d.vx=dx/L*run;d.vz=dz/L*run;d.x+=dx/L*st;d.z+=dz/L*st;d.h+=angDiff(Math.atan2(-dz,dx),d.h)*(1-Math.exp(-dt*10));}
         moving=true;d.ph+=dt*run*5;}}
     if(!moving){d.vx=d.vz=0;}

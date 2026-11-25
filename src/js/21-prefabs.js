@@ -208,3 +208,14 @@ PREFAB.busStop=o=>{
   return{solid:[[-1.05,1.05,-.6,-.1],[-1.6,-1.4,.2,.4]],boxes:[[-.95,.95,0,.5,-.5,-.1],[-1.3,1.3,2.28,2.36,-.7,.5]],
     spots:[{type:'exit',ap:[0,.55],yaw:0,pose:'idle',hide:true,shared:true,bus:o.dir,label:'搭公車'}]};
 };
+// a big building you only see from outside: a box with rows of windows that light up at night
+const blockMats=[];
+PREFAB.block=o=>{
+  const c=cv(128,256),g=c.getContext('2d'),e=cv(128,256),ge=e.getContext('2d');
+  g.fillStyle='#'+o.col.toString(16).padStart(6,'0');g.fillRect(0,0,128,256);ge.fillStyle='#000';ge.fillRect(0,0,128,256);
+  for(let y=14;y<240;y+=30)for(let x=10;x<118;x+=22){g.fillStyle='#2a3340';g.fillRect(x,y,14,18);if(Math.random()<.55){ge.fillStyle=Math.random()<.25?'#9fe0ff':'#ffd98a';ge.fillRect(x,y,14,18);}}
+  const map=tex(c,true,1),em=tex(e,true,1);map.repeat.set(1/4,1/8);em.repeat.set(1/4,1/8);                     // one copy of the picture covers 4 m by 8 m of wall
+  const mat=new THREE.MeshStandardMaterial({map,emissiveMap:em,emissive:0xffffff,emissiveIntensity:0,roughness:.85});blockMats.push(mat);
+  box(o.w,o.h,o.d,mat,0,o.h/2,0);box(o.w+.3,.25,o.d+.3,M.steel,0,o.h+.12,0);
+  return{solid:[[-o.w/2,o.w/2,-o.d/2,o.d/2]],boxes:[[-o.w/2,o.w/2,0,o.h,-o.d/2,o.d/2]]};
+};

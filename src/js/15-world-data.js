@@ -85,6 +85,8 @@ const WORLD={
   h:2.8,                                                           // ceiling height, same in every room
   clock:17.4,
   bounds:{x0:-38,x1:45,z0:-26,z1:26},                               // as far as anyone can walk
+  east:{x0:43.5,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
+  side:{x0:49,x1:56},                                              // the side street runs south from the main street between these x
   shore:-12.5,                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
@@ -122,6 +124,10 @@ const WORLD={
   // the patrol officer: walks the street all day. If you keep being a nuisance he comes over and fines you.
   guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
   outdoor:[
+    // big buildings along the side street (you cannot go inside these)
+    {type:'block',x:43.6,z:24.5,w:5.6,d:9,h:9,col:0xb9a48c},{type:'block',x:43.6,z:38,w:5.6,d:12,h:14,col:0x8fa3b5},{type:'block',x:43.6,z:55,w:5.6,d:14,h:7,col:0xc98f7a},
+    {type:'block',x:62.3,z:22,w:7,d:10,h:12,col:0x9aa58f},{type:'block',x:62.3,z:36,w:7,d:12,h:8,col:0xd4c2a0},{type:'block',x:62.3,z:52,w:7,d:14,h:17,col:0x7f8aa8},{type:'block',x:62.3,z:67,w:7,d:9,h:6,col:0xb07a6a},
+    {type:'streetLamp',x:48.2,z:22,rot:1},{type:'streetLamp',x:48.2,z:40,rot:1},{type:'streetLamp',x:56.8,z:31,rot:3},{type:'streetLamp',x:56.8,z:52,rot:3},
     // trees
     {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:36.6,z:2.8,s:1.15},{type:'tree',x:-35.8,z:-2.5,s:1.1},{type:'tree',x:40.5,z:-3,s:.9},
     {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:-29.5,z:18.5,s:1.2},{type:'tree',x:-33,z:22,s:.95},{type:'tree',x:41.5,z:17,s:1},{type:'tree',x:4.4,z:15.7,s:.85},
@@ -166,5 +172,8 @@ const houses=WORLD.lots.map((L,i)=>{
 });
 const rooms=houses.flatMap(H=>H.rooms);
 function roomAt(x,z){for(const r of rooms)if(x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)return r;return null;}   // doorways count as inside
-function inWorld(x,z,m){return x>WB.x0+m&&x<WB.x1-m&&z>WB.z0+m&&z<WB.z1-m;}
+// the town proper (where everybody lives and walks), plus a strip to the east with the junction and the side street, for you and your vehicles
+const EB=WORLD.east,JX0=WORLD.side.x0,JX1=WORLD.side.x1;
+function inTown(x,z,m){return x>WB.x0+m&&x<WB.x1-m&&z>WB.z0+m&&z<WB.z1-m;}
+function inWorld(x,z,m){return inTown(x,z,m)||(x>EB.x0+m&&x<EB.x1-m&&z>EB.z0+m&&z<EB.z1-m);}
 function houseDist(H,x,z){return Math.hypot(Math.max(H.x0-x,0,x-H.x1),Math.max(H.z0-z,0,z-H.z1));}

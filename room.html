@@ -367,6 +367,8 @@ const WORLD={
   h:2.8,                                                           // ceiling height, same in every room
   clock:17.4,
   bounds:{x0:-38,x1:45,z0:-26,z1:26},                               // as far as anyone can walk
+  east:{x0:43.5,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
+  side:{x0:49,x1:56},                                              // the side street runs south from the main street between these x
   shore:-12.5,                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
@@ -404,6 +406,10 @@ const WORLD={
   // the patrol officer: walks the street all day. If you keep being a nuisance he comes over and fines you.
   guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
   outdoor:[
+    // big buildings along the side street (you cannot go inside these)
+    {type:'block',x:43.6,z:24.5,w:5.6,d:9,h:9,col:0xb9a48c},{type:'block',x:43.6,z:38,w:5.6,d:12,h:14,col:0x8fa3b5},{type:'block',x:43.6,z:55,w:5.6,d:14,h:7,col:0xc98f7a},
+    {type:'block',x:62.3,z:22,w:7,d:10,h:12,col:0x9aa58f},{type:'block',x:62.3,z:36,w:7,d:12,h:8,col:0xd4c2a0},{type:'block',x:62.3,z:52,w:7,d:14,h:17,col:0x7f8aa8},{type:'block',x:62.3,z:67,w:7,d:9,h:6,col:0xb07a6a},
+    {type:'streetLamp',x:48.2,z:22,rot:1},{type:'streetLamp',x:48.2,z:40,rot:1},{type:'streetLamp',x:56.8,z:31,rot:3},{type:'streetLamp',x:56.8,z:52,rot:3},
     // trees
     {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:36.6,z:2.8,s:1.15},{type:'tree',x:-35.8,z:-2.5,s:1.1},{type:'tree',x:40.5,z:-3,s:.9},
     {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:-29.5,z:18.5,s:1.2},{type:'tree',x:-33,z:22,s:.95},{type:'tree',x:41.5,z:17,s:1},{type:'tree',x:4.4,z:15.7,s:.85},
@@ -448,7 +454,10 @@ const houses=WORLD.lots.map((L,i)=>{
 });
 const rooms=houses.flatMap(H=>H.rooms);
 function roomAt(x,z){for(const r of rooms)if(x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)return r;return null;}   // doorways count as inside
-function inWorld(x,z,m){return x>WB.x0+m&&x<WB.x1-m&&z>WB.z0+m&&z<WB.z1-m;}
+// the town proper (where everybody lives and walks), plus a strip to the east with the junction and the side street, for you and your vehicles
+const EB=WORLD.east,JX0=WORLD.side.x0,JX1=WORLD.side.x1;
+function inTown(x,z,m){return x>WB.x0+m&&x<WB.x1-m&&z>WB.z0+m&&z<WB.z1-m;}
+function inWorld(x,z,m){return inTown(x,z,m)||(x>EB.x0+m&&x<EB.x1-m&&z>EB.z0+m&&z<EB.z1-m);}
 function houseDist(H,x,z){return Math.hypot(Math.max(H.x0-x,0,x-H.x1),Math.max(H.z0-z,0,z-H.z1));}
 
 /* ---------- builders ---------- */
@@ -717,6 +726,17 @@ PREFAB.busStop=o=>{
   return{solid:[[-1.05,1.05,-.6,-.1],[-1.6,-1.4,.2,.4]],boxes:[[-.95,.95,0,.5,-.5,-.1],[-1.3,1.3,2.28,2.36,-.7,.5]],
     spots:[{type:'exit',ap:[0,.55],yaw:0,pose:'idle',hide:true,shared:true,bus:o.dir,label:'搭公車'}]};
 };
+// a big building you only see from outside: a box with rows of windows that light up at night
+const blockMats=[];
+PREFAB.block=o=>{
+  const c=cv(128,256),g=c.getContext('2d'),e=cv(128,256),ge=e.getContext('2d');
+  g.fillStyle='#'+o.col.toString(16).padStart(6,'0');g.fillRect(0,0,128,256);ge.fillStyle='#000';ge.fillRect(0,0,128,256);
+  for(let y=14;y<240;y+=30)for(let x=10;x<118;x+=22){g.fillStyle='#2a3340';g.fillRect(x,y,14,18);if(Math.random()<.55){ge.fillStyle=Math.random()<.25?'#9fe0ff':'#ffd98a';ge.fillRect(x,y,14,18);}}
+  const map=tex(c,true,1),em=tex(e,true,1);map.repeat.set(1/4,1/8);em.repeat.set(1/4,1/8);                     // one copy of the picture covers 4 m by 8 m of wall
+  const mat=new THREE.MeshStandardMaterial({map,emissiveMap:em,emissive:0xffffff,emissiveIntensity:0,roughness:.85});blockMats.push(mat);
+  box(o.w,o.h,o.d,mat,0,o.h/2,0);box(o.w+.3,.25,o.d+.3,M.steel,0,o.h+.12,0);
+  return{solid:[[-o.w/2,o.w/2,-o.d/2,o.d/2]],boxes:[[-o.w/2,o.w/2,0,o.h,-o.d/2,o.d/2]]};
+};
 
 /* ---------- build the houses from their data ---------- */
 function hmat(H,name){return(H&&H.mats[name])||M[name];}
@@ -824,6 +844,12 @@ function updateDoors(dt){
   // the beach behind the north houses, and the sea beyond it
   flat(LEN,7,M.sand,0,-.018,-9.5,3);
   flat(900,400,M.water,0,-.014,WORLD.shore-200);
+  // the side street: runs south from the main street
+  const SZ=S.z1,SL=130;flat(JX1-JX0,SL,M.asphalt,(JX0+JX1)/2,-.02,SZ+SL/2,4);
+  flat(JX1-JX0,S.walk+.3,M.asphalt,(JX0+JX1)/2,-.006,SZ+S.walk/2,4);                               // the mouth of the junction, over the sidewalk
+  flat(S.walk,SL-S.walk,M.concrete,JX0-S.walk/2,-.012,SZ+S.walk+(SL-S.walk)/2,1.5);flat(S.walk,SL-S.walk,M.concrete,JX1+S.walk/2,-.012,SZ+S.walk+(SL-S.walk)/2,1.5);
+  for(let z=SZ+5;z<SZ+SL;z+=4)flat(.14,1.7,M.paint,(JX0+JX1)/2,-.004,z);
+  flat(3,.3,M.paint,JX1-1.75,-.004,SZ+2.3);flat(.3,3,M.paint,JX0-2.3,-.008,S.z1-1.75);flat(.3,3,M.paint,JX1+2.3,-.008,S.z0+1.75);   // stop lines
   WORLD.outdoor.forEach(it=>place(it,null));
 })();
 // three real lights that jump to whichever street lamps are nearest to you, so the street can have any number of lamps
@@ -1110,10 +1136,10 @@ function carMesh(col){                                                   // a ca
 }
 function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
   c.headMat.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);c.tailMat.color.setRGB(.35+k*3+(braking?3:0),.02,.02);c.beam.material.opacity=k*.55;}
-[0xc4553b,0x1f6a6e,0xe9e2d6,0x3b4a7a].forEach((col,i)=>{
-  const lane=i%2,dir=lane?1:-1,m=carMesh(col);m.g.rotation.y=dir>0?0:Math.PI;m.g.visible=false;
+[0xc4553b,0x1f6a6e,0xe9e2d6,0x3b4a7a,0x7a2c5a,0x2a2c32].forEach((col,i)=>{
+  const m=carMesh(col);m.g.visible=false;const dir=0;
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
-  cars.push(Object.assign(m,{dir,z:lane?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92}));
+  cars.push(Object.assign(m,{dir,z:0,x:0,h:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92}));
 });
 // two buses, one each way. People going to work wait at the stop and get on; people coming home get off.
 function busMesh(col){const g=new THREE.Group();scene.add(g);cur=g;
@@ -1125,10 +1151,10 @@ function busMesh(col){const g=new THREE.Group();scene.add(g);cur=g;
   const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
   beam.rotation.x=-Math.PI/2;beam.position.set(7,.02,0);g.add(beam);cur=scene;return{g,wheels,headMat,tailMat,beam};}
 const BUS_STOP={'-1':-25.3,'1':18.5};   // where the front of each bus ends up, so its middle is level with the stop                                         // where each direction's bus stops (x along the street)
-[-1,1].forEach((dir,i)=>{const m=busMesh(0xe8a23a);m.g.rotation.y=dir>0?0:Math.PI;m.g.visible=false;
+[-1,1].forEach((dir,i)=>{const m=busMesh(0xe8a23a);m.g.visible=false;
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
-  cars.push(Object.assign(m,{dir,z:dir>0?ST.z1-1.75:ST.z0+1.75,x:0,v:0,on:false,t:6+i*9,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,stopX:BUS_STOP[dir],dwell:0,served:false}));});
-const busAt=dir=>cars.some(c=>c.bus&&c.dir===dir&&c.on&&c.dwell>0);
+  cars.push(Object.assign(m,{dir,busDir:dir,z:0,x:0,h:0,v:0,on:false,t:6+i*9,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,stopX:BUS_STOP[dir],dwell:0,served:false}));});
+const busAt=dir=>cars.some(c=>c.bus&&c.busDir===dir&&c.on&&c.dwell>0);
 // --- the traffic light at the zebra crossing ---
 // One clock runs it: cars get green, then yellow, then red while the walkers get their green figure.
 let sigCars='g',sigWalk=false;const SIG={r:new THREE.MeshBasicMaterial(),y:new THREE.MeshBasicMaterial(),g:new THREE.MeshBasicMaterial(),walk:new THREE.MeshBasicMaterial(),stop:new THREE.MeshBasicMaterial()};
@@ -1150,35 +1176,75 @@ function carDanger(n,q){
   if(Math.min(Math.abs(n.pos.z-ST.z0),Math.abs(n.pos.z-ST.z1))>.4)return false;           // not at the kerb yet
   if(n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){n.waitWhy='等紅綠燈';return!sigWalk;}
   n.waitWhy='等車子過';
-  for(const c of cars){if(!c.on||c.v<1)continue;const ahead=(n.pos.x-c.x)*c.dir;if(ahead>-2.5&&ahead<c.v*4+4)return true;}
+  for(const c of cars){if(!c.on||c.v<1||!c.dir)continue;const ahead=(n.pos.x-c.x)*c.dir;if(ahead>-2.5&&ahead<c.v*4+4)return true;}
   return false;
+}
+// --- routes: every car follows a list of points. Some go straight along the main street, some turn at the junction. ---
+// The side street joins the main street from the south between x = JX0 and JX1 (a T-junction).
+const LN={e:ST.z1-1.75,w:ST.z0+1.75,n:JX1-1.75,s:JX0+1.75};   // lane middles: east/west-bound (a z), north/south-bound (an x)
+const ROUTES={
+  east:[[-105,LN.e],[105,LN.e]],
+  west:[[105,LN.w],[-105,LN.w]],
+  northLeft:[[LN.n,110],[LN.n,16],[53.4,11.2],[50.6,8.7],[46,LN.w],[-105,LN.w]],      // up the side street, left onto the main street
+  northRight:[[LN.n,110],[LN.n,15.6],[55.1,12.3],[58.8,LN.e],[105,LN.e]],
+  eastSouth:[[-105,LN.e],[46.4,LN.e],[49.9,12.3],[LN.s,15.6],[LN.s,110]],            // along the main street, right into the side street
+  westSouth:[[105,LN.w],[58.6,LN.w],[54.2,8.8],[51.7,11.6],[LN.s,16],[LN.s,110]]
+};
+// the junction light: main street green, then yellow, then the side street's turn
+let jMain='g',jSide='r';
+const JS={mr:new THREE.MeshBasicMaterial(),my:new THREE.MeshBasicMaterial(),mg:new THREE.MeshBasicMaterial(),sr:new THREE.MeshBasicMaterial(),sy:new THREE.MeshBasicMaterial(),sg:new THREE.MeshBasicMaterial()};
+(function(){cur=scene;
+  const head=(x,z,pre,ry)=>{cyl(.06,.08,3.4,M.steel,x,1.7,z,10);box(.3,.95,.3,M.black,x,3.6,z);
+    [['r',3.9],['y',3.6],['g',3.3]].forEach(q=>[0,Math.PI].forEach(a=>{const m=new THREE.Mesh(new THREE.CircleGeometry(.1,16),JS[pre+q[0]]);m.rotation.y=ry+a;m.position.set(x+Math.sin(ry+a)*.152,q[1],z+Math.cos(ry+a)*.152);scene.add(m);}));
+    colliders.push([x-.1,x+.1,z-.1,z+.1]);};
+  head(JX0-1.2,ST.z1+.4,'m',Math.PI/2);head(JX1+1.2,ST.z0-.4,'m',Math.PI/2);head(JX1+.5,ST.z1+2.4,'s',0);
+})();
+function updateJunction(t){const u=(t+11)%40;
+  jMain=u<20?'g':u<23?'y':'r';jSide=u>=23&&u<37?'g':u>=37?'y':'r';
+  const lamp=(m,on,r,g,b)=>m.color.setRGB(on?r:.1,on?g:.04,on?b:.03);
+  lamp(JS.mr,jMain==='r',6,.02,.02);lamp(JS.my,jMain==='y',5,3.6,.02);lamp(JS.mg,jMain==='g',.02,5,1.6);
+  lamp(JS.sr,jSide==='r',6,.02,.02);lamp(JS.sy,jSide==='y',5,3.6,.02);lamp(JS.sg,jSide==='g',.02,5,1.6);}
+// where each route has to stop, and which light it watches
+const zebraE={p:[ZEBRA[0]-.7,LN.e],st:()=>sigCars},zebraW={p:[ZEBRA[1]+.7,LN.w],st:()=>sigCars};
+const STOPS={east:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jMain}],eastSouth:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jMain}],
+  west:[{p:[JX1+2.6,LN.w],st:()=>jMain},zebraW],westSouth:[{p:[JX1+2.6,LN.w],st:()=>jMain}],
+  northLeft:[{p:[LN.n,ST.z1+2.6],st:()=>jSide},zebraW],northRight:[{p:[LN.n,ST.z1+2.6],st:()=>jSide}]};
+const onAnyRoad=(x,z)=>onRoad(z)||(x>JX0&&x<JX1&&z>=ST.z1);
+function startCar(c){
+  const name=c.bus?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
+  const R=ROUTES[name];if(cars.some(o=>o!==c&&o.on&&Math.hypot(o.x-R[0][0],o.z-R[0][1])<24))return false;
+  c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=false;c.dwell=0;return true;
 }
 const cv3=new THREE.Vector3();
 function updateCars(dt){
-  updateSignal(performance.now()/1000);
+  const now=performance.now()/1000;updateSignal(now);updateJunction(now);
   for(const c of cars){
-    if(!c.on){c.t-=dt;
-      if(c.t<=0){const sx=-c.dir*105;if(cars.some(o=>o!==c&&o.on&&o.dir===c.dir&&Math.abs(o.x-sx)<20)){c.t=2;continue;}
-        c.on=true;c.x=sx;c.v=CAR_SPEED;c.g.visible=true;c.served=false;c.dwell=0;}
-      continue;}
-    const front=c.x+c.dir*c.hl;let gap=1e9;
-    const see=(px,pz)=>{if(!onRoad(pz))return;const d=(px-front)*c.dir;if(d>-.6&&d<gap)gap=d;};        // anyone on the road ahead, in either lane
-    see(pos.x-(ride?c.dir*ride.S.len:0),pos.z);                                   // you, or the back of the car you are driving
-    for(const d of pets)see(d.x,d.z);                                              // drivers stop for the dog too
-    for(const n of people){if(n.hidden)continue;see(n.pos.x,n.pos.z);    }
-    if(sigCars!=='g'){const d=((c.dir>0?ZEBRA[0]-.7:ZEBRA[1]+.7)-front)*c.dir;                    // red or yellow light: stop at the line (on yellow only if there is room to stop gently)
-      if(d>(sigCars==='y'?5:-.6)&&d<gap)gap=d;}
-    for(const o of cars){if(o===c||!o.on||o.dir!==c.dir)continue;const d=(o.x-o.dir*o.hl-front)*c.dir;if(d>-.6&&d<gap)gap=d;}
-    if(c.bus){const d=(c.stopX-front)*c.dir;                                          // a bus pulls up at its stop, waits with the doors open, then goes on
+    if(!c.on){c.t-=dt;if(c.t<=0&&!startCar(c))c.t=2;continue;}
+    // steer toward the next point on the route
+    let tp=c.route[c.wi],dist=Math.hypot(tp[0]-c.x,tp[1]-c.z);
+    if(dist<1.6+c.v*.12){c.wi++;if(c.wi>=c.route.length){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
+    const turn=angDiff(Math.atan2(-(tp[1]-c.z),tp[0]-c.x),c.h),maxT=(c.v/3.3+.05)*dt;c.h+=Math.max(-maxT,Math.min(maxT,turn));
+    const fx=Math.cos(c.h),fz=-Math.sin(c.h),px0=c.x+fx*c.hl,pz0=c.z+fz*c.hl;c.dir=Math.abs(fx)>.9&&onRoad(c.z)?Math.sign(fx):0;   // dir: +1/-1 while running along the main street, 0 otherwise
+    let gap=1e9;
+    const see=(x,z,half)=>{const dx=x-px0,dz=z-pz0,d=dx*fx+dz*fz;if(d>-.6&&d<gap&&Math.abs(-dx*fz+dz*fx)<half)gap=d;};   // something ahead, within `half` metres either side of my line
+    if(ride){const rx=Math.cos(ride.h),rz=-Math.sin(ride.h);for(const k of[-1,0,1])see(ride.x+rx*k*ride.S.len,ride.z+rz*k*ride.S.len,1.6);}
+    else if(onAnyRoad(pos.x,pos.z))see(pos.x,pos.z,3.3);                              // you, on foot on the road
+    for(const d of pets)if(onAnyRoad(d.x,d.z))see(d.x,d.z,3.3);                        // drivers stop for the dog too
+    for(const n of people)if(!n.hidden&&onAnyRoad(n.pos.x,n.pos.z))see(n.pos.x,n.pos.z,3.3);
+    for(const o of cars){if(o===c||!o.on)continue;const ox=Math.cos(o.h),oz=-Math.sin(o.h);see(o.x-ox*o.hl,o.z-oz*o.hl,1.5);see(o.x,o.z,1.5);}
+    for(const sp of c.stops){const st=sp.st();if(st==='g')continue;                     // red or yellow light: stop at the line (on yellow only if there is room to stop gently)
+      const dx=sp.p[0]-px0,dz=sp.p[1]-pz0,d=dx*fx+dz*fz;if(d>(st==='y'?5:-.6)&&d<gap&&Math.abs(-dx*fz+dz*fx)<2)gap=d;}
+    if(c.bus){const d=(c.stopX-px0)*c.busDir;                                          // a bus pulls up at its stop, waits with the doors open, then goes on
       if(c.dwell>0){c.dwell-=dt;gap=0;}
       else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=6;c.served=true;sfxDoor(c.x,c.z);}}}
-    const want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
-    c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=c.dir*c.v*dt;
-    if(c.v<.2&&gap<4&&!(c.dwell>0)){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
+    let want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
+    if(Math.abs(turn)>.2)want=Math.min(want,3.6);                                      // slow down for corners
+    c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=fx*c.v*dt;c.z+=fz*c.v*dt;
+    if(c.v<.2&&gap<4&&!(c.dwell>0)&&!c.stops.some(sp=>sp.st()!=='g')){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
     c.honk-=dt;
-    if(c.x*c.dir>105){c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.bus?rnd(14,26):rnd(5,16)*(1+dark*1.5);continue;}
-    c.g.position.set(c.x,0,c.z);spinWheels(c,c.v,dt,0);
-    c.box[0]=c.x-c.hl-.05;c.box[1]=c.x+c.hl+.05;c.box[2]=c.z-c.hw;c.box[3]=c.z+c.hw;
+    c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;spinWheels(c,c.v,dt,Math.max(-1,Math.min(1,turn*2)));
+    const hx=Math.abs(fx)*c.hl+Math.abs(fz)*c.hw+.05,hz=Math.abs(fz)*c.hl+Math.abs(fx)*c.hw;
+    c.box[0]=c.x-hx;c.box[1]=c.x+hx;c.box[2]=c.z-hz;c.box[3]=c.z+hz;
     carLights(c,want<c.v-.5);
     c.tag.hidden=c.honk<=0;
     if(c.honk>0){cv3.set(c.x,2,c.z).project(camera);if(cv3.z<1){c.tag.style.left=((cv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-cv3.y)/2*canvas.clientHeight)+'px';}else c.tag.hidden=true;}
@@ -1263,7 +1329,7 @@ function drawMap(){
   for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
     g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
-  for(const c2 of cars)if(c2.on&&c2.x>WB.x0&&c2.x<WB.x1){g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(c2.x)-k*c2.hl,Y(c2.z)-k*c2.hw,k*c2.hl*2,k*c2.hw*2);}
+  for(const c2 of cars)if(c2.on&&c2.x>WB.x0&&c2.x<WB.x1&&c2.z<WB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
@@ -1685,7 +1751,7 @@ setTimeout(nextTip,5000);
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
 // (sidewalks and floors are cheap, grass costs a bit more, the road costs a lot, so people keep off it unless they must cross).
 const NR=.2,GC=.1,GW=Math.round((WB.x1-WB.x0)/GC),GH=Math.round((WB.z1-WB.z0)/GC),NC=GW*GH,grid=new Uint8Array(NC),cost=new Float32Array(NC);
-function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
+function nBlocked(x,z){if(!inTown(x,z,NR))return true;
   for(const d of doors){const c=d.openC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;}   // people plan around where an open door will be
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
 (function(){const S=WORLD.street;
@@ -1693,7 +1759,7 @@ function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
     const i0=Math.max(0,Math.floor((c[0]-NR-WB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-WB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-WB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-WB.z0)/GC));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
   for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC,k=j*GW+i;
-    if(!inWorld(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
+    if(!inTown(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
     cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
 })();
 const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-WB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-WB.z0)/GC)));
@@ -2022,7 +2088,7 @@ function autoHome(){
     const wl=dark>.5&&awake;
     if(wl!==H.wantLamp){H.wantLamp=wl;if(H.S.lamp!==wl){H.S.lamp=wl;applySwitches();}}
     if(watching!==H.wantTv){H.wantTv=watching;if(H.S.tv!==watching){H.S.tv=watching;applySwitches();}}}
-  updateStreetLamps();neighbourChat();passingHello();
+  updateStreetLamps();neighbourChat();passingHello();for(const m of blockMats)m.emissiveIntensity=dark*1.6;
   const here=roomAt(pos.x,pos.z);if(bakeKey()!==bakedKey){envDirty=true;envTimer=0;}                // walked somewhere new: redo the reflections
   const txt=here?'你在 '+here.house.no+' 號的'+here.name+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家'):'你在街上 · 外面有 '+out+' 個人';
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
@@ -2109,7 +2175,7 @@ function updatePets(dt,t){
     const run=d.tgt?3.4:1.7;let moving=false;
     if(d.path.length){const q=d.path[0],dx=q[0]-d.x,dz=q[1]-d.z,L=Math.hypot(dx,dz),st=run*dt;
       const crossing=z=>z>S.z0&&z<S.z1;                                   // he waits at the kerb for cars, like the people do
-      if(!crossing(d.z)&&crossing(q[1])&&cars.some(c=>c.on&&c.v>1&&(d.x-c.x)*c.dir>-2&&(d.x-c.x)*c.dir<c.v*3+4)){d.mood='等車子過';}
+      if(!crossing(d.z)&&crossing(q[1])&&cars.some(c=>c.on&&c.dir&&c.v>1&&(d.x-c.x)*c.dir>-2&&(d.x-c.x)*c.dir<c.v*3+4)){d.mood='等車子過';}
       else{if(L<=st){d.x=q[0];d.z=q[1];d.path.shift();}else{d.vx=dx/L*run;d.vz=dz/L*run;d.x+=dx/L*st;d.z+=dz/L*st;d.h+=angDiff(Math.atan2(-dz,dx),d.h)*(1-Math.exp(-dt*10));}
         moving=true;d.ph+=dt*run*5;}}
     if(!moving){d.vx=d.vz=0;}
@@ -2361,7 +2427,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,busAt,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,do:{horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,do:{horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
