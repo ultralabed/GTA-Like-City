@@ -1,19 +1,20 @@
 /* ---------- people who live here ---------- */
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
 // (sidewalks and floors are cheap, grass costs a bit more, the road costs a lot, so people keep off it unless they must cross).
-const NR=.2,GC=.1,GW=Math.round((WB.x1-WB.x0)/GC),GH=Math.round((WB.z1-WB.z0)/GC),NC=GW*GH,grid=new Uint8Array(NC),cost=new Float32Array(NC);
-function nBlocked(x,z){if(!inTown(x,z,NR))return true;
+const NR=.2,GC=.1,GW=Math.round((BB.x1-BB.x0)/GC),GH=Math.round((BB.z1-BB.z0)/GC),NC=GW*GH,grid=new Uint8Array(NC),cost=new Float32Array(NC);
+function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
   for(const d of doors){const c=d.openC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;}   // people plan around where an open door will be
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
 (function(){const S=WORLD.street;
   for(const c of colliders.concat(doors.map(d=>d.openC))){                    // mark blocked squares box by box (much faster than asking every square)
-    const i0=Math.max(0,Math.floor((c[0]-NR-WB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-WB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-WB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-WB.z0)/GC));
-    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
-  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC,k=j*GW+i;
-    if(!inTown(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
-    cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
+    const i0=Math.max(0,Math.floor((c[0]-NR-BB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-BB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-BB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-BB.z0)/GC));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=BB.x0+(i+.5)*GC,z=BB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
+  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=BB.x0+(i+.5)*GC,z=BB.z0+(j+.5)*GC,k=j*GW+i;
+    if(!inWorld(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
+    const side=x>JX0-S.walk&&x<JX1+S.walk&&z>=S.z1;                         // the side street and its sidewalks
+    cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):side?(x>JX0&&x<JX1?5:1):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
 })();
-const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-WB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-WB.z0)/GC)));
+const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-BB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-BB.z0)/GC)));
 function nearestFree(i,j){if(!grid[j*GW+i])return j*GW+i;
   for(let r=1;r<16;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;
     const a=i+di,b=j+dj;if(a<0||b<0||a>=GW||b>=GH)continue;if(!grid[b*GW+a])return b*GW+a;}
@@ -37,8 +38,8 @@ function findPath(x0,z0,x1,z1){
       const ng=gs[cur]+(di&&dj?1.414:1)*cost[n];
       if(mark[n]!==no||ng<gs[n]){gs[n]=ng;mark[n]=no;from[n]=cur;const a=Math.abs(ni-ex),b=Math.abs(nj-ez);hpush(ng+Math.max(a,b)+.41*Math.min(a,b),n);}}}
   if(!found)return null;
-  const pts=[nBlocked(x1,z1)?[WB.x0+(ex+.5)*GC,WB.z0+(ez+.5)*GC]:[x1,z1]];
-  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([WB.x0+(c%GW+.5)*GC,WB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
+  const pts=[nBlocked(x1,z1)?[BB.x0+(ex+.5)*GC,BB.z0+(ez+.5)*GC]:[x1,z1]];
+  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([BB.x0+(c%GW+.5)*GC,BB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
   const out=[];let cx=x0,cz=z0,i=0;                                        // straighten: skip ahead while the straight line is clear and cheap
   while(i<pts.length){let k=i;while(k+1<pts.length&&k-i<90&&lineFree(cx,cz,pts[k+1][0],pts[k+1][1]))k++;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
   return out;

@@ -85,7 +85,7 @@ const WORLD={
   h:2.8,                                                           // ceiling height, same in every room
   clock:17.4,
   bounds:{x0:-38,x1:45,z0:-26,z1:26},                               // as far as anyone can walk
-  east:{x0:43.5,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
+  east:{x0:40.3,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
   side:{x0:49,x1:56},                                              // the side street runs south from the main street between these x
   shore:-12.5,                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
@@ -113,6 +113,15 @@ const WORLD={
     {no:6,tpl:'cottage',x:-18,z:19,flip:true,ext:0xcfd8e6,accent:0x5a2a3a,roof:0x2c3038,door:0xe0a45c,balls:'few',people:[
       person('志明',1.72,0xc99a74,0x16120f,0x5a7a4a,0x3a3028,0x1a1a1a,false,[9,18],[23,7],.6,.6,{energy:1,fun:1.1,fit:1,calm:.9,care:.8}),
       person('春嬌',1.58,0xf2ceb0,0x4a2a18,0xd9623f,0x34405a,0xf4f0e8,true,[14,22],[1,9],.7,.6,{energy:1,fun:1.2,fit:.9,calm:1,care:1})]},
+    // houses on the side street face it: turn 1 faces east, turn 3 faces west
+    {no:10,tpl:'cottage',x:43.6,z:31,turn:1,ext:0xe6d2c2,accent:0x2a4a6a,roof:0x3a3238,door:0x1f6a6e,balls:'few',people:[
+      person('建宏',1.75,0xc7946c,0x18120e,0x4a6a8a,0x2a2a30,0x151515,false,[8,17],[23,7],.6,.5,{energy:1,food:1,fun:1,fit:1,calm:1,care:.9}),
+      person('美玲',1.6,0xf0cbb0,0x33201a,0xe07a9a,0xe6ddd0,0xf4f0e8,true,[9,16],[22,7],.8,.5,{energy:1,food:1,fun:1,fit:.8,calm:1.2,care:1.2})]},
+    {no:12,tpl:'cottage',x:43.6,z:45.5,turn:1,ext:0xd2dccf,accent:0x6a4a2a,roof:0x2f3530,door:0xe0a45c,balls:'few',people:[
+      person('小凱',1.68,0xd9a57e,0x201610,0x6ab0e0,0x34405a,0xffffff,false,[8,15],[22,7],.4,.9,{energy:1,food:1.1,fun:1.3,fit:1.2,calm:.7,care:.6})]},
+    {no:11,tpl:'cottage',x:61.5,z:24,turn:3,ext:0xe9dcc0,accent:0x4a2a4a,roof:0x383038,door:0x7a2c5a,balls:'few',people:[
+      person('雅婷',1.63,0xeec6a6,0x2a1a14,0x8ad0b0,0x2b3a67,0xd9623f,true,[10,18],[23,8],.7,.6,{energy:1,food:1,fun:1.1,fit:.9,calm:1,care:1.1}),
+      person('俊傑',1.8,0xba8560,0x141010,0xd9d0c0,0x3a3a3a,0x202020,false,[7,15],[22,6],.5,.7,{energy:1,food:1.1,fun:1.1,fit:1.3,calm:.8,care:.7})]},
     {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
@@ -125,8 +134,8 @@ const WORLD={
   guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
   outdoor:[
     // big buildings along the side street (you cannot go inside these)
-    {type:'block',x:43.6,z:24.5,w:5.6,d:9,h:9,col:0xb9a48c},{type:'block',x:43.6,z:38,w:5.6,d:12,h:14,col:0x8fa3b5},{type:'block',x:43.6,z:55,w:5.6,d:14,h:7,col:0xc98f7a},
-    {type:'block',x:62.3,z:22,w:7,d:10,h:12,col:0x9aa58f},{type:'block',x:62.3,z:36,w:7,d:12,h:8,col:0xd4c2a0},{type:'block',x:62.3,z:52,w:7,d:14,h:17,col:0x7f8aa8},{type:'block',x:62.3,z:67,w:7,d:9,h:6,col:0xb07a6a},
+    {type:'block',x:43.6,z:60,w:5.6,d:14,h:9,col:0xb9a48c},
+    {type:'block',x:62.3,z:40.5,w:7,d:12,h:8,col:0xd4c2a0},{type:'block',x:62.3,z:55.5,w:7,d:14,h:17,col:0x7f8aa8},{type:'block',x:62.3,z:69,w:7,d:9,h:6,col:0xb07a6a},
     {type:'streetLamp',x:48.2,z:22,rot:1},{type:'streetLamp',x:48.2,z:40,rot:1},{type:'streetLamp',x:56.8,z:31,rot:3},{type:'streetLamp',x:56.8,z:52,rot:3},
     // trees
     {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:36.6,z:2.8,s:1.15},{type:'tree',x:-35.8,z:-2.5,s:1.1},{type:'tree',x:40.5,z:-3,s:.9},
@@ -155,17 +164,23 @@ const WORLD={
 };
 const RH=WORLD.h,WALL_T=.16,WB=WORLD.bounds;
 // make the real houses: one copy of the template per lot, moved (and turned around if flip is set)
-const FLIP={north:'south',south:'north',east:'west',west:'east'};
+// A lot can turn its house in quarter turns (turn: 0-3; flip:true is the same as turn:2), so houses can face any street.
+// turnPt carries a point measured from the middle of the house around by q quarter turns (the same way furniture is turned).
+const turnPt=(x,z,q)=>{const c=[1,0,-1,0][q],s=[0,1,0,-1][q];return[x*c+z*s,-x*s+z*c];};
+const SIDES=['north','east','south','west'],SIDE_DIR={north:[0,-1],east:[1,0],south:[0,1],west:[-1,0]};
+const sideOf=(x,z)=>Math.abs(x)>Math.abs(z)?(x>0?'east':'west'):(z>0?'south':'north');
 const houses=WORLD.lots.map((L,i)=>{
-  const T=TEMPLATES[L.tpl],f=L.flip?-1:1;
+  const T=TEMPLATES[L.tpl],q=L.turn!=null?L.turn:L.flip?2:0;
   const H={id:i,no:L.no,lot:L,S:{lamp:false,tv:false,neon:true},dev:{lamps:[],tvs:[],neons:[]},basket:null,mats:{}};
-  H.rooms=T.rooms.map(R=>{const W={};
-    for(const s of['north','east','south','west']){const src=R.walls[L.flip?FLIP[s]:s];
-      W[s]=src?Object.assign({},src,{open:(src.open||[]).map(o=>Object.assign({},o,{c:o.c*f}))}):null;}
-    const cx=L.x+R.x*f,cz=L.z+R.z*f;
-    return{id:R.id,name:R.name,house:H,w:R.w,d:R.d,walls:W,cx,cz,x0:cx-R.w/2,x1:cx+R.w/2,z0:cz-R.d/2,z1:cz+R.d/2,
-      furniture:R.furniture.map(it=>Object.assign({},it,{x:(it.x||0)*f,z:(it.z||0)*f,rot:(it.rot||0)+(L.flip?2:0)}))};});
-  H.balls=(L.balls==='all'?T.balls:T.balls.slice(0,2)).map(b=>Object.assign({},b,{x:L.x+b.x*f,z:L.z+b.z*f}));
+  H.rooms=T.rooms.map(R=>{const W={north:null,east:null,south:null,west:null};
+    for(const t of SIDES){const src=R.walls[t];if(!src)continue;
+      const d=SIDE_DIR[t],nd=turnPt(d[0],d[1],q),side=sideOf(nd[0],nd[1]),horiz=t==='north'||t==='south';
+      W[side]=Object.assign({},src,{open:(src.open||[]).map(o=>{                               // a hole keeps its place on the wall as the wall moves round
+        const p=horiz?turnPt(o.c,d[1]*R.d/2,q):turnPt(d[0]*R.w/2,o.c,q);return Object.assign({},o,{c:side==='north'||side==='south'?p[0]:p[1]});})});}
+    const c=turnPt(R.x,R.z,q),cx=L.x+c[0],cz=L.z+c[1],w=q%2?R.d:R.w,d=q%2?R.w:R.d;
+    return{id:R.id,name:R.name,house:H,w,d,walls:W,cx,cz,x0:cx-w/2,x1:cx+w/2,z0:cz-d/2,z1:cz+d/2,
+      furniture:R.furniture.map(it=>{const p=turnPt(it.x||0,it.z||0,q);return Object.assign({},it,{x:p[0],z:p[1],rot:(it.rot||0)+q});})};});
+  H.balls=(L.balls==='all'?T.balls:T.balls.slice(0,2)).map(b=>{const p=turnPt(b.x,b.z,q);return Object.assign({},b,{x:L.x+p[0],z:L.z+p[1]});});
   H.x0=Math.min(...H.rooms.map(r=>r.x0))-WALL_T;H.x1=Math.max(...H.rooms.map(r=>r.x1))+WALL_T;
   H.z0=Math.min(...H.rooms.map(r=>r.z0))-WALL_T;H.z1=Math.max(...H.rooms.map(r=>r.z1))+WALL_T;
   return H;
@@ -174,6 +189,7 @@ const rooms=houses.flatMap(H=>H.rooms);
 function roomAt(x,z){for(const r of rooms)if(x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)return r;return null;}   // doorways count as inside
 // the town proper (where everybody lives and walks), plus a strip to the east with the junction and the side street, for you and your vehicles
 const EB=WORLD.east,JX0=WORLD.side.x0,JX1=WORLD.side.x1;
+const BB={x0:Math.min(WB.x0,EB.x0),x1:Math.max(WB.x1,EB.x1),z0:Math.min(WB.z0,EB.z0),z1:Math.max(WB.z1,EB.z1)};   // a box around everything
 function inTown(x,z,m){return x>WB.x0+m&&x<WB.x1-m&&z>WB.z0+m&&z<WB.z1-m;}
 function inWorld(x,z,m){return inTown(x,z,m)||(x>EB.x0+m&&x<EB.x1-m&&z>EB.z0+m&&z<EB.z1-m);}
 function houseDist(H,x,z){return Math.hypot(Math.max(H.x0-x,0,x-H.x1),Math.max(H.z0-z,0,z-H.z1));}

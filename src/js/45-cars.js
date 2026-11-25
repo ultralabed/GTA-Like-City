@@ -66,11 +66,13 @@ function updateSignal(t){const u=t%36;
   const blink=u>30&&Math.floor(u*3)%2;SIG.walk.color.setRGB(.02,sigWalk&&!blink?4:.08,sigWalk&&!blink?1.4:.03);SIG.stop.color.setRGB(sigWalk?.1:5,.02,.02);}
 // should this walker hold back at the kerb? At the zebra they obey the light; anywhere else they wait for a gap in the cars.
 function carDanger(n,q){
-  if(onRoad(n.pos.z)||!(onRoad(q[1])||(q[1]-ST.z0)*(n.pos.z-ST.z0)<0))return false;       // already crossing, or not heading for the road
-  if(Math.min(Math.abs(n.pos.z-ST.z0),Math.abs(n.pos.z-ST.z1))>.4)return false;           // not at the kerb yet
-  if(n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){n.waitWhy='等紅綠燈';return!sigWalk;}
+  if(onAnyRoad(n.pos.x,n.pos.z))return false;                                             // already crossing
+  const dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,L=Math.hypot(dx,dz)||1,sx=n.pos.x+dx/L*.45,sz=n.pos.z+dz/L*.45;
+  if(!onAnyRoad(sx,sz))return false;                                                      // the next half step is not onto a road
+  if(onRoad(sz)&&n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){n.waitWhy='等紅綠燈';return!sigWalk;}
   n.waitWhy='等車子過';
-  for(const c of cars){if(!c.on||c.v<1||!c.dir)continue;const ahead=(n.pos.x-c.x)*c.dir;if(ahead>-2.5&&ahead<c.v*4+4)return true;}
+  for(const c of cars){if(!c.on||c.v<1)continue;const fx=Math.cos(c.h),fz=-Math.sin(c.h),rx=n.pos.x-c.x,rz=n.pos.z-c.z,ahead=rx*fx+rz*fz;   // works for cars on either street
+    if(ahead>-2.5&&ahead<c.v*4+4&&Math.abs(-rx*fz+rz*fx)<6)return true;}
   return false;
 }
 // --- routes: every car follows a list of points. Some go straight along the main street, some turn at the junction. ---

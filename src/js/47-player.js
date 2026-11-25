@@ -38,17 +38,18 @@ function takeItem(it){it.taken=true;it.mesh.visible=false;
   bag[it.item]=true;say('你拿到了'+ITEM[it.item].name+'，放進背包了。按右下角的「'+ITEM[it.item].name+'」來用它。');actKey='';}
 // the phone map: the whole street from above
 function drawMap(){
-  const c=$('mapc'),hh=Math.round(c.width*(WB.z1-WB.z0)/(WB.x1-WB.x0));if(c.height!==hh)c.height=hh;
-  const g=c.getContext('2d'),k=c.width/(WB.x1-WB.x0),X=x=>(x-WB.x0)*k,Y=z=>(z-WB.z0)*k,S=WORLD.street;
+  const c=$('mapc'),hh=Math.round(c.width*(BB.z1-BB.z0)/(BB.x1-BB.x0));if(c.height!==hh)c.height=hh;
+  const g=c.getContext('2d'),k=c.width/(BB.x1-BB.x0),X=x=>(x-BB.x0)*k,Y=z=>(z-BB.z0)*k,S=WORLD.street;
   g.fillStyle='#3d5a34';g.fillRect(0,0,c.width,c.height);
-  g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WB.z0+1.2));g.fillStyle='#cdbb92';g.fillRect(0,Y(WB.z0+1.2),c.width,k*1.2);
+  g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WORLD.shore));g.fillStyle='#cdbb92';g.fillRect(0,Y(WORLD.shore),c.width,k*6.5);
+  g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),c.height);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),c.height);   // the side street
   g.fillStyle='#9b958c';g.fillRect(0,Y(S.z0-S.walk),c.width,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(0,Y(S.z0),c.width,k*(S.z1-S.z0));
   g.fillStyle='#e8e4d8';for(let i=0;i<7;i++)g.fillRect(X(-1.1+i)-k*.25,Y(S.z0)+2,k*.5,k*(S.z1-S.z0)-4);
   g.font='bold '+Math.round(k*2.2)+'px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
   for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
     g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
-  for(const c2 of cars)if(c2.on&&c2.x>WB.x0&&c2.x<WB.x1&&c2.z<WB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
+  for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));

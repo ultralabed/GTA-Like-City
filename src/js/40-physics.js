@@ -90,10 +90,10 @@ function physStep(dt){
   for(const b of bodies){
     if(b.held)continue;const r=b.r;
     if(b.p.y<r)contact(b,0,1,0,r-b.p.y,0,0,0);
-    if(b.p.x<WB.x0+r)contact(b,1,0,0,WB.x0+r-b.p.x,0,0,0);            // the edge of the world
-    if(b.p.x>WB.x1-r)contact(b,-1,0,0,b.p.x-(WB.x1-r),0,0,0);
-    if(b.p.z<WB.z0+r)contact(b,0,0,1,WB.z0+r-b.p.z,0,0,0);
-    if(b.p.z>WB.z1-r)contact(b,0,0,-1,b.p.z-(WB.z1-r),0,0,0);
+    if(b.p.x<BB.x0+r)contact(b,1,0,0,BB.x0+r-b.p.x,0,0,0);            // the edge of the world
+    if(b.p.x>BB.x1-r)contact(b,-1,0,0,b.p.x-(BB.x1-r),0,0,0);
+    if(b.p.z<BB.z0+r)contact(b,0,0,1,BB.z0+r-b.p.z,0,0,0);
+    if(b.p.z>BB.z1-r)contact(b,0,0,-1,b.p.z-(BB.z1-r),0,0,0);
     for(const q of pboxes){
       if(b.p.x<q[0]-r||b.p.x>q[1]+r||b.p.z<q[4]-r||b.p.z>q[5]+r)continue;
       const cx=Math.max(q[0],Math.min(q[1],b.p.x)),cy=Math.max(q[2],Math.min(q[3],b.p.y)),cz=Math.max(q[4],Math.min(q[5],b.p.z));

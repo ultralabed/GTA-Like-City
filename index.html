@@ -375,7 +375,7 @@ const WORLD={
   h:2.8,                                                           // ceiling height, same in every room
   clock:17.4,
   bounds:{x0:-38,x1:45,z0:-26,z1:26},                               // as far as anyone can walk
-  east:{x0:43.5,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
+  east:{x0:40.3,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
   side:{x0:49,x1:56},                                              // the side street runs south from the main street between these x
   shore:-12.5,                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
@@ -403,6 +403,15 @@ const WORLD={
     {no:6,tpl:'cottage',x:-18,z:19,flip:true,ext:0xcfd8e6,accent:0x5a2a3a,roof:0x2c3038,door:0xe0a45c,balls:'few',people:[
       person('志明',1.72,0xc99a74,0x16120f,0x5a7a4a,0x3a3028,0x1a1a1a,false,[9,18],[23,7],.6,.6,{energy:1,fun:1.1,fit:1,calm:.9,care:.8}),
       person('春嬌',1.58,0xf2ceb0,0x4a2a18,0xd9623f,0x34405a,0xf4f0e8,true,[14,22],[1,9],.7,.6,{energy:1,fun:1.2,fit:.9,calm:1,care:1})]},
+    // houses on the side street face it: turn 1 faces east, turn 3 faces west
+    {no:10,tpl:'cottage',x:43.6,z:31,turn:1,ext:0xe6d2c2,accent:0x2a4a6a,roof:0x3a3238,door:0x1f6a6e,balls:'few',people:[
+      person('建宏',1.75,0xc7946c,0x18120e,0x4a6a8a,0x2a2a30,0x151515,false,[8,17],[23,7],.6,.5,{energy:1,food:1,fun:1,fit:1,calm:1,care:.9}),
+      person('美玲',1.6,0xf0cbb0,0x33201a,0xe07a9a,0xe6ddd0,0xf4f0e8,true,[9,16],[22,7],.8,.5,{energy:1,food:1,fun:1,fit:.8,calm:1.2,care:1.2})]},
+    {no:12,tpl:'cottage',x:43.6,z:45.5,turn:1,ext:0xd2dccf,accent:0x6a4a2a,roof:0x2f3530,door:0xe0a45c,balls:'few',people:[
+      person('小凱',1.68,0xd9a57e,0x201610,0x6ab0e0,0x34405a,0xffffff,false,[8,15],[22,7],.4,.9,{energy:1,food:1.1,fun:1.3,fit:1.2,calm:.7,care:.6})]},
+    {no:11,tpl:'cottage',x:61.5,z:24,turn:3,ext:0xe9dcc0,accent:0x4a2a4a,roof:0x383038,door:0x7a2c5a,balls:'few',people:[
+      person('雅婷',1.63,0xeec6a6,0x2a1a14,0x8ad0b0,0x2b3a67,0xd9623f,true,[10,18],[23,8],.7,.6,{energy:1,food:1,fun:1.1,fit:.9,calm:1,care:1.1}),
+      person('俊傑',1.8,0xba8560,0x141010,0xd9d0c0,0x3a3a3a,0x202020,false,[7,15],[22,6],.5,.7,{energy:1,food:1.1,fun:1.1,fit:1.3,calm:.8,care:.7})]},
     {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
@@ -415,8 +424,8 @@ const WORLD={
   guard:person('巡邏員阿國',1.8,0xc9966e,0x1a1a1a,0x1d2a4a,0x1d2a4a,0x101010,false,null,null,.9,.1,{energy:1,fun:1,fit:1,calm:1,care:1}),
   outdoor:[
     // big buildings along the side street (you cannot go inside these)
-    {type:'block',x:43.6,z:24.5,w:5.6,d:9,h:9,col:0xb9a48c},{type:'block',x:43.6,z:38,w:5.6,d:12,h:14,col:0x8fa3b5},{type:'block',x:43.6,z:55,w:5.6,d:14,h:7,col:0xc98f7a},
-    {type:'block',x:62.3,z:22,w:7,d:10,h:12,col:0x9aa58f},{type:'block',x:62.3,z:36,w:7,d:12,h:8,col:0xd4c2a0},{type:'block',x:62.3,z:52,w:7,d:14,h:17,col:0x7f8aa8},{type:'block',x:62.3,z:67,w:7,d:9,h:6,col:0xb07a6a},
+    {type:'block',x:43.6,z:60,w:5.6,d:14,h:9,col:0xb9a48c},
+    {type:'block',x:62.3,z:40.5,w:7,d:12,h:8,col:0xd4c2a0},{type:'block',x:62.3,z:55.5,w:7,d:14,h:17,col:0x7f8aa8},{type:'block',x:62.3,z:69,w:7,d:9,h:6,col:0xb07a6a},
     {type:'streetLamp',x:48.2,z:22,rot:1},{type:'streetLamp',x:48.2,z:40,rot:1},{type:'streetLamp',x:56.8,z:31,rot:3},{type:'streetLamp',x:56.8,z:52,rot:3},
     // trees
     {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:36.6,z:2.8,s:1.15},{type:'tree',x:-35.8,z:-2.5,s:1.1},{type:'tree',x:40.5,z:-3,s:.9},
@@ -445,17 +454,23 @@ const WORLD={
 };
 const RH=WORLD.h,WALL_T=.16,WB=WORLD.bounds;
 // make the real houses: one copy of the template per lot, moved (and turned around if flip is set)
-const FLIP={north:'south',south:'north',east:'west',west:'east'};
+// A lot can turn its house in quarter turns (turn: 0-3; flip:true is the same as turn:2), so houses can face any street.
+// turnPt carries a point measured from the middle of the house around by q quarter turns (the same way furniture is turned).
+const turnPt=(x,z,q)=>{const c=[1,0,-1,0][q],s=[0,1,0,-1][q];return[x*c+z*s,-x*s+z*c];};
+const SIDES=['north','east','south','west'],SIDE_DIR={north:[0,-1],east:[1,0],south:[0,1],west:[-1,0]};
+const sideOf=(x,z)=>Math.abs(x)>Math.abs(z)?(x>0?'east':'west'):(z>0?'south':'north');
 const houses=WORLD.lots.map((L,i)=>{
-  const T=TEMPLATES[L.tpl],f=L.flip?-1:1;
+  const T=TEMPLATES[L.tpl],q=L.turn!=null?L.turn:L.flip?2:0;
   const H={id:i,no:L.no,lot:L,S:{lamp:false,tv:false,neon:true},dev:{lamps:[],tvs:[],neons:[]},basket:null,mats:{}};
-  H.rooms=T.rooms.map(R=>{const W={};
-    for(const s of['north','east','south','west']){const src=R.walls[L.flip?FLIP[s]:s];
-      W[s]=src?Object.assign({},src,{open:(src.open||[]).map(o=>Object.assign({},o,{c:o.c*f}))}):null;}
-    const cx=L.x+R.x*f,cz=L.z+R.z*f;
-    return{id:R.id,name:R.name,house:H,w:R.w,d:R.d,walls:W,cx,cz,x0:cx-R.w/2,x1:cx+R.w/2,z0:cz-R.d/2,z1:cz+R.d/2,
-      furniture:R.furniture.map(it=>Object.assign({},it,{x:(it.x||0)*f,z:(it.z||0)*f,rot:(it.rot||0)+(L.flip?2:0)}))};});
-  H.balls=(L.balls==='all'?T.balls:T.balls.slice(0,2)).map(b=>Object.assign({},b,{x:L.x+b.x*f,z:L.z+b.z*f}));
+  H.rooms=T.rooms.map(R=>{const W={north:null,east:null,south:null,west:null};
+    for(const t of SIDES){const src=R.walls[t];if(!src)continue;
+      const d=SIDE_DIR[t],nd=turnPt(d[0],d[1],q),side=sideOf(nd[0],nd[1]),horiz=t==='north'||t==='south';
+      W[side]=Object.assign({},src,{open:(src.open||[]).map(o=>{                               // a hole keeps its place on the wall as the wall moves round
+        const p=horiz?turnPt(o.c,d[1]*R.d/2,q):turnPt(d[0]*R.w/2,o.c,q);return Object.assign({},o,{c:side==='north'||side==='south'?p[0]:p[1]});})});}
+    const c=turnPt(R.x,R.z,q),cx=L.x+c[0],cz=L.z+c[1],w=q%2?R.d:R.w,d=q%2?R.w:R.d;
+    return{id:R.id,name:R.name,house:H,w,d,walls:W,cx,cz,x0:cx-w/2,x1:cx+w/2,z0:cz-d/2,z1:cz+d/2,
+      furniture:R.furniture.map(it=>{const p=turnPt(it.x||0,it.z||0,q);return Object.assign({},it,{x:p[0],z:p[1],rot:(it.rot||0)+q});})};});
+  H.balls=(L.balls==='all'?T.balls:T.balls.slice(0,2)).map(b=>{const p=turnPt(b.x,b.z,q);return Object.assign({},b,{x:L.x+p[0],z:L.z+p[1]});});
   H.x0=Math.min(...H.rooms.map(r=>r.x0))-WALL_T;H.x1=Math.max(...H.rooms.map(r=>r.x1))+WALL_T;
   H.z0=Math.min(...H.rooms.map(r=>r.z0))-WALL_T;H.z1=Math.max(...H.rooms.map(r=>r.z1))+WALL_T;
   return H;
@@ -464,6 +479,7 @@ const rooms=houses.flatMap(H=>H.rooms);
 function roomAt(x,z){for(const r of rooms)if(x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)return r;return null;}   // doorways count as inside
 // the town proper (where everybody lives and walks), plus a strip to the east with the junction and the side street, for you and your vehicles
 const EB=WORLD.east,JX0=WORLD.side.x0,JX1=WORLD.side.x1;
+const BB={x0:Math.min(WB.x0,EB.x0),x1:Math.max(WB.x1,EB.x1),z0:Math.min(WB.z0,EB.z0),z1:Math.max(WB.z1,EB.z1)};   // a box around everything
 function inTown(x,z,m){return x>WB.x0+m&&x<WB.x1-m&&z>WB.z0+m&&z<WB.z1-m;}
 function inWorld(x,z,m){return inTown(x,z,m)||(x>EB.x0+m&&x<EB.x1-m&&z>EB.z0+m&&z<EB.z1-m);}
 function houseDist(H,x,z){return Math.hypot(Math.max(H.x0-x,0,x-H.x1),Math.max(H.z0-z,0,z-H.z1));}
@@ -847,7 +863,8 @@ function updateDoors(dt){
   for(let x=-110;x<=110;x+=4)flat(1.7,.14,M.paint,x,-.008,mid);                                  // centre dashes
   [S.z0+.25,S.z1-.25].forEach(z=>flat(LEN,.1,M.paint,0,-.008,z));                              // edge lines
   for(let i=0;i<7;i++)flat(.5,S.z1-S.z0-.9,M.paint,1.9-3+i,-.008,mid);                         // zebra crossing in front of number 1
-  for(const H of houses)if(H.front){const f=H.front,edge=f.dz>0?S.z0-S.walk:S.z1+S.walk,len=Math.abs(edge-f.z);   // garden path from each front door
+  for(const H of houses)if(H.front&&Math.abs(H.front.dx)>.5){const f=H.front,edge=f.dx>0?JX0-S.walk:JX1+S.walk;flat(Math.abs(edge-f.x),1.2,M.concrete,(f.x+edge)/2,-.012,f.z,1.2);}   // houses on the side street
+  for(const H of houses)if(H.front&&Math.abs(H.front.dx)<=.5){const f=H.front,edge=f.dz>0?S.z0-S.walk:S.z1+S.walk,len=Math.abs(edge-f.z);   // garden path from each front door
     flat(1.2,len,M.concrete,f.x,-.012,(f.z+edge)/2,1.2);}
   // the beach behind the north houses, and the sea beyond it
   flat(LEN,7,M.sand,0,-.018,-9.5,3);
@@ -1077,10 +1094,10 @@ function physStep(dt){
   for(const b of bodies){
     if(b.held)continue;const r=b.r;
     if(b.p.y<r)contact(b,0,1,0,r-b.p.y,0,0,0);
-    if(b.p.x<WB.x0+r)contact(b,1,0,0,WB.x0+r-b.p.x,0,0,0);            // the edge of the world
-    if(b.p.x>WB.x1-r)contact(b,-1,0,0,b.p.x-(WB.x1-r),0,0,0);
-    if(b.p.z<WB.z0+r)contact(b,0,0,1,WB.z0+r-b.p.z,0,0,0);
-    if(b.p.z>WB.z1-r)contact(b,0,0,-1,b.p.z-(WB.z1-r),0,0,0);
+    if(b.p.x<BB.x0+r)contact(b,1,0,0,BB.x0+r-b.p.x,0,0,0);            // the edge of the world
+    if(b.p.x>BB.x1-r)contact(b,-1,0,0,b.p.x-(BB.x1-r),0,0,0);
+    if(b.p.z<BB.z0+r)contact(b,0,0,1,BB.z0+r-b.p.z,0,0,0);
+    if(b.p.z>BB.z1-r)contact(b,0,0,-1,b.p.z-(BB.z1-r),0,0,0);
     for(const q of pboxes){
       if(b.p.x<q[0]-r||b.p.x>q[1]+r||b.p.z<q[4]-r||b.p.z>q[5]+r)continue;
       const cx=Math.max(q[0],Math.min(q[1],b.p.x)),cy=Math.max(q[2],Math.min(q[3],b.p.y)),cz=Math.max(q[4],Math.min(q[5],b.p.z));
@@ -1180,11 +1197,13 @@ function updateSignal(t){const u=t%36;
   const blink=u>30&&Math.floor(u*3)%2;SIG.walk.color.setRGB(.02,sigWalk&&!blink?4:.08,sigWalk&&!blink?1.4:.03);SIG.stop.color.setRGB(sigWalk?.1:5,.02,.02);}
 // should this walker hold back at the kerb? At the zebra they obey the light; anywhere else they wait for a gap in the cars.
 function carDanger(n,q){
-  if(onRoad(n.pos.z)||!(onRoad(q[1])||(q[1]-ST.z0)*(n.pos.z-ST.z0)<0))return false;       // already crossing, or not heading for the road
-  if(Math.min(Math.abs(n.pos.z-ST.z0),Math.abs(n.pos.z-ST.z1))>.4)return false;           // not at the kerb yet
-  if(n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){n.waitWhy='等紅綠燈';return!sigWalk;}
+  if(onAnyRoad(n.pos.x,n.pos.z))return false;                                             // already crossing
+  const dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,L=Math.hypot(dx,dz)||1,sx=n.pos.x+dx/L*.45,sz=n.pos.z+dz/L*.45;
+  if(!onAnyRoad(sx,sz))return false;                                                      // the next half step is not onto a road
+  if(onRoad(sz)&&n.pos.x>ZEBRA[0]&&n.pos.x<ZEBRA[1]){n.waitWhy='等紅綠燈';return!sigWalk;}
   n.waitWhy='等車子過';
-  for(const c of cars){if(!c.on||c.v<1||!c.dir)continue;const ahead=(n.pos.x-c.x)*c.dir;if(ahead>-2.5&&ahead<c.v*4+4)return true;}
+  for(const c of cars){if(!c.on||c.v<1)continue;const fx=Math.cos(c.h),fz=-Math.sin(c.h),rx=n.pos.x-c.x,rz=n.pos.z-c.z,ahead=rx*fx+rz*fz;   // works for cars on either street
+    if(ahead>-2.5&&ahead<c.v*4+4&&Math.abs(-rx*fz+rz*fx)<6)return true;}
   return false;
 }
 // --- routes: every car follows a list of points. Some go straight along the main street, some turn at the junction. ---
@@ -1331,17 +1350,18 @@ function takeItem(it){it.taken=true;it.mesh.visible=false;
   bag[it.item]=true;say('你拿到了'+ITEM[it.item].name+'，放進背包了。按右下角的「'+ITEM[it.item].name+'」來用它。');actKey='';}
 // the phone map: the whole street from above
 function drawMap(){
-  const c=$('mapc'),hh=Math.round(c.width*(WB.z1-WB.z0)/(WB.x1-WB.x0));if(c.height!==hh)c.height=hh;
-  const g=c.getContext('2d'),k=c.width/(WB.x1-WB.x0),X=x=>(x-WB.x0)*k,Y=z=>(z-WB.z0)*k,S=WORLD.street;
+  const c=$('mapc'),hh=Math.round(c.width*(BB.z1-BB.z0)/(BB.x1-BB.x0));if(c.height!==hh)c.height=hh;
+  const g=c.getContext('2d'),k=c.width/(BB.x1-BB.x0),X=x=>(x-BB.x0)*k,Y=z=>(z-BB.z0)*k,S=WORLD.street;
   g.fillStyle='#3d5a34';g.fillRect(0,0,c.width,c.height);
-  g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WB.z0+1.2));g.fillStyle='#cdbb92';g.fillRect(0,Y(WB.z0+1.2),c.width,k*1.2);
+  g.fillStyle='#2a6f9a';g.fillRect(0,0,c.width,Y(WORLD.shore));g.fillStyle='#cdbb92';g.fillRect(0,Y(WORLD.shore),c.width,k*6.5);
+  g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),c.height);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),c.height);   // the side street
   g.fillStyle='#9b958c';g.fillRect(0,Y(S.z0-S.walk),c.width,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(0,Y(S.z0),c.width,k*(S.z1-S.z0));
   g.fillStyle='#e8e4d8';for(let i=0;i<7;i++)g.fillRect(X(-1.1+i)-k*.25,Y(S.z0)+2,k*.5,k*(S.z1-S.z0)-4);
   g.font='bold '+Math.round(k*2.2)+'px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
   for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
     g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
-  for(const c2 of cars)if(c2.on&&c2.x>WB.x0&&c2.x<WB.x1&&c2.z<WB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
+  for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
@@ -1762,19 +1782,20 @@ setTimeout(nextTip,5000);
 /* ---------- people who live here ---------- */
 // Finding a way: the whole world is cut into 10 cm squares. Each square is either blocked or has a cost
 // (sidewalks and floors are cheap, grass costs a bit more, the road costs a lot, so people keep off it unless they must cross).
-const NR=.2,GC=.1,GW=Math.round((WB.x1-WB.x0)/GC),GH=Math.round((WB.z1-WB.z0)/GC),NC=GW*GH,grid=new Uint8Array(NC),cost=new Float32Array(NC);
-function nBlocked(x,z){if(!inTown(x,z,NR))return true;
+const NR=.2,GC=.1,GW=Math.round((BB.x1-BB.x0)/GC),GH=Math.round((BB.z1-BB.z0)/GC),NC=GW*GH,grid=new Uint8Array(NC),cost=new Float32Array(NC);
+function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
   for(const d of doors){const c=d.openC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;}   // people plan around where an open door will be
   for(const c of colliders)if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)return true;return false;}
 (function(){const S=WORLD.street;
   for(const c of colliders.concat(doors.map(d=>d.openC))){                    // mark blocked squares box by box (much faster than asking every square)
-    const i0=Math.max(0,Math.floor((c[0]-NR-WB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-WB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-WB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-WB.z0)/GC));
-    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
-  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=WB.x0+(i+.5)*GC,z=WB.z0+(j+.5)*GC,k=j*GW+i;
-    if(!inTown(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
-    cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
+    const i0=Math.max(0,Math.floor((c[0]-NR-BB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-BB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-BB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-BB.z0)/GC));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=BB.x0+(i+.5)*GC,z=BB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
+  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=BB.x0+(i+.5)*GC,z=BB.z0+(j+.5)*GC,k=j*GW+i;
+    if(!inWorld(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
+    const side=x>JX0-S.walk&&x<JX1+S.walk&&z>=S.z1;                         // the side street and its sidewalks
+    cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):side?(x>JX0&&x<JX1?5:1):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
 })();
-const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-WB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-WB.z0)/GC)));
+const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-BB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-BB.z0)/GC)));
 function nearestFree(i,j){if(!grid[j*GW+i])return j*GW+i;
   for(let r=1;r<16;r++)for(let dj=-r;dj<=r;dj++)for(let di=-r;di<=r;di++){if(Math.max(Math.abs(di),Math.abs(dj))!==r)continue;
     const a=i+di,b=j+dj;if(a<0||b<0||a>=GW||b>=GH)continue;if(!grid[b*GW+a])return b*GW+a;}
@@ -1798,8 +1819,8 @@ function findPath(x0,z0,x1,z1){
       const ng=gs[cur]+(di&&dj?1.414:1)*cost[n];
       if(mark[n]!==no||ng<gs[n]){gs[n]=ng;mark[n]=no;from[n]=cur;const a=Math.abs(ni-ex),b=Math.abs(nj-ez);hpush(ng+Math.max(a,b)+.41*Math.min(a,b),n);}}}
   if(!found)return null;
-  const pts=[nBlocked(x1,z1)?[WB.x0+(ex+.5)*GC,WB.z0+(ez+.5)*GC]:[x1,z1]];
-  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([WB.x0+(c%GW+.5)*GC,WB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
+  const pts=[nBlocked(x1,z1)?[BB.x0+(ex+.5)*GC,BB.z0+(ez+.5)*GC]:[x1,z1]];
+  for(let c=ei;c!==si&&c>=0;c=from[c])pts.push([BB.x0+(c%GW+.5)*GC,BB.z0+((c/GW|0)+.5)*GC]);pts.reverse();
   const out=[];let cx=x0,cz=z0,i=0;                                        // straighten: skip ahead while the straight line is clear and cheap
   while(i<pts.length){let k=i;while(k+1<pts.length&&k-i<90&&lineFree(cx,cz,pts[k+1][0],pts[k+1][1]))k++;out.push(pts[k]);cx=pts[k][0];cz=pts[k][1];i=k+1;}
   return out;
