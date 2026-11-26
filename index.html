@@ -61,6 +61,16 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 .bag button::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25)}
 .bag button[aria-pressed="true"]::before{background:var(--neon);box-shadow:0 0 10px var(--neon)}
 .actcol{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+/* short screens (a phone held sideways): the buttons go in rows instead of one tall column, and sit lower */
+@media (max-height:520px){
+  .acts{bottom:calc(12px + env(safe-area-inset-bottom, 0px));gap:5px;max-width:58vw}
+  .actcol{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+  .acts button{padding:9px 12px;font-size:13px}
+  .bag button{padding:7px 10px}
+  .speed{font-size:15px;padding:6px 10px}
+  .radar{bottom:calc(12px + env(safe-area-inset-bottom, 0px))}
+  .radar canvas{width:88px;height:88px}
+}
 .map{position:absolute;top:calc(14px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));border:1px solid var(--line);border-radius:12px;overflow:hidden;
   box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none;line-height:0}
 .map canvas{width:min(208px,46vw);height:auto;display:block}
