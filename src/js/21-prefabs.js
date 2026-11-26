@@ -183,6 +183,10 @@ PREFAB.bench=()=>{
   return{solid:[[-.78,.78,-.28,.25]],boxes:[[-.75,.75,0,.48,-.23,.23],[-.75,.75,.48,.98,-.26,-.19]],spots:[sit(-.38),sit(.38)]};
 };
 // drinks machine. The front faces +z; click it to buy.
+PREFAB.rod=()=>{                                                           // a rod holder stuck in the sand: this is a fishing place
+  cyl(.03,.03,.5,M.steel,0,.25,0,8);const r=cyl(.012,.02,2.4,M.black,0,1.25,-.75,6);r.rotation.x=-.75;
+  const l=cyl(.004,.004,1.9,M.ceramic,0,1.1,-1.62,4);l.castShadow=false;
+};
 PREFAB.pump=()=>{
   box(.9,.12,.6,M.concrete,0,.06,0);box(.6,1.5,.4,M.teal,0,.87,0,{r:.04});box(.66,.2,.46,M.ceramic,0,1.7,0,{r:.04});
   const scr=new THREE.Mesh(new THREE.PlaneGeometry(.4,.3),new THREE.MeshBasicMaterial({color:0xfff0c0}));scr.position.set(0,1.25,.205);cur.add(scr);

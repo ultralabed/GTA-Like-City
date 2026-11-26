@@ -452,6 +452,9 @@ const WORLD={
     {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     {type:'spot',kind:'lift',chase:true,lift:true,pose:'idle',shared:true,label:'等你開車載他'},
     // places to walk to
+    {type:'spot',kind:'fishing',x:2.6,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:2.6,z:-12.1},
+    {type:'spot',kind:'fishing',x:-11.5,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:-11.5,z:-12.1},
+    {type:'spot',kind:'hoops',x:19.2,z:20.9,yaw:0,pose:'shoot',shared:true,label:'在公園投籃'},
     {type:'spot',kind:'stroll',x:8.8,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
     {type:'spot',kind:'stroll',x:-4.7,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
     {type:'spot',kind:'stroll',x:21.5,z:17.6,yaw:.6,pose:'stretch',shared:true,label:'在公園伸展'}
@@ -752,6 +755,10 @@ PREFAB.bench=()=>{
   return{solid:[[-.78,.78,-.28,.25]],boxes:[[-.75,.75,0,.48,-.23,.23],[-.75,.75,.48,.98,-.26,-.19]],spots:[sit(-.38),sit(.38)]};
 };
 // drinks machine. The front faces +z; click it to buy.
+PREFAB.rod=()=>{                                                           // a rod holder stuck in the sand: this is a fishing place
+  cyl(.03,.03,.5,M.steel,0,.25,0,8);const r=cyl(.012,.02,2.4,M.black,0,1.25,-.75,6);r.rotation.x=-.75;
+  const l=cyl(.004,.004,1.9,M.ceramic,0,1.1,-1.62,4);l.castShadow=false;
+};
 PREFAB.pump=()=>{
   box(.9,.12,.6,M.concrete,0,.06,0);box(.6,1.5,.4,M.teal,0,.87,0,{r:.04});box(.66,.2,.46,M.ceramic,0,1.7,0,{r:.04});
   const scr=new THREE.Mesh(new THREE.PlaneGeometry(.4,.3),new THREE.MeshBasicMaterial({color:0xfff0c0}));scr.position.set(0,1.25,.205);cur.add(scr);
@@ -2167,6 +2174,8 @@ const GOALS={                                                           // type 
   snack:{label:'吃點心',type:'snack',need:'food',gain:2.4,dur:.3},
   eatout:{label:'去小吃攤吃東西',type:'eat',need:'food',gain:3,dur:.3,outside:true},
   shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
+  fish:{label:'去海邊釣魚',type:'fishing',need:'calm',gain:.8,dur:.7,outside:true,also:'food'},
+  hoops:{label:'去公園投籃',type:'hoops',need:'fit',gain:1.2,dur:.4,outside:true,also:'fun'},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
   lift:{label:'等你開車載他',type:'lift'}
@@ -2215,7 +2224,8 @@ function choose(n){
   setGoal(n,best);
 }
 function endGoal(n,ok){if(n.visitor&&n.goal.id==='work'){n.stay=rnd(1,2.2);for(const k in n.need)n.need[k]=rnd(.25,.6);n.need.energy=1;}   // a visitor arriving: fresh, with things they feel like doing
-  if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);}
+  const was=n.goal.id;if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);
+  if(ok&&was==='fish')react(n,Math.random()<.7?'釣到一條魚了！':'今天魚都不咬…',1.8,null);else if(ok&&was==='hoops')react(n,'呼，投得真過癮。',1.5,null);}
 function brain(n,dt){
   const dh=dt*SPEEDS[speedIdx][0],g=n.goal,G=GOALS[g.id],atWork=(g.id==='work'&&n.hidden)||n.lie;   // needs run down slower at work and asleep
   for(const k in DECAY)n.need[k]=Math.max(0,n.need[k]-DECAY[k]*dh*(atWork&&k!=='energy'?.35:1));
@@ -2307,6 +2317,8 @@ function pose(P,name,n,t){
   else if(name==='stretch'){P.alx=P.arx=-3;P.alz=.15;P.arz=-.15;P.sz=Math.sin(t*.8)*.28;}
   else if(name==='read'){P.alx=P.arx=-.4;P.elx=P.erx=-1.6;P.alz=-.12;P.arz=.12;P.nx=.38;}
   else if(name==='water'){P.arx=-1.15;P.erx=-.4;P.sx=.16;P.nx=.22;P.arz=-.1+Math.sin(t*2)*.08;}
+  else if(name==='fish'){P.alx=P.arx=-1.05;P.elx=P.erx=-.5;P.alz=.12;P.arz=-.12;P.sx=.06+Math.sin(t*.8+n.stand*5)*.03;}                 // both hands out in front, holding the rod
+  else if(name==='shoot'){const k=Math.max(0,Math.sin(t*1.6+n.stand*3));P.alx=P.arx=-1.2-k*1.5;P.elx=P.erx=-1.2+k*1.1;P.klx=P.krx=(1-k)*.5;P.hlx=P.hrx=-(1-k)*.25;P.yo=k*.06-.04;}   // crouch, then push the ball up
   else if(name==='window'){P.alz=.45;P.arz=-.45;P.elx=P.erx=-1.1;P.ny=Math.sin(t*.3+n.stand*7)*.35;}
 }
 const qT=new THREE.Quaternion(),P={},hv=new THREE.Vector3();
@@ -2753,7 +2765,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

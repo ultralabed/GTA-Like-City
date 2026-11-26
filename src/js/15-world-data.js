@@ -159,6 +159,9 @@ const WORLD={
     {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     {type:'spot',kind:'lift',chase:true,lift:true,pose:'idle',shared:true,label:'等你開車載他'},
     // places to walk to
+    {type:'spot',kind:'fishing',x:2.6,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:2.6,z:-12.1},
+    {type:'spot',kind:'fishing',x:-11.5,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:-11.5,z:-12.1},
+    {type:'spot',kind:'hoops',x:19.2,z:20.9,yaw:0,pose:'shoot',shared:true,label:'在公園投籃'},
     {type:'spot',kind:'stroll',x:8.8,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
     {type:'spot',kind:'stroll',x:-4.7,z:-7.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看海'},
     {type:'spot',kind:'stroll',x:21.5,z:17.6,yaw:.6,pose:'stretch',shared:true,label:'在公園伸展'}

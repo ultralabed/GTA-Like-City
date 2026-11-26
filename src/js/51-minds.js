@@ -18,6 +18,8 @@ const GOALS={                                                           // type 
   snack:{label:'吃點心',type:'snack',need:'food',gain:2.4,dur:.3},
   eatout:{label:'去小吃攤吃東西',type:'eat',need:'food',gain:3,dur:.3,outside:true},
   shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
+  fish:{label:'去海邊釣魚',type:'fishing',need:'calm',gain:.8,dur:.7,outside:true,also:'food'},
+  hoops:{label:'去公園投籃',type:'hoops',need:'fit',gain:1.2,dur:.4,outside:true,also:'fun'},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
   lift:{label:'等你開車載他',type:'lift'}
@@ -66,7 +68,8 @@ function choose(n){
   setGoal(n,best);
 }
 function endGoal(n,ok){if(n.visitor&&n.goal.id==='work'){n.stay=rnd(1,2.2);for(const k in n.need)n.need[k]=rnd(.25,.6);n.need.energy=1;}   // a visitor arriving: fresh, with things they feel like doing
-  if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);}
+  const was=n.goal.id;if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);
+  if(ok&&was==='fish')react(n,Math.random()<.7?'釣到一條魚了！':'今天魚都不咬…',1.8,null);else if(ok&&was==='hoops')react(n,'呼，投得真過癮。',1.5,null);}
 function brain(n,dt){
   const dh=dt*SPEEDS[speedIdx][0],g=n.goal,G=GOALS[g.id],atWork=(g.id==='work'&&n.hidden)||n.lie;   // needs run down slower at work and asleep
   for(const k in DECAY)n.need[k]=Math.max(0,n.need[k]-DECAY[k]*dh*(atWork&&k!=='energy'?.35:1));
@@ -158,6 +161,8 @@ function pose(P,name,n,t){
   else if(name==='stretch'){P.alx=P.arx=-3;P.alz=.15;P.arz=-.15;P.sz=Math.sin(t*.8)*.28;}
   else if(name==='read'){P.alx=P.arx=-.4;P.elx=P.erx=-1.6;P.alz=-.12;P.arz=.12;P.nx=.38;}
   else if(name==='water'){P.arx=-1.15;P.erx=-.4;P.sx=.16;P.nx=.22;P.arz=-.1+Math.sin(t*2)*.08;}
+  else if(name==='fish'){P.alx=P.arx=-1.05;P.elx=P.erx=-.5;P.alz=.12;P.arz=-.12;P.sx=.06+Math.sin(t*.8+n.stand*5)*.03;}                 // both hands out in front, holding the rod
+  else if(name==='shoot'){const k=Math.max(0,Math.sin(t*1.6+n.stand*3));P.alx=P.arx=-1.2-k*1.5;P.elx=P.erx=-1.2+k*1.1;P.klx=P.krx=(1-k)*.5;P.hlx=P.hrx=-(1-k)*.25;P.yo=k*.06-.04;}   // crouch, then push the ball up
   else if(name==='window'){P.alz=.45;P.arz=-.45;P.elx=P.erx=-1.1;P.ny=Math.sin(t*.3+n.stand*7)*.35;}
 }
 const qT=new THREE.Quaternion(),P={},hv=new THREE.Vector3();
