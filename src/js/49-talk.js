@@ -103,10 +103,24 @@ function waterQuest(){const q=quest;if(!q||q.type!=='water')return;const now=per
   if(q.done<q.plants.length){q.text='還有 '+(q.plants.length-q.done)+' 盆要澆（在同一間房子裡）';say('這一盆澆好了！植物喝了水才會長大。還有 '+(q.plants.length-q.done)+' 盆。');return;}
   const n=q.from;quest=null;cash+=q.reward;addRep(2);n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.15);n.need.care=Math.min(1,n.need.care+.5);
   say('盆栽都澆好了！任務完成，'+n.o.name+'把 $'+q.reward+' 放在桌上給你。');}
+const STORIES=[
+  {id:'bday',menu:'小芳有事想拜託你…',reward:120,who:()=>pets[0]&&pets[0].owner,name:'生日驚喜',
+    intro:w=>'噓——今天是'+w.o.name+'的生日！我想給他一個驚喜，可是我要顧店走不開。你可以幫我跑三個地方嗎？做完我給你 $120。',
+    steps:w=>{const H=houses[w.home],f=H.front;return[
+      {at:[23.5,14.6],text:'生日驚喜 1/3：去公園旁邊的小吃攤拿蛋糕',done:'老闆把蛋糕交給你：「小心拿，不要晃到喔！」'},
+      {at:[2.6,-10.6],text:'生日驚喜 2/3：去海邊的釣竿架旁邊，撿一顆漂亮的貝殼當禮物',done:'你在沙灘上找到一顆會發亮的貝殼，放進口袋。'},
+      {at:[f.x+f.dx*.9,f.z+f.dz*.9],text:'生日驚喜 3/3：把蛋糕和貝殼悄悄放在 '+H.no+' 號門口',done:'你把蛋糕和貝殼放在門口。現在去找'+w.o.name+'，跟他說話！'}];},
+    ask:'生日快樂！門口有驚喜喔',thanks:'哇！蛋糕！還有貝殼！你們還記得我的生日…謝謝你，真的謝謝！',cheer:w=>'生日快樂，'+w.o.name+'！🎂',end:w=>w.o.name+'好開心。'},
+  {id:'beach',menu:'小芳：海邊需要幫忙…',reward:90,who:()=>people.find(n=>n.guard),name:'淨灘日',
+    intro:w=>'昨天風好大，沙灘上被吹來好多垃圾，海龜吃到會生病。'+w.o.name+'一個人撿不完。你可以去幫忙撿四個地方嗎？撿完去跟他說一聲，我請你 $90。',
+    steps:w=>[[-13,-9.8,'一個塑膠袋'],[-3,-11.2,'兩個寶特瓶'],[9,-10,'一團釣魚線'],[17,-11,'一個破掉的保麗龍箱']].map((q,k)=>({at:[q[0],q[1]],text:'淨灘日 '+(k+1)+'/4：沿著沙灘走，撿起垃圾（小雷達橘點的位置）',done:'你撿起'+q[2]+'，放進袋子。'+(k<3?'':'沙灘乾淨了！去找'+w.o.name+'。')})),
+    ask:'沙灘的垃圾我都撿好了',thanks:'太好了！沙灘乾淨，海裡的動物才安全。謝謝你這麼熱心。',cheer:()=>'謝謝你幫忙撿垃圾！',end:w=>'沙灘變乾淨了。'}];
 // --- a little story in steps: go to each place in turn, then talk to the person it is all for ---
-function storyQuest(){const q=quest;if(!q||q.type!=='story'||q.i>=q.steps.length)return;const s=q.steps[q.i];
+function storyQuest(){const q=quest;if(!q||q.type!=='story')return;
+  if(q.i>=q.steps.length){q.text=q.S.name+'：去找'+q.who.o.name+'，跟他說話'+(q.who.hidden?'（他現在不在街上，可能去上班了，等他回來）':'');return;}
+  const s=q.steps[q.i];
   if(ride&&Math.abs(ride.v)>2||onBus||Math.hypot(pos.x-s.at[0],pos.z-s.at[1])>2.2)return;
-  q.i++;sfxCoin();say(s.done);q.text=q.i<q.steps.length?q.steps[q.i].text:'生日驚喜：去找'+q.who.o.name+'，跟他說話';}
+  q.i++;sfxCoin();say(s.done);q.text=q.i<q.steps.length?q.steps[q.i].text:q.S.name+'：去找'+q.who.o.name+'，跟他說話';}
 // --- the paper round: once a day, five front doors in any order ---
 let paperDay=0;
 function paperQuest(){const q=quest;if(!q||q.type!=='papers')return;const left=Math.ceil((q.until-performance.now())/1000);
@@ -139,10 +153,10 @@ function showTalk(n,line,opts){
     if(drinks)add('你要的飲料買來了',()=>{drinks--;actKey='';n.need.food=Math.min(1,n.need.food+.25);finishQuest(n,'啊，好涼！謝謝你，這是飲料錢和跑腿費。');});
     else add('哪裡買得到飲料？',()=>showTalk(n,'公園旁邊有販賣機，夕陽商店也有賣，一罐 $20。'));}
   else if(quest&&quest.type==='story'&&quest.who===n){
-    if(quest.i>=quest.steps.length)add('生日快樂！門口有驚喜喔',()=>{const q=quest;quest=null;stats.done.bday=1;cash+=q.reward;addRep(3);n.like=Math.min(5,n.like+3);n.mood=1;sfxCoin();
-      for(const m of people)if(m!==n&&!m.hidden&&!m.lie&&Math.hypot(m.pos.x-n.pos.x,m.pos.z-n.pos.z)<25){m.react={say:'生日快樂，'+n.o.name+'！🎂',t:3,pose:'wave'};m.like=Math.min(5,m.like+.5);}
-      say('任務完成！'+n.o.name+'好開心。小芳給你 $'+q.reward+'，附近的鄰居也一起說生日快樂。');showTalk(n,'哇！蛋糕！還有貝殼！你們還記得我的生日…謝謝你，真的謝謝！');});
-    else add('（先不要說，驚喜還沒準備好）',closeTalk);}
+    if(quest.i>=quest.steps.length)add(quest.S.ask,()=>{const q=quest,S=q.S;quest=null;stats.done[S.id]=1;cash+=q.reward;addRep(3);n.like=Math.min(5,n.like+3);n.mood=1;sfxCoin();
+      for(const m of people)if(m!==n&&!m.hidden&&!m.lie&&Math.hypot(m.pos.x-n.pos.x,m.pos.z-n.pos.z)<25){m.react={say:S.cheer(n),t:3,pose:'wave'};m.like=Math.min(5,m.like+.5);}
+      say('任務完成！'+S.end(n)+'小芳給你 $'+q.reward+'，附近的鄰居也都看到了。');showTalk(n,S.thanks);});
+    else add('（事情還沒做完，等一下再說）',closeTalk);}
   else if(quest&&quest.type==='water'&&quest.from===n)add('盆栽在哪裡？',()=>showTalk(n,'在我家 '+houses[n.home].no+' 號裡面，綠綠的那幾盆。門沒鎖，直接進去就好。'));
   else if(quest&&quest.type==='dog'&&quest.from===n)add('小黃在哪裡？',()=>showTalk(n,quest.got?'牠不是跟著你嗎？帶牠過來就好。':'有人說看到牠在'+quest.at[0]+'。'));
   else if(!quest)add('需要幫忙嗎？',()=>{if(n.mood<.35||n.like<=-2){showTalk(n,'現在不用，謝謝。');return;}const q=offer(n);
@@ -168,16 +182,11 @@ function shopMenu(line){
   p.textContent=line||'歡迎光臨！你有 $'+cash+'。想買什麼？';
   for(const G of GOODS){if(G[3]&&G[3]())continue;add(G[0]+' $'+G[1],()=>{if(cash<G[1]){shopMenu('錢不夠喔。'+G[0]+'要 $'+G[1]+'，你只有 $'+cash+'。');return;}
     cash-=G[1];G[2]();sfxCoin();actKey='';shopMenu('謝謝！'+G[0]+'給你。你還有 $'+cash+'。');});}
-  if(!quest&&!stats.done.bday){const who=pets[0]&&pets[0].owner;if(who)add('小芳有事想拜託你…',()=>{
-    shopMenu('噓——今天是'+who.o.name+'的生日！我想給他一個驚喜，可是我要顧店走不開。你可以幫我跑三個地方嗎？做完我給你 $120。');
-    const el2=$('talk');[...el2.querySelectorAll('button')].forEach(b=>b.remove());
+  for(const S of STORIES){if(quest||stats.done[S.id])continue;const who=S.who();if(!who)continue;add(S.menu,()=>{
+    shopMenu(S.intro(who));const el2=$('talk');[...el2.querySelectorAll('button')].forEach(b=>b.remove());
     const mk=(t,f)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=f;el2.appendChild(b);};
-    mk('好，交給我！',()=>{const H=houses[who.home],f=H.front;quest={type:'story',who,reward:120,i:0,steps:[
-        {at:[23.5,14.6],text:'生日驚喜 1/3：去公園旁邊的小吃攤拿蛋糕',done:'老闆把蛋糕交給你：「小心拿，不要晃到喔！」'},
-        {at:[2.6,-10.6],text:'生日驚喜 2/3：去海邊的釣竿架旁邊，撿一顆漂亮的貝殼當禮物',done:'你在沙灘上找到一顆會發亮的貝殼，放進口袋。'},
-        {at:[f.x+f.dx*.9,f.z+f.dz*.9],text:'生日驚喜 3/3：把蛋糕和貝殼悄悄放在 '+H.no+' 號門口',done:'你把蛋糕和貝殼放在門口。現在去找'+who.o.name+'，跟他說話！'}]};
-      quest.text=quest.steps[0].text;el2.hidden=true;say('任務開始：'+quest.text+'。小雷達的橘點會帶路。');});
-    mk('現在沒空',()=>{el2.hidden=true;});});}
+    mk('好，交給我！',()=>{quest={type:'story',S,who,reward:S.reward,i:0,steps:S.steps(who)};quest.text=quest.steps[0].text;el2.hidden=true;say('任務開始：'+quest.text+'。小雷達的橘點會帶路。');});
+    mk('現在沒空',()=>{el2.hidden=true;});});break;}                                   // one story on offer at a time
   if(!quest&&paperDay!==day)add('打工：送報紙（每天一次）',()=>{const hs=houses.filter(h=>h.front&&h.lot.tpl!=='shop').sort(()=>Math.random()-.5).slice(0,5);
     paperDay=day;quest={type:'papers',left:hs,n:hs.length,got:0,until:performance.now()+170000,reward:0,text:''};paperQuest();el.hidden=true;
     say('送報紙：把報紙送到 '+hs.map(h=>h.no).join('、')+' 號門口，順序隨便。每家 $12；170 秒內全部送完再加 $40。騎腳踏車或溜滑板比較快。');});
