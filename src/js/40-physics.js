@@ -72,7 +72,9 @@ function hitPerson(b,px,pz,rad,top,svx,svz,M,who){
 }
 function physStep(dt){
   const g=GMODES[gIdx][0];
-  for(const b of bodies){if(b.held)continue;b.v.y-=g*dt;b.v.multiplyScalar(Math.exp(-b.drag*dt));}
+  for(const b of bodies){if(b.held)continue;b.v.y-=g*dt;b.v.multiplyScalar(Math.exp(-b.drag*dt));
+    if(windS>.5&&!roomAt(b.p.x,b.p.z)){const rx=windX-b.v.x,rz=windZ-b.v.z,rel=Math.hypot(rx,rz);          // wind: the push grows with the ball's size and with speed squared, and matters most to light balls
+      if(rel>.01){const a=Math.min(.22*b.r*b.r/b.m*rel*rel*dt,rel*.5)/rel;b.v.x+=rx*a;b.v.z+=rz*a;}}}
   if(G.orb)for(const orb of orbs)for(const b of bodies){if(b===orb)continue;            // attraction: F = G·m1·m2 / r², on both, opposite ways
     const dx=orb.p.x-b.p.x,dy=orb.p.y-b.p.y,dz=orb.p.z-b.p.z,min=orb.r+b.r,r2=Math.max(dx*dx+dy*dy+dz*dz,min*min),r=Math.sqrt(r2);
     const F=BIG_G*orb.m*b.m/r2,k=F*dt/r;

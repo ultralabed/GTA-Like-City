@@ -35,6 +35,12 @@ const puddles=new THREE.Group();puddles.visible=false;scene.add(puddles);
 {let sd=7;const r=()=>(sd=(sd*16807)%2147483647)/2147483647,S=WORLD.street;
   for(let i=0;i<26;i++){const m=new THREE.Mesh(new THREE.CircleGeometry(1,14),puddleMat);m.rotation.x=-Math.PI/2;
     m.position.set(-36+r()*80,.016,i%4===0?(i%8===0?S.z0-1:S.z1+1)+(r()-.5)*.8:S.z0+.8+r()*(S.z1-S.z0-1.6));m.scale.set(.5+r()*1.1,.35+r()*.7,1);m.rotation.z=r()*3;m.renderOrder=2;puddles.add(m);}}
+// wind: a gentle breeze most days, stronger in rain, strongest in a storm. It leans the rain and pushes light balls about
+let windX=0,windZ=0,windS=0,windDir=rnd(0,6.28),windGoal=1,windT=0,windForce=-1,toldWind=false;
+function windStep(dt){windT-=dt;if(windT<=0){windT=rnd(15,40);windGoal=storm?rnd(7,11):rainOn?rnd(3,6):Math.random()<.2?rnd(4,6.5):rnd(0,2.2);windDir+=rnd(-.8,.8);}
+  const goal=windForce>=0?windForce:windGoal;windS+=(goal-windS)*(1-Math.exp(-dt*.3));const gust=1+.25*Math.sin(carClock*.7)+.12*Math.sin(carClock*2.3);
+  windX=Math.cos(windDir)*windS*gust;windZ=Math.sin(windDir)*windS*gust;
+  if(windS>4.2&&!toldWind){toldWind=true;say('起風了！風推東西的力氣跟「面積」有關：又大又輕的海灘球最容易被吹走，小小的網球和很重的保齡球幾乎不動。');}if(windS<2)toldWind=false;}
 // fireworks over the sea: Saturday and Sunday evening from 8 to 9, if it is not raining
 let fwOn=false,fwForce=false,fwT=0,fwTold=false,fwCount=0;
 const FW=[];for(let i=0;i<5;i++){const N=70,geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(N*3),3));
@@ -77,7 +83,7 @@ function splashStep(dt){
     if(!toldSplash){toldSplash=true;say('嘩啦！你衝過水坑，水往兩邊噴。'+(hit?'':'旁邊有人的話會被濺濕，他會不高興。'));}
     return;}}
 function updateWeather(dt){
-  splashStep(dt);bowStep(dt);fwStep(dt);
+  splashStep(dt);bowStep(dt);fwStep(dt);windStep(dt);
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}
@@ -90,8 +96,9 @@ function updateWeather(dt){
   {const w=Math.max(rain,wet);M.asphalt.roughness=.85-.5*w;M.concrete.roughness=.9-.4*w;}               // wet ground shines
   rainPts.visible=rain>.03;if(!rainPts.visible)return;
   rainPts.material.opacity=.4*rain;rainPts.position.set(pos.x,0,pos.z);
-  for(let i=0;i<RN;i++){const k=i*6;let x=rPos[k],y=rPos[k+1]-15*dt,z=rPos[k+2];
+  const wx2=windX*.045,wz2=windZ*.045;
+  for(let i=0;i<RN;i++){const k=i*6;let x=rPos[k]+windX*dt*.6,y=rPos[k+1]-15*dt,z=rPos[k+2]+windZ*dt*.6;if(x>16||x<-16||z>16||z<-16){x=rnd(-16,16);z=rnd(-16,16);}
     if(y<0||(use.umbrella&&!ride&&y<2.4&&Math.hypot(x,z)<1.15)||(y<RH+.3&&roomAt(pos.x+x,pos.z+z))){x=rnd(-16,16);y=rnd(8,12);z=rnd(-16,16);}   // your umbrella and the roofs keep the rain out
-    rPos[k]=x;rPos[k+1]=y;rPos[k+2]=z;rPos[k+3]=x+.03;rPos[k+4]=y+.45;rPos[k+5]=z;}
+    rPos[k]=x;rPos[k+1]=y;rPos[k+2]=z;rPos[k+3]=x+.03+wx2;rPos[k+4]=y+.45;rPos[k+5]=z+wz2;}
   rGeo.attributes.position.needsUpdate=true;
 }
