@@ -35,6 +35,21 @@ const puddles=new THREE.Group();puddles.visible=false;scene.add(puddles);
 {let sd=7;const r=()=>(sd=(sd*16807)%2147483647)/2147483647,S=WORLD.street;
   for(let i=0;i<26;i++){const m=new THREE.Mesh(new THREE.CircleGeometry(1,14),puddleMat);m.rotation.x=-Math.PI/2;
     m.position.set(-36+r()*80,.016,i%4===0?(i%8===0?S.z0-1:S.z1+1)+(r()-.5)*.8:S.z0+.8+r()*(S.z1-S.z0-1.6));m.scale.set(.5+r()*1.1,.35+r()*.7,1);m.rotation.z=r()*3;m.renderOrder=2;puddles.add(m);}}
+// fireworks over the sea: Saturday and Sunday evening from 8 to 9, if it is not raining
+let fwOn=false,fwForce=false,fwT=0,fwTold=false,fwCount=0;
+const FW=[];for(let i=0;i<5;i++){const N=70,geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(N*3),3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:1.6,transparent:true,opacity:0,depthWrite:false,fog:false,blending:THREE.AdditiveBlending,color:0xffffff}));pts.frustumCulled=false;pts.visible=false;scene.add(pts);
+  FW.push({pts,geo,N,v:new Float32Array(N*3),t:9});}
+const FW_COL=[[6,2,1.5],[1.5,5,2],[2,3,7],[7,5,1.5],[6,2,6],[2,6,6]];
+function fwStep(dt){
+  fwOn=fwForce||(isWeekend()&&clock>=20&&clock<21&&!rainOn&&mist<.3);
+  if(fwOn&&!fwTold){fwTold=true;say('咻——碰！海邊在放煙火（週末晚上 8 點到 9 點）。很多居民會走去海邊看。');}if(!fwOn)fwTold=false;
+  if(fwOn){fwT-=dt;if(fwT<=0){fwT=rnd(.7,2.2);const f=FW.find(q=>q.t>2.6);if(f){const cx=pos.x+rnd(-45,45),cy=rnd(26,44),cz=WORLD.shore-rnd(45,80),A=f.geo.attributes.position,c=FW_COL[Math.floor(Math.random()*FW_COL.length)],sp=rnd(7,12);
+        for(let i=0;i<f.N;i++){const u=Math.random()*2-1,a=Math.random()*6.283,s=Math.sqrt(1-u*u),k=sp*(.75+Math.random()*.3);A.setXYZ(i,cx,cy,cz);f.v[i*3]=Math.cos(a)*s*k;f.v[i*3+1]=u*k;f.v[i*3+2]=Math.sin(a)*s*k;}
+        f.pts.material.color.setRGB(c[0],c[1],c[2]);f.t=0;f.pts.visible=true;fwCount++;const d=Math.hypot(cx-pos.x,cz-pos.z);setTimeout(()=>sfxBoom(1-d/160),d/343*1000);}}}
+  for(const f of FW){if(f.t>2.6)continue;f.t+=dt;const A=f.geo.attributes.position,a=A.array,drag=Math.exp(-dt*1.4);
+    for(let i=0;i<f.N*3;i+=3){f.v[i]*=drag;f.v[i+1]=f.v[i+1]*drag-2.2*dt;f.v[i+2]*=drag;a[i]+=f.v[i]*dt;a[i+1]+=f.v[i+1]*dt;a[i+2]+=f.v[i+2]*dt;}
+    A.needsUpdate=true;f.pts.material.opacity=Math.max(0,1-f.t/2.4);if(f.t>2.6)f.pts.visible=false;}}
 // a rainbow: after rain, when the sun is out, look away from the sun
 const bowC=document.createElement('canvas');bowC.width=512;bowC.height=256;
 {const g=bowC.getContext('2d'),cols=['#ff3b3b','#ff9a2e','#ffe53b','#4fd66a','#3ba8ff','#5a5bff','#a44dff'];g.lineWidth=7;
@@ -60,7 +75,7 @@ function splashStep(dt){
     if(!toldSplash){toldSplash=true;say('嘩啦！你衝過水坑，水往兩邊噴。'+(hit?'':'旁邊有人的話會被濺濕，他會不高興。'));}
     return;}}
 function updateWeather(dt){
-  splashStep(dt);bowStep(dt);
+  splashStep(dt);bowStep(dt);fwStep(dt);
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}

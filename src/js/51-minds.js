@@ -52,7 +52,7 @@ function utility(n,id){
   if(g.need==='food')u=nd<.3?1.6-nd:(1-nd)*.8;                            // hunger gets loud when it is bad
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside){if(rainOn)return -1;u*=dark>.6?.2:isWeekend()?1.25:.85;}       // more people are out and about at the weekend
+  if(g.outside){if(rainOn)return -1;if(fwOn&&id==='stroll')return 2.2+Math.random()*.3;u*=dark>.6?.2:isWeekend()?1.25:.85;}   // fireworks tonight: nearly everyone wants to go and look       // more people are out and about at the weekend
   if(id==='shop'&&!shopOpen())return -1;                                  // nobody behind the counter: closed                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
