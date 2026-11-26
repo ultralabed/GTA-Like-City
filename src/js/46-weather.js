@@ -40,6 +40,8 @@ let windX=0,windZ=0,windS=0,windDir=rnd(0,6.28),windGoal=1,windT=0,windForce=-1,
 function windStep(dt){windT-=dt;if(windT<=0){windT=rnd(15,40);windGoal=storm?rnd(7,11):rainOn?rnd(3,6):Math.random()<.2?rnd(4,6.5):rnd(0,2.2);windDir+=rnd(-.8,.8);}
   const goal=windForce>=0?windForce:windGoal;windS+=(goal-windS)*(1-Math.exp(-dt*.3));const gust=1+.25*Math.sin(carClock*.7)+.12*Math.sin(carClock*2.3);
   windX=Math.cos(windDir)*windS*gust;windZ=Math.sin(windDir)*windS*gust;
+  {const amp=Math.min(.16,.006+windS*.014),cx=Math.cos(windDir),sz=Math.sin(windDir),t2=carClock;                 // trees lean a little downwind and rock; more in a blow
+    for(const T of treeTops){if(!T.g.parent.visible)continue;const w=Math.sin(t2*(1.1+windS*.12)*T.k+T.ph)*amp+amp*.6;T.g.rotation.z=-cx*w;T.g.rotation.x=sz*w;}}
   if(flagMesh){const k=Math.min(1,windS/6);flagMesh.rotation.y=-windDir+Math.sin(carClock*(3+windS))*(.1+.25*k);flagMesh.rotation.z=-(1-k)*1.1;}   // the flag points downwind, hangs limp in a calm, flaps in a blow
   if(windS>4.2&&!toldWind){toldWind=true;say('起風了！風推東西的力氣跟「面積」有關：又大又輕的海灘球最容易被吹走，小小的網球和很重的保齡球幾乎不動。');}if(windS<2)toldWind=false;}
 // fireworks over the sea: Saturday and Sunday evening from 8 to 9, if it is not raining

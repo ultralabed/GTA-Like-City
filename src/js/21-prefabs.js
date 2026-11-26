@@ -165,8 +165,10 @@ PREFAB.rack=()=>{
 const icoG=new THREE.IcosahedronGeometry(1,1);
 PREFAB.tree=o=>{const s=o.s||1;
   cyl(.13*s,.19*s,2.3*s,M.bark,0,1.15*s,0,10);
+  const top=new THREE.Group();top.position.y=2.2*s;cur.add(top);const pv=cur;cur=top;                       // the leafy part hangs on its own pivot at the top of the trunk, so the wind can rock it
   [[0,3.1,0,1.25],[.55,2.6,.3,.9],[-.5,2.75,-.35,.95],[.1,3.9,-.1,.8]].forEach((q,i)=>{const m=new THREE.Mesh(icoG,i%2?M.crown2:M.crown);
-    m.position.set(q[0]*s,q[1]*s,q[2]*s);m.scale.setScalar(q[3]*s);m.rotation.set(i,i*2,0);add(m);});
+    m.position.set(q[0]*s,(q[1]-2.2)*s,q[2]*s);m.scale.setScalar(q[3]*s);m.rotation.set(i,i*2,0);add(m);});
+  cur=pv;weldStatic(top);top.userData.dyn=true;treeTops.push({g:top,ph:treeTops.length*1.7,k:.8+.4*Math.random()});
   return{solid:[[-.24,.24,-.24,.24]],boxes:[[-.17,.17,0,2.3*s,-.17,.17]]};
 };
 // street lamp: the arm reaches toward +z

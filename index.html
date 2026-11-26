@@ -516,7 +516,7 @@ const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
-const decorG={};let flagMesh=null;
+const decorG={},treeTops=[];let flagMesh=null;
 let root=scene;              // where new furniture groups go
 const marks={streetLamp:[],item:[],hoop:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
@@ -755,8 +755,10 @@ PREFAB.rack=()=>{
 const icoG=new THREE.IcosahedronGeometry(1,1);
 PREFAB.tree=o=>{const s=o.s||1;
   cyl(.13*s,.19*s,2.3*s,M.bark,0,1.15*s,0,10);
+  const top=new THREE.Group();top.position.y=2.2*s;cur.add(top);const pv=cur;cur=top;                       // the leafy part hangs on its own pivot at the top of the trunk, so the wind can rock it
   [[0,3.1,0,1.25],[.55,2.6,.3,.9],[-.5,2.75,-.35,.95],[.1,3.9,-.1,.8]].forEach((q,i)=>{const m=new THREE.Mesh(icoG,i%2?M.crown2:M.crown);
-    m.position.set(q[0]*s,q[1]*s,q[2]*s);m.scale.setScalar(q[3]*s);m.rotation.set(i,i*2,0);add(m);});
+    m.position.set(q[0]*s,(q[1]-2.2)*s,q[2]*s);m.scale.setScalar(q[3]*s);m.rotation.set(i,i*2,0);add(m);});
+  cur=pv;weldStatic(top);top.userData.dyn=true;treeTops.push({g:top,ph:treeTops.length*1.7,k:.8+.4*Math.random()});
   return{solid:[[-.24,.24,-.24,.24]],boxes:[[-.17,.17,0,2.3*s,-.17,.17]]};
 };
 // street lamp: the arm reaches toward +z
@@ -1439,6 +1441,8 @@ let windX=0,windZ=0,windS=0,windDir=rnd(0,6.28),windGoal=1,windT=0,windForce=-1,
 function windStep(dt){windT-=dt;if(windT<=0){windT=rnd(15,40);windGoal=storm?rnd(7,11):rainOn?rnd(3,6):Math.random()<.2?rnd(4,6.5):rnd(0,2.2);windDir+=rnd(-.8,.8);}
   const goal=windForce>=0?windForce:windGoal;windS+=(goal-windS)*(1-Math.exp(-dt*.3));const gust=1+.25*Math.sin(carClock*.7)+.12*Math.sin(carClock*2.3);
   windX=Math.cos(windDir)*windS*gust;windZ=Math.sin(windDir)*windS*gust;
+  {const amp=Math.min(.16,.006+windS*.014),cx=Math.cos(windDir),sz=Math.sin(windDir),t2=carClock;                 // trees lean a little downwind and rock; more in a blow
+    for(const T of treeTops){if(!T.g.parent.visible)continue;const w=Math.sin(t2*(1.1+windS*.12)*T.k+T.ph)*amp+amp*.6;T.g.rotation.z=-cx*w;T.g.rotation.x=sz*w;}}
   if(flagMesh){const k=Math.min(1,windS/6);flagMesh.rotation.y=-windDir+Math.sin(carClock*(3+windS))*(.1+.25*k);flagMesh.rotation.z=-(1-k)*1.1;}   // the flag points downwind, hangs limp in a calm, flaps in a blow
   if(windS>4.2&&!toldWind){toldWind=true;say('起風了！風推東西的力氣跟「面積」有關：又大又輕的海灘球最容易被吹走，小小的網球和很重的保齡球幾乎不動。');}if(windS<2)toldWind=false;}
 // fireworks over the sea: Saturday and Sunday evening from 8 to 9, if it is not raining
@@ -3088,7 +3092,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
