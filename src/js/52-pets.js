@@ -20,6 +20,19 @@ const pets=[];
   pets.push(d);
 })();
 function bark(d){const v=.25*hear(d.x,d.z,25);tone(520,.09,v,'square',.7);setTimeout(()=>tone(440,.11,v,'square',.6),120);}
+// --- seagulls: a few of them wheel over the beach by day; a loud bang (thunder, fireworks) sends them off for a while ---
+const gulls=[];let gullAway=0,gullCry=6;
+{const wm=new THREE.MeshBasicMaterial({color:0xf2f2ee,side:THREE.DoubleSide}),wg=new THREE.PlaneGeometry(.55,.16);wg.translate(.275,0,0);
+  for(let i=0;i<7;i++){const g=new THREE.Group(),L=new THREE.Mesh(wg,wm),R=new THREE.Mesh(wg,wm);L.rotation.x=R.rotation.x=-Math.PI/2;R.scale.x=-1;const lp=new THREE.Group(),rp=new THREE.Group();lp.add(L);rp.add(R);g.add(lp,rp);
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.1,.07,.3),wm);g.add(b);scene.add(g);
+    gulls.push({g,lp,rp,cx:rnd(-25,30),cz:WORLD.shore-rnd(2,18),r:rnd(5,11),y:rnd(7,13),a:rnd(0,6.28),w:rnd(.25,.45)*(i%2?1:-1),ph:rnd(0,6)});}}
+function updateGulls(dt,t){
+  gullAway=Math.max(0,gullAway-dt);const show=dark<.6&&rain<.4&&gullAway<=0;
+  for(const q of gulls){q.g.visible=show&&Math.hypot(q.cx-pos.x,q.cz-pos.z)<120;if(!q.g.visible)continue;
+    q.a+=q.w*dt;const x=q.cx+Math.cos(q.a)*q.r,z=q.cz+Math.sin(q.a)*q.r;q.g.position.set(x,q.y+Math.sin(t*.5+q.ph)*.8,z);q.g.rotation.y=-q.a-(q.w>0?Math.PI:0);
+    const f=Math.sin(t*5+q.ph)*.55;q.lp.rotation.z=f;q.rp.rotation.z=-f;}
+  if(show){gullCry-=dt;if(gullCry<=0){gullCry=rnd(7,18);const q=gulls[Math.floor(Math.random()*gulls.length)],v=.12*hear(q.g.position.x,q.g.position.z,45);tone(1500,.16,v,'sawtooth',.7);setTimeout(()=>tone(1350,.22,v,'sawtooth',.75),190);}}}
+function scareGulls(){if(gullAway<=0&&dark<.6)say('海鷗被嚇到，全部飛走了。過一會兒才會回來。',true);gullAway=40;}
 const pv3=new THREE.Vector3();
 function updatePets(dt,t){
   for(const d of pets){

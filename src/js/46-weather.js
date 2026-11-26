@@ -14,7 +14,7 @@ const bolt=new THREE.Line(boltGeo,new THREE.LineBasicMaterial({color:new THREE.C
 function strike(){
   const a=rnd(0,6.283),d=rnd(90,220),A=boltGeo.attributes.position;let x=pos.x+Math.cos(a)*d,z=pos.z+Math.sin(a)*d;
   for(let i=0;i<12;i++){A.setXYZ(i,x,90-i*8.2,z);x+=rnd(-7,7);z+=rnd(-7,7);}A.needsUpdate=true;
-  bolt.visible=true;boltShow=.22;flash=1;flash2=.13;
+  bolt.visible=true;boltShow=.22;flash=1;flash2=.13;scareGulls();
   const wait=d/343*4;setTimeout(()=>sfxThunder(1-d/300),wait*1000);                 // light arrives at once; sound takes its time (stretched a little so you can notice)
   if(!toldBolt){toldBolt=true;say('閃電！光跑得非常快，所以先看到亮光；聲音跑得慢，過一下才聽到轟隆隆的雷聲。');}
   for(const n of people)if(!n.hidden&&!n.react&&!n.lie&&!roomAt(n.pos.x,n.pos.z)&&Math.random()<.6)react(n,'哇！打雷了！',1.2,'startle');
