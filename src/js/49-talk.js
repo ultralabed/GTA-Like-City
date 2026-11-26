@@ -84,7 +84,10 @@ const LOST_AT=[['公園的長椅附近',20.6,17.6],['海邊的沙灘上',6,-9.4]
 const lostG=new THREE.Group();lostG.visible=false;scene.add(lostG);
 {const m=new THREE.Mesh(new THREE.BoxGeometry(.14,.05,.09),new THREE.MeshStandardMaterial({color:0xd8a93a,metalness:.8,roughness:.3}));m.position.y=.04;m.castShadow=true;lostG.add(m);
  const sp=new THREE.Mesh(new THREE.OctahedronGeometry(.07),new THREE.MeshBasicMaterial({color:new THREE.Color(4,3.2,1.2)}));sp.position.y=.5;lostG.add(sp);lostG.userData.sp=sp;}
-function findQuest(){const q=quest,on=!!q&&q.type==='find'&&!q.got;lostG.visible=on;if(!on)return;
+function findQuest(){const q=quest,st=!!q&&q.type==='story'&&q.i<q.steps.length,on=st||(!!q&&q.type==='find'&&!q.got);lostG.visible=on;if(!on)return;
+  const box=lostG.children[0];
+  if(st){const s2=q.steps[q.i],sp2=lostG.userData.sp;box.material.color.setHex(s2.col||0xd8a93a);box.scale.setScalar(s2.big||1.6);lostG.position.set(s2.at[0],0,s2.at[1]);sp2.position.y=.55+Math.sin(performance.now()/333)*.08;sp2.rotation.y=performance.now()/500;return;}   // the thing to pick up (or the spot to put it down) for this step of a story
+  box.material.color.setHex(0xd8a93a);box.scale.setScalar(1);
   const t=performance.now()/1000,sp=lostG.userData.sp;lostG.position.set(q.at[1],0,q.at[2]);sp.position.y=.45+Math.sin(t*3)*.08;sp.rotation.y=t*2;
   if(!ride&&!onBus&&Math.hypot(pos.x-q.at[1],pos.z-q.at[2])<1.5){q.got=true;lostG.visible=false;sfxCoin();q.text='把'+q.thing+'拿回去給'+q.from.o.name;say('你找到'+q.from.o.name+'的'+q.thing+'了！拿回去給他。');}}
 // --- the dog has run off: find him, he follows you, walk him back to his owner or his own front door ---
@@ -107,13 +110,13 @@ const STORIES=[
   {id:'bday',menu:'小芳有事想拜託你…',reward:120,who:()=>pets[0]&&pets[0].owner,name:'生日驚喜',
     intro:w=>'噓——今天是'+w.o.name+'的生日！我想給他一個驚喜，可是我要顧店走不開。你可以幫我跑三個地方嗎？做完我給你 $120。',
     steps:w=>{const H=houses[w.home],f=H.front;return[
-      {at:[23.5,14.6],text:'生日驚喜 1/3：去公園旁邊的小吃攤拿蛋糕',done:'老闆把蛋糕交給你：「小心拿，不要晃到喔！」'},
-      {at:[2.6,-10.6],text:'生日驚喜 2/3：去海邊的釣竿架旁邊，撿一顆漂亮的貝殼當禮物',done:'你在沙灘上找到一顆會發亮的貝殼，放進口袋。'},
+      {at:[23.5,14.6],col:0xf6e7d0,big:2.4,text:'生日驚喜 1/3：去公園旁邊的小吃攤拿蛋糕',done:'老闆把蛋糕交給你：「小心拿，不要晃到喔！」'},
+      {at:[2.6,-10.6],col:0xffc7d9,big:1,text:'生日驚喜 2/3：去海邊的釣竿架旁邊，撿一顆漂亮的貝殼當禮物',done:'你在沙灘上找到一顆會發亮的貝殼，放進口袋。'},
       {at:[f.x+f.dx*.9,f.z+f.dz*.9],text:'生日驚喜 3/3：把蛋糕和貝殼悄悄放在 '+H.no+' 號門口',done:'你把蛋糕和貝殼放在門口。現在去找'+w.o.name+'，跟他說話！'}];},
     ask:'生日快樂！門口有驚喜喔',thanks:'哇！蛋糕！還有貝殼！你們還記得我的生日…謝謝你，真的謝謝！',cheer:w=>'生日快樂，'+w.o.name+'！🎂',end:w=>w.o.name+'好開心。'},
   {id:'beach',menu:'小芳：海邊需要幫忙…',reward:90,who:()=>people.find(n=>n.guard),name:'淨灘日',
     intro:w=>'昨天風好大，沙灘上被吹來好多垃圾，海龜吃到會生病。'+w.o.name+'一個人撿不完。你可以去幫忙撿四個地方嗎？撿完去跟他說一聲，我請你 $90。',
-    steps:w=>[[-13,-9.8,'一個塑膠袋'],[-3,-11.2,'兩個寶特瓶'],[9,-10,'一團釣魚線'],[17,-11,'一個破掉的保麗龍箱']].map((q,k)=>({at:[q[0],q[1]],text:'淨灘日 '+(k+1)+'/4：沿著沙灘走，撿起垃圾（小雷達橘點的位置）',done:'你撿起'+q[2]+'，放進袋子。'+(k<3?'':'沙灘乾淨了！去找'+w.o.name+'。')})),
+    steps:w=>[[-13,-9.8,'一個塑膠袋'],[-3,-11.2,'兩個寶特瓶'],[9,-10,'一團釣魚線'],[17,-11,'一個破掉的保麗龍箱']].map((q,k)=>({at:[q[0],q[1]],col:[0xdfe9ef,0x7fc4e8,0x59d07a,0xf2f2f2][k],big:[1.8,1.6,1.2,3][k],text:'淨灘日 '+(k+1)+'/4：沿著沙灘走，撿起垃圾（小雷達橘點的位置）',done:'你撿起'+q[2]+'，放進袋子。'+(k<3?'':'沙灘乾淨了！去找'+w.o.name+'。')})),
     ask:'沙灘的垃圾我都撿好了',thanks:'太好了！沙灘乾淨，海裡的動物才安全。謝謝你這麼熱心。',cheer:()=>'謝謝你幫忙撿垃圾！',end:w=>'沙灘變乾淨了。'}];
 // --- a little story in steps: go to each place in turn, then talk to the person it is all for ---
 function storyQuest(){const q=quest;if(!q||q.type!=='story')return;
