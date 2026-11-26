@@ -147,8 +147,8 @@ const $=id=>document.getElementById(id);
 const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
-  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕：跳、撿、坐、開車、騎車、手電筒、雨傘、地圖'
-  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>V</b> 換視角　<b>點人</b>：說話　<b>點</b>門、球、人　<b>Esc</b> 放開滑鼠';
+  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕會跟著你在哪裡變：跳、跑、撿、坐、上車、搭公車、招計程車、加油、釣魚、滑板…　設定裡的「操作說明」有完整清單'
+  : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>V</b> 換視角　<b>T</b> 計程車　<b>G</b> 釣魚　<b>點人</b>：說話　<b>Esc</b> 放開滑鼠　（設定 →「操作說明」看全部按鍵）';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}
 
@@ -1969,6 +1969,22 @@ function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   for(const B of BADGES){const p=document.createElement('p');p.textContent=(stats.done[B[0]]?'🏅 ':'⬜ ')+B[2];p.style.opacity=stats.done[B[0]]?1:.6;p.style.margin='2px 0';box.appendChild(p);}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
 $('bStats').onclick=showStats;
+// --- the full list of keys, grouped by what you are doing ---
+const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／第三人稱、滑鼠轉頭、Esc 放開滑鼠'],
+  ['手上的東西','E 撿起／放下、點畫面 丟出去、1 手電筒、2 雨傘、3 喝飲料、4 滑板、M 手機地圖'],
+  ['坐和睡','Q 坐下／站起來、Z 躺下睡覺（時間會快轉）'],
+  ['車子、機車、腳踏車、小船','F 上下車（船要靠岸才能下）、W 油門、S 煞車倒車、A D 轉彎、H 喇叭、R 收音機（只有車）'],
+  ['加油機旁邊','C 加油、N 幫車子噴漆換顏色（$30）'],
+  ['公車和計程車','公車停站時 F 上車（$5）、車上 F 按下車鈴或下車；T 招計程車，停在旁邊後 F 上車選目的地'],
+  ['海邊','G 釣魚（岸邊，或船停著時）、咬了再按一次 G 拉起來'],
+  ['跟人互動','點人 說話、接任務、請喝飲料；點門 開關、點球 踢、點電視和燈 開關、點衣櫃 換衣服、點櫃台 買東西和打工'],
+  ['其他','P 拍照模式；設定裡可以調時間、天氣、重力、聲音、音樂、畫質、小地圖、我的紀錄']];
+function showKeys(){const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
+  const h=document.createElement('strong');h.textContent='操作說明'+(isTouch?'（手機：用右下角的按鈕，下面是鍵盤的按法）':'');el.appendChild(h);
+  const box=document.createElement('div');box.style.cssText='max-height:42vh;overflow:auto;margin:6px 0;flex:1 1 100%;width:100%';el.appendChild(box);
+  for(const K of KEYS){const p=document.createElement('p');const b=document.createElement('b');b.textContent=K[0]+'：';p.append(b,K[1]);p.style.margin='4px 0';box.appendChild(p);}
+  const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
+$('bHelp').onclick=()=>{showHint();showKeys();};
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
 function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100)+(heat?'　'+'★'.repeat(heat):'');
   if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away

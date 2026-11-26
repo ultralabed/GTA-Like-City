@@ -36,6 +36,22 @@ function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   for(const B of BADGES){const p=document.createElement('p');p.textContent=(stats.done[B[0]]?'🏅 ':'⬜ ')+B[2];p.style.opacity=stats.done[B[0]]?1:.6;p.style.margin='2px 0';box.appendChild(p);}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
 $('bStats').onclick=showStats;
+// --- the full list of keys, grouped by what you are doing ---
+const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／第三人稱、滑鼠轉頭、Esc 放開滑鼠'],
+  ['手上的東西','E 撿起／放下、點畫面 丟出去、1 手電筒、2 雨傘、3 喝飲料、4 滑板、M 手機地圖'],
+  ['坐和睡','Q 坐下／站起來、Z 躺下睡覺（時間會快轉）'],
+  ['車子、機車、腳踏車、小船','F 上下車（船要靠岸才能下）、W 油門、S 煞車倒車、A D 轉彎、H 喇叭、R 收音機（只有車）'],
+  ['加油機旁邊','C 加油、N 幫車子噴漆換顏色（$30）'],
+  ['公車和計程車','公車停站時 F 上車（$5）、車上 F 按下車鈴或下車；T 招計程車，停在旁邊後 F 上車選目的地'],
+  ['海邊','G 釣魚（岸邊，或船停著時）、咬了再按一次 G 拉起來'],
+  ['跟人互動','點人 說話、接任務、請喝飲料；點門 開關、點球 踢、點電視和燈 開關、點衣櫃 換衣服、點櫃台 買東西和打工'],
+  ['其他','P 拍照模式；設定裡可以調時間、天氣、重力、聲音、音樂、畫質、小地圖、我的紀錄']];
+function showKeys(){const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
+  const h=document.createElement('strong');h.textContent='操作說明'+(isTouch?'（手機：用右下角的按鈕，下面是鍵盤的按法）':'');el.appendChild(h);
+  const box=document.createElement('div');box.style.cssText='max-height:42vh;overflow:auto;margin:6px 0;flex:1 1 100%;width:100%';el.appendChild(box);
+  for(const K of KEYS){const p=document.createElement('p');const b=document.createElement('b');b.textContent=K[0]+'：';p.append(b,K[1]);p.style.margin='4px 0';box.appendChild(p);}
+  const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
+$('bHelp').onclick=()=>{showHint();showKeys();};
 $('bReset').onclick=()=>{noSave=true;try{localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}};
 function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+rep+'　體力 '+Math.round(stam*100)+(heat?'　'+'★'.repeat(heat):'');
   if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
