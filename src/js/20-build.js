@@ -14,7 +14,7 @@ function scaleUV(g,w,h,d){const uv=g.attributes.uv,dm=[[d,h],[d,h],[w,d],[w,d],[
   for(let i=0;i<uv.count;i++){const f=dm[Math.floor(i/4)];uv.setXY(i,uv.getX(i)*f[0],uv.getY(i)*f[1]);}}
 function add(m,shadow){m.castShadow=shadow!==false;m.receiveShadow=true;cur.add(m);return m;}
 function box(w,h,d,mat,x,y,z,o){o=o||{};
-  let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,2,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
+  let g;if(o.r&&THREE.RoundedBoxGeometry)g=new THREE.RoundedBoxGeometry(w,h,d,o.r<.06?1:2,o.r);else{g=new THREE.BoxGeometry(w,h,d);scaleUV(g,w,h,d);}
   const m=new THREE.Mesh(g,mat);m.position.set(x,y,z);if(o.ry)m.rotation.y=o.ry;if(o.rz)m.rotation.z=o.rz;return add(m,o.shadow);}
 // Many small boxes drawn as ONE thing (books on a shelf, goods on a rack). Each entry: [w,h,d, x,y,z, colour, lean].
 // Drawing a hundred separate books costs a hundred times more than drawing them as one batch.
@@ -42,7 +42,7 @@ function weldStatic(group){
 function flat(w,d,mat,x,y,z,tile){const g=new THREE.PlaneGeometry(w,d);
   if(tile){const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/tile,uv.getY(i)*d/tile);}
   const m=new THREE.Mesh(g,mat);m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.receiveShadow=true;cur.add(m);return m;}
-function cyl(rt,rb,h,mat,x,y,z,seg,open){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||28,1,!!open),mat);m.position.set(x,y,z);return add(m);}
+function cyl(rt,rb,h,mat,x,y,z,seg,open){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||16,1,!!open),mat);m.position.set(x,y,z);return add(m);}
 
 // A prefab builds one piece of furniture around its own middle and returns a description of itself:
 //   solid: [x0,x1,z0,z1]         where you cannot walk
