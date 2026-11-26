@@ -1731,7 +1731,7 @@ function fishStep(dt,t){
 let emote='',emoteT=0,danceTick=0;
 const nearFolk=r=>people.filter(n=>!n.hidden&&!n.lie&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<r);
 function wave(){if(ride||onBus||seat)return;emote='wave';emoteT=1.8;const now=performance.now()/1000;let k=0;
-  for(const n of nearFolk(7)){if(k>=3||(n.wavedAt&&n.wavedAt>now-25)||n.react)continue;n.wavedAt=now;notify(n,'greet');n.like=Math.min(5,n.like+.05);k++;}
+  for(const n of nearFolk(7)){if(k>=3||(n.wavedAt&&n.wavedAt>now-25)||n.react)continue;n.wavedAt=now;waves++;notify(n,'greet');n.like=Math.min(5,n.like+.05);k++;}
   if(!k)say(nearFolk(7).length?'你揮揮手。他們剛剛已經跟你打過招呼了。':'你揮揮手，可是附近沒有人。',true);}
 function dance(){if(ride||onBus||seat)return;if(emote==='dance'){emote='';return;}emote='dance';emoteT=1e9;danceTick=0;say('你開始跳舞！動一下就會停。愛玩的人看到可能會跟你一起跳。');}
 function emoteStep(dt){if(!emote)return;emoteT-=dt;if(emoteT<=0||ride||onBus||seat||(emote==='dance'&&Math.hypot(vel.x,vel.z)>.5)){emote='';return;}
@@ -2016,11 +2016,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,homeOwned,decorOwn,starGot,raceBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,daily,waves,homeOwned,decorOwn,starGot,raceBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -2032,7 +2032,18 @@ const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺'
   ['stars',()=>Object.keys(starGot).length>=5,'小小探險家：找到 5 顆星星',30],
   ['home',()=>homeOwned,'有自己的家了',0],
   ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
+// --- three small goals a day, picked fresh each morning ---
+let waves=0;
+const DAILY=[['fish','釣到 2 條魚',()=>fishCount,2],['walk','走路 400 公尺',()=>stats.walk,400],['drive','開車或騎車 800 公尺',()=>stats.drive,800],['hoop','投進 2 球',()=>baskets,2],
+  ['job','完成 2 個任務',()=>stats.jobs,2],['bus','搭 1 次公車或計程車',()=>busTrips+taxiTrips,1],['wave','跟 4 個人揮手打招呼',()=>waves,4],['earn','賺到 $100',()=>stats.earned,100]];
+let daily={day:-1,list:[]};
+function dailyStep(){
+  if(daily.day!==day){const pool=DAILY.slice().sort(()=>Math.random()-.5).slice(0,3);daily={day,list:pool.map(D=>({id:D[0],base:D[2](),done:false}))};
+    if(saveNo>3)say('新的一天！今天的三個挑戰：'+pool.map(D=>D[1]).join('、')+'。每個 $40，在「我的紀錄」可以看進度。');}
+  for(const d of daily.list){if(d.done)continue;const D=DAILY.find(q=>q[0]===d.id);if(!D)continue;if(D[2]()-d.base>=D[3]){d.done=true;cash+=40;stCash=cash;sfxCoin();
+      const all=daily.list.every(q=>q.done);if(all){cash+=60;stCash=cash;}say('✅ 今日挑戰完成：'+D[1]+'！+$40'+(all?'。三個都完成了，再加 $60！':''));break;}}}
 function trackStats(){
+  dailyStep();
   if(stLast){const d=Math.hypot(pos.x-stLast[0],pos.z-stLast[1]);if(d<12){if(ride)stats.drive+=d;else if(!onBus)stats.walk+=d;}}stLast=[pos.x,pos.z];
   if(stCash!=null&&cash>stCash){stats.earned+=cash-stCash;if(stQuest&&!quest)stats.jobs++;}stCash=cash;stQuest=quest;
   for(const B of BADGES)if(!stats.done[B[0]]&&B[1]()){stats.done[B[0]]=1;cash+=B[3];stCash=cash;sfxCoin();say('🏅 成就：'+B[2]+(B[3]?'！獎金 $'+B[3]+'。':'！'));break;}}
@@ -2040,7 +2051,7 @@ function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   const h=document.createElement('strong');h.textContent='我的紀錄（第 '+day+' 天）';el.appendChild(h);
   const box=document.createElement('div');box.style.cssText='max-height:38vh;overflow:auto;margin:6px 0;flex:1 1 100%;width:100%';el.appendChild(box);
   const km=m=>m<1000?Math.round(m)+' 公尺':(m/1000).toFixed(1)+' 公里',n=BADGES.filter(B=>stats.done[B[0]]).length;
-  for(const t of['走路：'+km(stats.walk),'開車和騎車：'+km(stats.drive),'完成任務：'+stats.jobs+' 個','總共賺到：$'+stats.earned,'搭公車 '+busTrips+' 次、計程車 '+taxiTrips+' 次','釣到 '+fishCount+' 次、投進 '+baskets+' 球','找到的星星：'+Object.keys(starGot).length+' / '+STARS.length,'成就：'+n+' / '+BADGES.length]){const p=document.createElement('p');p.textContent=t;p.style.margin='2px 0';box.appendChild(p);}
+  for(const t of['走路：'+km(stats.walk),'開車和騎車：'+km(stats.drive),'完成任務：'+stats.jobs+' 個','總共賺到：$'+stats.earned,'搭公車 '+busTrips+' 次、計程車 '+taxiTrips+' 次','釣到 '+fishCount+' 次、投進 '+baskets+' 球','找到的星星：'+Object.keys(starGot).length+' / '+STARS.length,'— 今日挑戰（每個 $40，三個全過再 $60）—'].concat(daily.list.map(d=>{const D=DAILY.find(q=>q[0]===d.id);return(d.done?'✅ ':'⬜ ')+D[1]+(d.done?'':'（'+Math.min(D[3],Math.floor(D[2]()-d.base))+' / '+D[3]+'）');})).concat(['成就：'+n+' / '+BADGES.length])){const p=document.createElement('p');p.textContent=t;p.style.margin='2px 0';box.appendChild(p);}
   for(const B of BADGES){const p=document.createElement('p');p.textContent=(stats.done[B[0]]?'🏅 ':'⬜ ')+B[2];p.style.opacity=stats.done[B[0]]?1:.6;p.style.margin='2px 0';box.appendChild(p);}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
 $('bStats').onclick=showStats;
@@ -3021,7 +3032,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

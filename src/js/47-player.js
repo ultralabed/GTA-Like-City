@@ -235,7 +235,7 @@ function fishStep(dt,t){
 let emote='',emoteT=0,danceTick=0;
 const nearFolk=r=>people.filter(n=>!n.hidden&&!n.lie&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<r);
 function wave(){if(ride||onBus||seat)return;emote='wave';emoteT=1.8;const now=performance.now()/1000;let k=0;
-  for(const n of nearFolk(7)){if(k>=3||(n.wavedAt&&n.wavedAt>now-25)||n.react)continue;n.wavedAt=now;notify(n,'greet');n.like=Math.min(5,n.like+.05);k++;}
+  for(const n of nearFolk(7)){if(k>=3||(n.wavedAt&&n.wavedAt>now-25)||n.react)continue;n.wavedAt=now;waves++;notify(n,'greet');n.like=Math.min(5,n.like+.05);k++;}
   if(!k)say(nearFolk(7).length?'你揮揮手。他們剛剛已經跟你打過招呼了。':'你揮揮手，可是附近沒有人。',true);}
 function dance(){if(ride||onBus||seat)return;if(emote==='dance'){emote='';return;}emote='dance';emoteT=1e9;danceTick=0;say('你開始跳舞！動一下就會停。愛玩的人看到可能會跟你一起跳。');}
 function emoteStep(dt){if(!emote)return;emoteT-=dt;if(emoteT<=0||ride||onBus||seat||(emote==='dance'&&Math.hypot(vel.x,vel.z)>.5)){emote='';return;}
