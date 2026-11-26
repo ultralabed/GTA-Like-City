@@ -426,7 +426,8 @@ const WORLD={
       person('雅婷',1.63,0xeec6a6,0x2a1a14,0x8ad0b0,0x2b3a67,0xd9623f,true,[10,18],[23,8],.7,.6,{energy:1,food:1,fun:1.1,fit:.9,calm:1,care:1.1}),
       person('俊傑',1.8,0xba8560,0x141010,0xd9d0c0,0x3a3a3a,0x202020,false,[7,15],[22,6],.5,.7,{energy:1,food:1.1,fun:1.1,fit:1.3,calm:.8,care:.7})]},
     {no:14,tpl:'cottage',x:-31.5,z:19,flip:true,ext:0xf3ead8,accent:0x2f6f8a,roof:0x3a3f4a,door:0xf2c23d,balls:'few',forSale:true,people:[],
-      extra:[{type:'plant',x:2.1,z:-2.05,decor:'plant'},{type:'art',x:.95,z:2.5,seed:4,decor:'art'},{type:'tank',x:.4,z:2.15,rot:2,decor:'tank'}]},   // things you can buy for it; hidden until you do   // empty: you can buy this one
+      extra:[{type:'spot',kind:'guest',x:1.9,z:.9,yaw:-Math.PI/2,pose:'window',pub:true,label:'在你家作客'},{type:'spot',kind:'guest',x:1.6,z:-.9,yaw:-Math.PI/2,pose:'window',pub:true,label:'在你家作客'},
+        {type:'plant',x:2.1,z:-2.05,decor:'plant'},{type:'art',x:.95,z:2.5,seed:4,decor:'art'},{type:'tank',x:.4,z:2.15,rot:2,decor:'tank'}]},   // things you can buy for it; hidden until you do   // empty: you can buy this one
     {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
@@ -2378,6 +2379,7 @@ const GOALS={                                                           // type 
   fish:{label:'去海邊釣魚',type:'fishing',need:'calm',gain:.8,dur:.7,outside:true,also:'food'},
   hoops:{label:'去公園投籃',type:'hoops',need:'fit',gain:1.2,dur:.4,outside:true,also:'fun'},
   watch:{label:'去海邊看煙火',type:'watch',need:'fun',gain:.8,dur:.9,outside:true,also:'calm'},
+  guest:{label:'去你家作客',type:'guest',need:'fun',gain:1.1,dur:.35,also:'calm'},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
   lift:{label:'等你開車載他',type:'lift'}
@@ -2405,6 +2407,8 @@ function utility(n,id){
   if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
   if(id==='patrol'||id==='catch'||id==='lift')return -1;
   if(id==='work')return onShift(n)?5:-1;
+  if(id==='guest'){const r=roomAt(pos.x,pos.z);                           // friends drop in, but only while you are at home, in the daytime
+    if(!homeOwned||n.like<3||n.guard||n.o.job||clock<10||clock>20.5||!r||!r.house.lot.forSale||!freeAct(n,id)||n.cool[id]>0)return -1;return 1.3+n.like*.1;}
   if(id==='watch'&&(!fwOn||rainOn))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
@@ -2428,7 +2432,8 @@ function choose(n){
 }
 function endGoal(n,ok){if(n.visitor&&n.goal.id==='work'){n.stay=rnd(1,2.2);for(const k in n.need)n.need[k]=rnd(.25,.6);n.need.energy=1;}   // a visitor arriving: fresh, with things they feel like doing
   const was=n.goal.id;if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);
-  if(ok&&was==='fish')react(n,Math.random()<.7?'釣到一條魚了！':'今天魚都不咬…',1.8,null);else if(ok&&was==='hoops')react(n,'呼，投得真過癮。',1.5,null);}
+  if(ok&&was==='guest'){const k=Object.keys(decorOwn).length;n.like=Math.min(5,n.like+.3);react(n,k>=3?'你家佈置得好漂亮！我最喜歡那個金魚缸。':k?'你家越來越有樣子了！':'謝謝招待！你家還有點空，可以去商店買些擺設。',2.6,'wave');}
+  else if(ok&&was==='fish')react(n,Math.random()<.7?'釣到一條魚了！':'今天魚都不咬…',1.8,null);else if(ok&&was==='hoops')react(n,'呼，投得真過癮。',1.5,null);}
 function brain(n,dt){
   const dh=dt*SPEEDS[speedIdx][0],g=n.goal,G=GOALS[g.id],atWork=(g.id==='work'&&n.hidden)||n.lie;   // needs run down slower at work and asleep
   for(const k in DECAY)n.need[k]=Math.max(0,n.need[k]-DECAY[k]*dh*(atWork&&k!=='energy'?.35:1));
@@ -2577,7 +2582,7 @@ function updNPC(n,dt,t){
   }else{                                                  // settle in, then stay
     const q=A.an||[A.ap[0]+(A.bus?((people.indexOf(n)%5)-2)*.55:0),n.stand,A.ap[1]];             // people at a bus stop spread out along the kerb
     n.pos.x+=(q[0]-n.pos.x)*k4;n.pos.z+=(q[2]-n.pos.z)*k4;ty=q[1];tyaw=A.yaw||0;name=A.pose;lie=!!A.lie;n.settle+=dt;
-    if(n.phase==='in'&&n.settle>1)n.phase='at';
+    if(n.phase==='in'&&n.settle>1){n.phase='at';if(n.goal.id==='guest'){sfxBell();say('叮咚！'+n.o.name+'來你家作客了。可以跟他聊天、請他喝飲料。');}}
     if(A.bus)label='等公車';
     if(n.phase==='at'&&A.hide&&(!A.bus||busAt(A.bus))){n.hidden=true;n.root.visible=false;n.tag.hidden=true;return;}   // gets on when the bus has stopped
   }

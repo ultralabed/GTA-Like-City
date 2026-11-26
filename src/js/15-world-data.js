@@ -123,7 +123,8 @@ const WORLD={
       person('雅婷',1.63,0xeec6a6,0x2a1a14,0x8ad0b0,0x2b3a67,0xd9623f,true,[10,18],[23,8],.7,.6,{energy:1,food:1,fun:1.1,fit:.9,calm:1,care:1.1}),
       person('俊傑',1.8,0xba8560,0x141010,0xd9d0c0,0x3a3a3a,0x202020,false,[7,15],[22,6],.5,.7,{energy:1,food:1.1,fun:1.1,fit:1.3,calm:.8,care:.7})]},
     {no:14,tpl:'cottage',x:-31.5,z:19,flip:true,ext:0xf3ead8,accent:0x2f6f8a,roof:0x3a3f4a,door:0xf2c23d,balls:'few',forSale:true,people:[],
-      extra:[{type:'plant',x:2.1,z:-2.05,decor:'plant'},{type:'art',x:.95,z:2.5,seed:4,decor:'art'},{type:'tank',x:.4,z:2.15,rot:2,decor:'tank'}]},   // things you can buy for it; hidden until you do   // empty: you can buy this one
+      extra:[{type:'spot',kind:'guest',x:1.9,z:.9,yaw:-Math.PI/2,pose:'window',pub:true,label:'在你家作客'},{type:'spot',kind:'guest',x:1.6,z:-.9,yaw:-Math.PI/2,pose:'window',pub:true,label:'在你家作客'},
+        {type:'plant',x:2.1,z:-2.05,decor:'plant'},{type:'art',x:.95,z:2.5,seed:4,decor:'art'},{type:'tank',x:.4,z:2.15,rot:2,decor:'tank'}]},   // things you can buy for it; hidden until you do   // empty: you can buy this one
     {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
