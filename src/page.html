@@ -56,7 +56,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
 .map{position:absolute;top:calc(14px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));border:1px solid var(--line);border-radius:12px;overflow:hidden;
   box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none;line-height:0}
 .map canvas{width:min(208px,46vw);height:auto;display:block}
-.radar{border-radius:50%;border-width:2px}
+.radar{border-radius:50%;border-width:2px;top:auto;right:auto;left:max(16px, env(safe-area-inset-left, 0px));bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
 .radar canvas{width:104px;height:104px}
 .acts kbd{font:600 11px/1 var(--body);color:var(--sun);border:1px solid var(--line);border-radius:5px;padding:3px 5px}
 .hint{align-self:center;text-align:center;font-size:13px;line-height:1.5;color:var(--text);background:var(--glass);

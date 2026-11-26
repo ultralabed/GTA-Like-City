@@ -59,7 +59,7 @@ function drawMap(radar){
     if(!radar){g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
   for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
-  for(const r of rides){g.fillStyle=r.kind==='car'?'#f2c23d':r.kind==='moto'?'#2a8fb0':r.kind==='boat'?'#f4efe4':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
+  for(const r of rides){g.fillStyle=r.kind==='car'?'#'+r.paint.color.getHexString():r.kind==='moto'?'#2a8fb0':r.kind==='boat'?'#f4efe4':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
   g.fillStyle='#35c9a0';g.fillRect(X(PUMP.x)-k*.7,Y(PUMP.z)-k*.7,k*1.4,k*1.4);                        // the petrol pump
@@ -273,6 +273,12 @@ function refuel(){const r=ride||rides.find(q=>q.S.tank&&Math.hypot(q.x-PUMP.x,q.
   if(cash<1){say('你沒有錢加油。先去做任務賺錢吧。');return;}
   const pay=Math.min(cost,cash);r.fuel=Math.min(1,r.fuel+pay/r.S.full);cash-=pay;sfxCoin();actKey='';
   say(pay<cost?'你的錢只夠加一部分：花了 $'+pay+'，'+r.S.name+'的油現在 '+Math.round(r.fuel*100)+'%。':'加滿了！花了 $'+pay+'。');}
+// --- a new coat of paint for your car, at the pump ---
+const PAINTS=[[0xf2c23d,'黃色'],[0xd9463b,'紅色'],[0x2f6fd0,'藍色'],[0x2a2c32,'黑色'],[0xf4f0e8,'白色'],[0xff7ac0,'粉紅色'],[0x7a4fd0,'紫色'],[0xf08a2e,'橘色']];let paintIdx=0;
+function setPaint(i){paintIdx=((i%PAINTS.length)+PAINTS.length)%PAINTS.length;rides[0].paint.color.setHex(PAINTS[paintIdx][0]);}
+function repaint(){const r=rides[0];if(Math.hypot(r.x-PUMP.x,r.z-PUMP.z)>=5){say('要把車子停在加油機旁邊才能噴漆。');return;}
+  if(cash<30){say('噴漆要 $30，你的錢不夠。');return;}cash-=30;setPaint(paintIdx+1);sfxCoin();noise(.6,2600,.4,.12);actKey='';
+  say('嘶——噴好了！你的車現在是'+PAINTS[paintIdx][1]+'（花了 $30）。再按一次換下一種顏色。');}
 // --- one step of you. Returns true when it has already placed the camera (riding or sitting) ---
 function playerStep(dt,f,s){
   const g=Math.max(1.4,GMODES[gIdx][0]);                                    // jumping uses the same gravity as the balls (never quite zero, or you would float away)
@@ -288,12 +294,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T',fuel:'C'};
+const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T',fuel:'C',paint:'N'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],fuel:['加油',refuel],off:['',leaveBus]};
+const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],fuel:['加油',refuel],paint:['噴漆換顏色 $30',repaint],off:['',leaveBus]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -302,7 +308,7 @@ function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
   const nbus=nearBus();
   if(onBus)list.push('off');
-  else if(ride){list.push('out','horn');if(fish||onBoat())list.push('fish');if(atPump()&&ride.fuel<.98)list.push('fuel');if(ride.kind==='car')list.push('radio');}
+  else if(ride){list.push('out','horn');if(fish||onBoat())list.push('fish');if(atPump()&&ride.fuel<.98)list.push('fuel');if(atPump()&&ride.kind==='car')list.push('paint');if(ride.kind==='car')list.push('radio');}
   else{if(nbus)list.push('bus');else if(canHail())list.push('taxi');if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
@@ -331,6 +337,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='Digit4')toggleItem('board');
   else if(e.code==='KeyH')horn();
   else if(e.code==='KeyC'){if(atPump())refuel();}
+  else if(e.code==='KeyN'){if(atPump()&&ride.kind==='car')repaint();}
   else if(e.code==='KeyT'){if(!ride&&!onBus)hail();}
   else if(e.code==='KeyG')fishing();
   else if(e.code==='KeyR'&&ride&&ride.kind==='car')nextRadio();

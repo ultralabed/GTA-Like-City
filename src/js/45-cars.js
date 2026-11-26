@@ -26,7 +26,7 @@ function carMesh(col){                                                   // a ca
   [-.6,.6].forEach(z=>{box(.06,.14,.34,headMat,2.1,.72,z).castShadow=false;box(.06,.12,.34,tailMat,-2.1,.74,z).castShadow=false;});
   const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
   beam.rotation.x=-Math.PI/2;beam.position.set(5.6,.02,0);g.add(beam);                       // pool of light on the road at night
-  cur=scene;return{g,wheels,headMat,tailMat,beam};
+  cur=scene;return{g,wheels,headMat,tailMat,beam,paint};
 }
 function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
   c.headMat.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);c.tailMat.color.setRGB(.35+k*3+(braking?3:0),.02,.02);c.beam.material.opacity=k*.55;}
