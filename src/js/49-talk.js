@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -41,7 +41,7 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent='任務：'+quest.text+'（做完給 $'+quest.reward+'）';
-  rideQuest();parcelQuest();dogQuest();waterQuest();trackStats();
+  rideQuest();parcelQuest();paperQuest();dogQuest();waterQuest();trackStats();
   $('speed').hidden=!ride;if(ride)$('speed').textContent=Math.round(Math.abs(ride.v)*3.6)+' km/h'+(ride.S.tank?'　油 '+Math.round(ride.fuel*100)+'%'+(ride.fuel<=.15?' ⚠':''):'');
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
@@ -103,6 +103,14 @@ function waterQuest(){const q=quest;if(!q||q.type!=='water')return;const now=per
   if(q.done<q.plants.length){q.text='還有 '+(q.plants.length-q.done)+' 盆要澆（在同一間房子裡）';say('這一盆澆好了！植物喝了水才會長大。還有 '+(q.plants.length-q.done)+' 盆。');return;}
   const n=q.from;quest=null;cash+=q.reward;addRep(2);n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.15);n.need.care=Math.min(1,n.need.care+.5);
   say('盆栽都澆好了！任務完成，'+n.o.name+'把 $'+q.reward+' 放在桌上給你。');}
+// --- the paper round: once a day, five front doors in any order ---
+let paperDay=0;
+function paperQuest(){const q=quest;if(!q||q.type!=='papers')return;const left=Math.ceil((q.until-performance.now())/1000);
+  for(const H of q.left){const f=H.front;if(Math.hypot(f.x+f.dx*.8-pos.x,f.z+f.dz*.8-pos.z)<2.6&&(!ride||Math.abs(ride.v)<3)&&!onBus){
+    q.left=q.left.filter(h=>h!==H);q.got++;cash+=12;sfxCoin();noise(.12,500,1,.2);say('啪！報紙丟到 '+H.no+' 號門口了（+$12）。'+(q.left.length?'還剩 '+q.left.length+' 家。':''));break;}}
+  if(!q.left.length){const bonus=left>0?40:0;quest=null;cash+=bonus;addRep(1);say(bonus?'報紙全部準時送完！再加獎金 $40。明天還可以再來送。':'報紙送完了，可是超過時間，沒有獎金。明天再試試看。');return;}
+  if(left<-120){quest=null;say('報紙太晚送了，剩下的小芳自己送。今天的送報工作結束。');return;}
+  q.text='送報紙到 '+q.left.map(h=>h.no).join('、')+' 號門口（已送 '+q.got+'/'+q.n+'）'+(left>0?'，獎金時間還剩 '+left+' 秒':'，已超過獎金時間');q.reward=q.left.length*12;}
 function ballFor(q){return bodies.find(b=>b.kind===q.kind&&(b===held||Math.hypot(b.p.x-q.from.pos.x,b.p.z-q.from.pos.z)<2.2));}
 function finishQuest(n,line){const q=quest;quest=null;q.from.like=Math.min(5,q.from.like+2);if(n!==q.from)n.like=Math.min(5,n.like+1);cash+=q.reward;addRep(2);n.mood=Math.min(1,n.mood+.2);sfxCoin();
   say('任務完成！你拿到 $'+q.reward+'，名聲變好了。');showTalk(n,line);}
@@ -151,6 +159,9 @@ function shopMenu(line){
   p.textContent=line||'歡迎光臨！你有 $'+cash+'。想買什麼？';
   for(const G of GOODS){if(G[3]&&G[3]())continue;add(G[0]+' $'+G[1],()=>{if(cash<G[1]){shopMenu('錢不夠喔。'+G[0]+'要 $'+G[1]+'，你只有 $'+cash+'。');return;}
     cash-=G[1];G[2]();sfxCoin();actKey='';shopMenu('謝謝！'+G[0]+'給你。你還有 $'+cash+'。');});}
+  if(!quest&&paperDay!==day)add('打工：送報紙（每天一次）',()=>{const hs=houses.filter(h=>h.front&&h.lot.tpl!=='shop').sort(()=>Math.random()-.5).slice(0,5);
+    paperDay=day;quest={type:'papers',left:hs,n:hs.length,got:0,until:performance.now()+170000,reward:0,text:''};paperQuest();el.hidden=true;
+    say('送報紙：把報紙送到 '+hs.map(h=>h.no).join('、')+' 號門口，順序隨便。每家 $12；170 秒內全部送完再加 $40。騎腳踏車或溜滑板比較快。');});
   if(!quest)add('打工：幫忙送貨',()=>{const hs=houses.filter(h=>h.front&&h.lot.tpl!=='shop'),H=hs[Math.floor(Math.random()*hs.length)];
     const far=Math.hypot(H.front.x-pos.x,H.front.z-pos.z),secs=Math.round(25+far*1.6);                 // enough time on a bike, tight on foot
     quest={type:'parcel',house:H,until:performance.now()+secs*1000,secs,reward:30,text:''};parcelQuest();el.hidden=true;
