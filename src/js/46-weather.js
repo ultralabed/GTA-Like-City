@@ -43,7 +43,9 @@ const FW=[];for(let i=0;i<5;i++){const N=70,geo=new THREE.BufferGeometry();geo.s
 const FW_COL=[[6,2,1.5],[1.5,5,2],[2,3,7],[7,5,1.5],[6,2,6],[2,6,6]];
 function fwStep(dt){
   fwOn=fwForce||(isWeekend()&&clock>=20&&clock<21&&!rainOn&&mist<.3);
-  if(fwOn&&!fwTold){fwTold=true;say('咻——碰！海邊在放煙火（週末晚上 8 點到 9 點）。很多居民會走去海邊看。');}if(!fwOn)fwTold=false;
+  if(fwOn&&!fwTold){fwTold=true;say('咻——碰！海邊在放煙火（週末晚上 8 點到 9 點）。很多居民會走去海邊看。');
+    for(const n of people){if(n.hidden||n.lie||n.guard||!n.goal||n.goal.id==='work'||n.goal.id==='sleep'||Math.random()>.75||!freeAct(n,'watch'))continue;        // the first bang: most people who are up drop what they are doing
+      react(n,'外面在放煙火！去海邊看！',1.6,'startle',()=>{n.resume=null;setGoal(n,'watch');});}}if(!fwOn)fwTold=false;
   if(fwOn){fwT-=dt;if(fwT<=0){fwT=rnd(.7,2.2);const f=FW.find(q=>q.t>2.6);if(f){const cx=pos.x+rnd(-45,45),cy=rnd(26,44),cz=WORLD.shore-rnd(45,80),A=f.geo.attributes.position,c=FW_COL[Math.floor(Math.random()*FW_COL.length)],sp=rnd(7,12);
         for(let i=0;i<f.N;i++){const u=Math.random()*2-1,a=Math.random()*6.283,s=Math.sqrt(1-u*u),k=sp*(.75+Math.random()*.3);A.setXYZ(i,cx,cy,cz);f.v[i*3]=Math.cos(a)*s*k;f.v[i*3+1]=u*k;f.v[i*3+2]=Math.sin(a)*s*k;}
         f.pts.material.color.setRGB(c[0],c[1],c[2]);f.t=0;f.pts.visible=true;fwCount++;const d=Math.hypot(cx-pos.x,cz-pos.z);setTimeout(()=>sfxBoom(1-d/160),d/343*1000);}}}

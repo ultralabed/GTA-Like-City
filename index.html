@@ -452,6 +452,7 @@ const WORLD={
     {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     {type:'spot',kind:'lift',chase:true,lift:true,pose:'idle',shared:true,label:'等你開車載他'},
     // places to walk to
+    {type:'spot',kind:'watch',x:-9,z:-8.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-6,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-2.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:0.5,z:-9.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:4.5,z:-8.7,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:7,z:-9.5,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:10.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:13.5,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},
     {type:'spot',kind:'fishing',x:2.6,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:2.6,z:-12.1},
     {type:'spot',kind:'fishing',x:-11.5,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:-11.5,z:-12.1},
     {type:'spot',kind:'hoops',x:19.2,z:20.9,yaw:0,pose:'shoot',shared:true,label:'在公園投籃'},
@@ -1407,7 +1408,9 @@ const FW=[];for(let i=0;i<5;i++){const N=70,geo=new THREE.BufferGeometry();geo.s
 const FW_COL=[[6,2,1.5],[1.5,5,2],[2,3,7],[7,5,1.5],[6,2,6],[2,6,6]];
 function fwStep(dt){
   fwOn=fwForce||(isWeekend()&&clock>=20&&clock<21&&!rainOn&&mist<.3);
-  if(fwOn&&!fwTold){fwTold=true;say('咻——碰！海邊在放煙火（週末晚上 8 點到 9 點）。很多居民會走去海邊看。');}if(!fwOn)fwTold=false;
+  if(fwOn&&!fwTold){fwTold=true;say('咻——碰！海邊在放煙火（週末晚上 8 點到 9 點）。很多居民會走去海邊看。');
+    for(const n of people){if(n.hidden||n.lie||n.guard||!n.goal||n.goal.id==='work'||n.goal.id==='sleep'||Math.random()>.75||!freeAct(n,'watch'))continue;        // the first bang: most people who are up drop what they are doing
+      react(n,'外面在放煙火！去海邊看！',1.6,'startle',()=>{n.resume=null;setGoal(n,'watch');});}}if(!fwOn)fwTold=false;
   if(fwOn){fwT-=dt;if(fwT<=0){fwT=rnd(.7,2.2);const f=FW.find(q=>q.t>2.6);if(f){const cx=pos.x+rnd(-45,45),cy=rnd(26,44),cz=WORLD.shore-rnd(45,80),A=f.geo.attributes.position,c=FW_COL[Math.floor(Math.random()*FW_COL.length)],sp=rnd(7,12);
         for(let i=0;i<f.N;i++){const u=Math.random()*2-1,a=Math.random()*6.283,s=Math.sqrt(1-u*u),k=sp*(.75+Math.random()*.3);A.setXYZ(i,cx,cy,cz);f.v[i*3]=Math.cos(a)*s*k;f.v[i*3+1]=u*k;f.v[i*3+2]=Math.sin(a)*s*k;}
         f.pts.material.color.setRGB(c[0],c[1],c[2]);f.t=0;f.pts.visible=true;fwCount++;const d=Math.hypot(cx-pos.x,cz-pos.z);setTimeout(()=>sfxBoom(1-d/160),d/343*1000);}}}
@@ -2283,6 +2286,7 @@ const GOALS={                                                           // type 
   shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
   fish:{label:'去海邊釣魚',type:'fishing',need:'calm',gain:.8,dur:.7,outside:true,also:'food'},
   hoops:{label:'去公園投籃',type:'hoops',need:'fit',gain:1.2,dur:.4,outside:true,also:'fun'},
+  watch:{label:'去海邊看煙火',type:'watch',need:'fun',gain:.8,dur:.9,outside:true,also:'calm'},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
   lift:{label:'等你開車載他',type:'lift'}
@@ -2310,12 +2314,13 @@ function utility(n,id){
   if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
   if(id==='patrol'||id==='catch'||id==='lift')return -1;
   if(id==='work')return onShift(n)?5:-1;
+  if(id==='watch'&&(!fwOn||rainOn))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(g.need==='food')u=nd<.3?1.6-nd:(1-nd)*.8;                            // hunger gets loud when it is bad
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside){if(rainOn)return -1;if(fwOn&&id==='stroll')return 2.2+Math.random()*.3;u*=dark>.6?.2:isWeekend()?1.25:.85;}   // fireworks tonight: nearly everyone wants to go and look       // more people are out and about at the weekend
+  if(g.outside){if(rainOn)return -1;if(id==='watch')return fwOn?2.4+Math.random()*.3:-1;u*=dark>.6?.2:isWeekend()?1.25:.85;}   // fireworks tonight: nearly everyone wants to go and look       // more people are out and about at the weekend
   if(id==='shop'&&!shopOpen())return -1;                                  // nobody behind the counter: closed                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);

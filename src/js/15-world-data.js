@@ -159,6 +159,7 @@ const WORLD={
     {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     {type:'spot',kind:'lift',chase:true,lift:true,pose:'idle',shared:true,label:'等你開車載他'},
     // places to walk to
+    {type:'spot',kind:'watch',x:-9,z:-8.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-6,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-2.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:0.5,z:-9.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:4.5,z:-8.7,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:7,z:-9.5,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:10.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:13.5,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},
     {type:'spot',kind:'fishing',x:2.6,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:2.6,z:-12.1},
     {type:'spot',kind:'fishing',x:-11.5,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:-11.5,z:-12.1},
     {type:'spot',kind:'hoops',x:19.2,z:20.9,yaw:0,pose:'shoot',shared:true,label:'在公園投籃'},

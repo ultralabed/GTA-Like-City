@@ -20,6 +20,7 @@ const GOALS={                                                           // type 
   shop:{label:'逛商店',type:'browse',need:'fun',gain:1,dur:.3,outside:true},
   fish:{label:'去海邊釣魚',type:'fishing',need:'calm',gain:.8,dur:.7,outside:true,also:'food'},
   hoops:{label:'去公園投籃',type:'hoops',need:'fit',gain:1.2,dur:.4,outside:true,also:'fun'},
+  watch:{label:'去海邊看煙火',type:'watch',need:'fun',gain:.8,dur:.9,outside:true,also:'calm'},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
   lift:{label:'等你開車載他',type:'lift'}
@@ -47,12 +48,13 @@ function utility(n,id){
   if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
   if(id==='patrol'||id==='catch'||id==='lift')return -1;
   if(id==='work')return onShift(n)?5:-1;
+  if(id==='watch'&&(!fwOn||rainOn))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(g.need==='food')u=nd<.3?1.6-nd:(1-nd)*.8;                            // hunger gets loud when it is bad
   if(id==='sleep'){if(nd>(inSpan(n.o.bed,clock)?.55:.2))return -1;u=(1-nd)*1.2+(nd<.2?1.5:0);}
   else if(n.need.energy<.25)u*=(id==='dance'||id==='ball'||id==='stretch')?.2:.7;   // too tired for sport
-  if(g.outside){if(rainOn)return -1;if(fwOn&&id==='stroll')return 2.2+Math.random()*.3;u*=dark>.6?.2:isWeekend()?1.25:.85;}   // fireworks tonight: nearly everyone wants to go and look       // more people are out and about at the weekend
+  if(g.outside){if(rainOn)return -1;if(id==='watch')return fwOn?2.4+Math.random()*.3:-1;u*=dark>.6?.2:isWeekend()?1.25:.85;}   // fireworks tonight: nearly everyone wants to go and look       // more people are out and about at the weekend
   if(id==='shop'&&!shopOpen())return -1;                                  // nobody behind the counter: closed                                        // few people go out after dark
   if((id==='tv'||id==='dance')&&mates(n).some(m=>m.goal&&m.goal.id===id))u+=.15;   // more fun together
   return u+rnd(0,.08);
