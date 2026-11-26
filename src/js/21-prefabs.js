@@ -187,6 +187,13 @@ PREFAB.rod=()=>{                                                           // a 
   cyl(.03,.03,.5,M.steel,0,.25,0,8);const r=cyl(.012,.02,2.4,M.black,0,1.25,-.75,6);r.rotation.x=-.75;
   const l=cyl(.004,.004,1.9,M.ceramic,0,1.1,-1.62,4);l.castShadow=false;
 };
+PREFAB.tank=()=>{                                                           // a fish tank on a little stand
+  box(.9,.5,.4,M.walnut,0,.25,0,{r:.02});
+  const water=new THREE.Mesh(new THREE.BoxGeometry(.8,.42,.32),new THREE.MeshStandardMaterial({color:0x3aa0c8,transparent:true,opacity:.55,roughness:.1}));water.position.set(0,.73,0);cur.add(water);
+  box(.84,.03,.36,M.black,0,.95,0);
+  [[-.2,.7,.02,0xff8a2e],[.15,.8,-.04,0xffd23d],[.02,.62,.06,0xff5a4a]].forEach(f=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),new THREE.MeshBasicMaterial({color:f[3]}));m.scale.set(1.8,1,.7);m.position.set(f[0],f[1],f[2]);cur.add(m);});
+  return{solid:[[-.45,.45,-.2,.2]],boxes:[[-.45,.45,0,.96,-.2,.2]]};
+};
 PREFAB.flag=()=>{                                                          // a pole with a chequered flag
   cyl(.04,.05,3.2,M.steel,0,1.6,0,8);
   const c=document.createElement('canvas');c.width=64;c.height=48;const g=c.getContext('2d');for(let i=0;i<4;i++)for(let j=0;j<3;j++){g.fillStyle=(i+j)%2?'#111':'#f4f4f4';g.fillRect(i*16,j*16,16,16);}

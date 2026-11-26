@@ -122,7 +122,8 @@ const WORLD={
     {no:11,tpl:'cottage',x:61.5,z:24,turn:3,ext:0xe9dcc0,accent:0x4a2a4a,roof:0x383038,door:0x7a2c5a,balls:'few',people:[
       person('雅婷',1.63,0xeec6a6,0x2a1a14,0x8ad0b0,0x2b3a67,0xd9623f,true,[10,18],[23,8],.7,.6,{energy:1,food:1,fun:1.1,fit:.9,calm:1,care:1.1}),
       person('俊傑',1.8,0xba8560,0x141010,0xd9d0c0,0x3a3a3a,0x202020,false,[7,15],[22,6],.5,.7,{energy:1,food:1.1,fun:1.1,fit:1.3,calm:.8,care:.7})]},
-    {no:14,tpl:'cottage',x:-31.5,z:19,flip:true,ext:0xf3ead8,accent:0x2f6f8a,roof:0x3a3f4a,door:0xf2c23d,balls:'few',forSale:true,people:[]},   // empty: you can buy this one
+    {no:14,tpl:'cottage',x:-31.5,z:19,flip:true,ext:0xf3ead8,accent:0x2f6f8a,roof:0x3a3f4a,door:0xf2c23d,balls:'few',forSale:true,people:[],
+      extra:[{type:'plant',x:2.1,z:-2.05,decor:'plant'},{type:'art',x:.95,z:2.5,seed:4,decor:'art'},{type:'tank',x:.4,z:2.15,rot:2,decor:'tank'}]},   // things you can buy for it; hidden until you do   // empty: you can buy this one
     {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
@@ -149,7 +150,7 @@ const WORLD={
     // the little park
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
     {type:'pump',x:28,z:13.5,rot:2},
-    {type:'flag',x:-30,z:13.5},                                         // the start line of the time trial                                    // the petrol pump: stop your car beside it
+    {type:'flag',x:-25,z:13.5},                                         // the start line of the time trial                                    // the petrol pump: stop your car beside it
     {type:'stall',x:23.5,z:16.2,rot:2},{type:'hoop',x:19.2,z:23.4,rot:2},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // bus stops: where people leave for work and come back
@@ -187,7 +188,7 @@ const houses=WORLD.lots.map((L,i)=>{
         const p=horiz?turnPt(o.c,d[1]*R.d/2,q):turnPt(d[0]*R.w/2,o.c,q);return Object.assign({},o,{c:side==='north'||side==='south'?p[0]:p[1]});})});}
     const c=turnPt(R.x,R.z,q),cx=L.x+c[0],cz=L.z+c[1],w=q%2?R.d:R.w,d=q%2?R.w:R.d;
     return{id:R.id,name:R.name,house:H,w,d,walls:W,cx,cz,x0:cx-w/2,x1:cx+w/2,z0:cz-d/2,z1:cz+d/2,
-      furniture:R.furniture.map(it=>{const p=turnPt(it.x||0,it.z||0,q);return Object.assign({},it,{x:p[0],z:p[1],rot:(it.rot||0)+q});})};});
+      furniture:R.furniture.concat(R.id==='living'&&L.extra||[]).map(it=>{const p=turnPt(it.x||0,it.z||0,q);return Object.assign({},it,{x:p[0],z:p[1],rot:(it.rot||0)+q});})};});
   H.balls=(L.balls==='all'?T.balls:T.balls.slice(0,2)).map(b=>{const p=turnPt(b.x,b.z,q);return Object.assign({},b,{x:L.x+p[0],z:L.z+p[1]});});
   H.x0=Math.min(...H.rooms.map(r=>r.x0))-WALL_T;H.x1=Math.max(...H.rooms.map(r=>r.x1))+WALL_T;
   H.z0=Math.min(...H.rooms.map(r=>r.z0))-WALL_T;H.z1=Math.max(...H.rooms.map(r=>r.z1))+WALL_T;

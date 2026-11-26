@@ -39,7 +39,7 @@ function buildWall(R,side,def){
       const shut=F.span(a,b,-T,0),open=F.span(b-.05,b,-T/2-w,-T/2),mid=F.pt(o.u,-T/2);
       const D={hinge,t:0,open:false,user:false,shut,openC:open,x:mid[0],z:mid[1],y1,pb:[shut[0],shut[1],0,y1,shut[2],shut[3]]};
       pboxes.push(D.pb);doors.push(D);
-      const sale=o.front&&H.lot.forSale;leaf.userData={tip:sale?'點一下：這間房子在賣（$500），買了就是你的家':'點一下：開門或關門',act:()=>{if(sale&&!homeOwned){buyHome(H);return;}D.user=D.t<.5;}};interact.push(leaf);
+      const sale=o.front&&H.lot.forSale;leaf.userData={get tip(){return sale&&!homeOwned?'點一下：這間房子在賣（$500），買了就是你的家':'點一下：開門或關門';},act:()=>{if(sale&&!homeOwned){buyHome(H);return;}D.user=D.t<.5;}};interact.push(leaf);
       if(o.front){                                                                            // the front door: number plate, doorstep, and where the garden path starts
         const pl=new THREE.Mesh(new THREE.PlaneGeometry(.26,.26),new THREE.MeshBasicMaterial({map:plateTexture(H.no)}));
         pl.rotation.y=Math.PI;pl.position.set(a-.32,1.6,-T-.04);cur.add(pl);

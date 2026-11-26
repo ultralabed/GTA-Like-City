@@ -6,6 +6,7 @@ const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
+const decorG={};
 let root=scene;              // where new furniture groups go
 const marks={streetLamp:[],item:[],hoop:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
@@ -63,6 +64,7 @@ function makeFrame(ox,oz,rot){
 function place(item,R){
   const rot=(item.rot||0)*Math.PI/2,F=makeFrame((R?R.cx:0)+(item.x||0),(R?R.cz:0)+(item.z||0),rot),g=F.g,pt=F.pt,span=F.span;
   const prev=cur;cur=g;const d=PREFAB[item.type](item)||{};cur=prev;
+  if(item.decor){g.userData.dyn=true;g.visible=false;decorG[item.decor]=g;}                // bought later: kept out of the welded mesh, hidden for now
   (d.solid||[]).forEach(q=>colliders.push(span(q[0],q[1],q[2],q[3])));
   (d.boxes||[]).forEach(q=>{const r=span(q[0],q[1],q[4],q[5]);pboxes.push([r[0],r[1],q[2],q[3],r[2],r[3]]);});
   const id=++furnSeq;

@@ -417,7 +417,8 @@ const WORLD={
     {no:11,tpl:'cottage',x:61.5,z:24,turn:3,ext:0xe9dcc0,accent:0x4a2a4a,roof:0x383038,door:0x7a2c5a,balls:'few',people:[
       person('雅婷',1.63,0xeec6a6,0x2a1a14,0x8ad0b0,0x2b3a67,0xd9623f,true,[10,18],[23,8],.7,.6,{energy:1,food:1,fun:1.1,fit:.9,calm:1,care:1.1}),
       person('俊傑',1.8,0xba8560,0x141010,0xd9d0c0,0x3a3a3a,0x202020,false,[7,15],[22,6],.5,.7,{energy:1,food:1.1,fun:1.1,fit:1.3,calm:.8,care:.7})]},
-    {no:14,tpl:'cottage',x:-31.5,z:19,flip:true,ext:0xf3ead8,accent:0x2f6f8a,roof:0x3a3f4a,door:0xf2c23d,balls:'few',forSale:true,people:[]},   // empty: you can buy this one
+    {no:14,tpl:'cottage',x:-31.5,z:19,flip:true,ext:0xf3ead8,accent:0x2f6f8a,roof:0x3a3f4a,door:0xf2c23d,balls:'few',forSale:true,people:[],
+      extra:[{type:'plant',x:2.1,z:-2.05,decor:'plant'},{type:'art',x:.95,z:2.5,seed:4,decor:'art'},{type:'tank',x:.4,z:2.15,rot:2,decor:'tank'}]},   // things you can buy for it; hidden until you do   // empty: you can buy this one
     {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
@@ -444,7 +445,7 @@ const WORLD={
     // the little park
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
     {type:'pump',x:28,z:13.5,rot:2},
-    {type:'flag',x:-30,z:13.5},                                         // the start line of the time trial                                    // the petrol pump: stop your car beside it
+    {type:'flag',x:-25,z:13.5},                                         // the start line of the time trial                                    // the petrol pump: stop your car beside it
     {type:'stall',x:23.5,z:16.2,rot:2},{type:'hoop',x:19.2,z:23.4,rot:2},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // bus stops: where people leave for work and come back
@@ -482,7 +483,7 @@ const houses=WORLD.lots.map((L,i)=>{
         const p=horiz?turnPt(o.c,d[1]*R.d/2,q):turnPt(d[0]*R.w/2,o.c,q);return Object.assign({},o,{c:side==='north'||side==='south'?p[0]:p[1]});})});}
     const c=turnPt(R.x,R.z,q),cx=L.x+c[0],cz=L.z+c[1],w=q%2?R.d:R.w,d=q%2?R.w:R.d;
     return{id:R.id,name:R.name,house:H,w,d,walls:W,cx,cz,x0:cx-w/2,x1:cx+w/2,z0:cz-d/2,z1:cz+d/2,
-      furniture:R.furniture.map(it=>{const p=turnPt(it.x||0,it.z||0,q);return Object.assign({},it,{x:p[0],z:p[1],rot:(it.rot||0)+q});})};});
+      furniture:R.furniture.concat(R.id==='living'&&L.extra||[]).map(it=>{const p=turnPt(it.x||0,it.z||0,q);return Object.assign({},it,{x:p[0],z:p[1],rot:(it.rot||0)+q});})};});
   H.balls=(L.balls==='all'?T.balls:T.balls.slice(0,2)).map(b=>{const p=turnPt(b.x,b.z,q);return Object.assign({},b,{x:L.x+p[0],z:L.z+p[1]});});
   H.x0=Math.min(...H.rooms.map(r=>r.x0))-WALL_T;H.x1=Math.max(...H.rooms.map(r=>r.x1))+WALL_T;
   H.z0=Math.min(...H.rooms.map(r=>r.z0))-WALL_T;H.z1=Math.max(...H.rooms.map(r=>r.z1))+WALL_T;
@@ -505,6 +506,7 @@ const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
+const decorG={};
 let root=scene;              // where new furniture groups go
 const marks={streetLamp:[],item:[],hoop:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
@@ -562,6 +564,7 @@ function makeFrame(ox,oz,rot){
 function place(item,R){
   const rot=(item.rot||0)*Math.PI/2,F=makeFrame((R?R.cx:0)+(item.x||0),(R?R.cz:0)+(item.z||0),rot),g=F.g,pt=F.pt,span=F.span;
   const prev=cur;cur=g;const d=PREFAB[item.type](item)||{};cur=prev;
+  if(item.decor){g.userData.dyn=true;g.visible=false;decorG[item.decor]=g;}                // bought later: kept out of the welded mesh, hidden for now
   (d.solid||[]).forEach(q=>colliders.push(span(q[0],q[1],q[2],q[3])));
   (d.boxes||[]).forEach(q=>{const r=span(q[0],q[1],q[4],q[5]);pboxes.push([r[0],r[1],q[2],q[3],r[2],r[3]]);});
   const id=++furnSeq;
@@ -764,6 +767,13 @@ PREFAB.rod=()=>{                                                           // a 
   cyl(.03,.03,.5,M.steel,0,.25,0,8);const r=cyl(.012,.02,2.4,M.black,0,1.25,-.75,6);r.rotation.x=-.75;
   const l=cyl(.004,.004,1.9,M.ceramic,0,1.1,-1.62,4);l.castShadow=false;
 };
+PREFAB.tank=()=>{                                                           // a fish tank on a little stand
+  box(.9,.5,.4,M.walnut,0,.25,0,{r:.02});
+  const water=new THREE.Mesh(new THREE.BoxGeometry(.8,.42,.32),new THREE.MeshStandardMaterial({color:0x3aa0c8,transparent:true,opacity:.55,roughness:.1}));water.position.set(0,.73,0);cur.add(water);
+  box(.84,.03,.36,M.black,0,.95,0);
+  [[-.2,.7,.02,0xff8a2e],[.15,.8,-.04,0xffd23d],[.02,.62,.06,0xff5a4a]].forEach(f=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),new THREE.MeshBasicMaterial({color:f[3]}));m.scale.set(1.8,1,.7);m.position.set(f[0],f[1],f[2]);cur.add(m);});
+  return{solid:[[-.45,.45,-.2,.2]],boxes:[[-.45,.45,0,.96,-.2,.2]]};
+};
 PREFAB.flag=()=>{                                                          // a pole with a chequered flag
   cyl(.04,.05,3.2,M.steel,0,1.6,0,8);
   const c=document.createElement('canvas');c.width=64;c.height=48;const g=c.getContext('2d');for(let i=0;i<4;i++)for(let j=0;j<3;j++){g.fillStyle=(i+j)%2?'#111':'#f4f4f4';g.fillRect(i*16,j*16,16,16);}
@@ -866,7 +876,7 @@ function buildWall(R,side,def){
       const shut=F.span(a,b,-T,0),open=F.span(b-.05,b,-T/2-w,-T/2),mid=F.pt(o.u,-T/2);
       const D={hinge,t:0,open:false,user:false,shut,openC:open,x:mid[0],z:mid[1],y1,pb:[shut[0],shut[1],0,y1,shut[2],shut[3]]};
       pboxes.push(D.pb);doors.push(D);
-      const sale=o.front&&H.lot.forSale;leaf.userData={tip:sale?'點一下：這間房子在賣（$500），買了就是你的家':'點一下：開門或關門',act:()=>{if(sale&&!homeOwned){buyHome(H);return;}D.user=D.t<.5;}};interact.push(leaf);
+      const sale=o.front&&H.lot.forSale;leaf.userData={get tip(){return sale&&!homeOwned?'點一下：這間房子在賣（$500），買了就是你的家':'點一下：開門或關門';},act:()=>{if(sale&&!homeOwned){buyHome(H);return;}D.user=D.t<.5;}};interact.push(leaf);
       if(o.front){                                                                            // the front door: number plate, doorstep, and where the garden path starts
         const pl=new THREE.Mesh(new THREE.PlaneGeometry(.26,.26),new THREE.MeshBasicMaterial({map:plateTexture(H.no)}));
         pl.rotation.y=Math.PI;pl.position.set(a-.32,1.6,-T-.04);cur.add(pl);
@@ -1598,7 +1608,7 @@ function boatMesh(){
   const g=new THREE.Group();scene.add(g);cur=g;
   const hull=new THREE.MeshStandardMaterial({color:0xf4efe4,roughness:.45}),trim=new THREE.MeshStandardMaterial({color:0xd9623f,roughness:.5});
   box(3.3,.42,1.3,hull,0,.12,0,{r:.16});box(.9,.36,1.05,hull,1.75,.16,0,{r:.16});box(3.36,.08,1.36,trim,0,.34,0,{r:.03});   // hull, bow, a coloured rail
-  box(2.6,.06,.98,M.wood||trim,-.1,.2,0);box(.3,.1,1,M.wood||trim,-.5,.42,0);box(.3,.1,1,M.wood||trim,.6,.42,0);              // floor and two benches
+  box(2.6,.06,.98,M.walnut,-.1,.2,0);box(.3,.1,1,M.walnut,-.5,.42,0);box(.3,.1,1,M.walnut,.6,.42,0);              // floor and two benches
   box(.26,.5,.3,M.black,-1.75,.38,0,{r:.05});cyl(.03,.03,.5,M.steel,-1.75,-.05,0,8);                                          // the little motor at the back
   const rider=new THREE.Group();g.add(rider);cur=rider;                                                                          // you, sitting on the back bench with a hand on the motor
   const skin=new THREE.MeshStandardMaterial({color:0xe8b996,roughness:.85}),top=new THREE.MeshStandardMaterial({color:0x2b3a67,roughness:.85}),leg=new THREE.MeshStandardMaterial({color:0x3a3a3a,roughness:.85});
@@ -1978,11 +1988,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,homeOwned,starGot,raceBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,homeOwned,decorOwn,starGot,raceBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;homeOwned=!!d.homeOwned;if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -2121,6 +2131,9 @@ function starStep(){const t=performance.now()/1000;let n=0;
     if(d<1.7&&!onBus){starGot[i]=1;n++;m.visible=false;cash+=20;sfxCoin();tone(1320,.25,.2,'triangle');
       const all=Object.keys(starGot).length>=STARS.length;if(all){cash+=300;addRep(2);}
       say('⭐ 你找到一顆藏起來的星星！（'+Object.keys(starGot).length+'/'+STARS.length+'，+$20）'+(all?' 全部找齊了！大獎 $300！':p[1]<-20?' 這顆在海上，要開船才拿得到。':''));}});}
+// --- things for your home, from the shop ---
+const decorOwn={};
+function showDecor(){for(const k in decorG)decorG[k].visible=!!decorOwn[k];}
 // --- a home of your own: number 14 is for sale ---
 let homeOwned=false;
 function buyHome(H){if(Math.hypot(H.front.x-pos.x,H.front.z-pos.z)>4){say('走近一點才看得到門上的出售牌。');return;}
@@ -2178,7 +2191,8 @@ function talk(n){
 }
 // --- the shop ---
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
-const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board]];
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],
+  ['家裡的盆栽',40,()=>{decorOwn.plant=1;showDecor();},()=>!homeOwned||decorOwn.plant],['家裡的掛畫',60,()=>{decorOwn.art=1;showDecor();},()=>!homeOwned||decorOwn.art],['家裡的金魚缸',90,()=>{decorOwn.tank=1;showDecor();},()=>!homeOwned||decorOwn.tank]];
 function shopMenu(line){
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='夕陽商店';const p=document.createElement('p');el.append(h,p);
@@ -2950,7 +2964,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

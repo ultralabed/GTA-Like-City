@@ -124,7 +124,7 @@ function boatMesh(){
   const g=new THREE.Group();scene.add(g);cur=g;
   const hull=new THREE.MeshStandardMaterial({color:0xf4efe4,roughness:.45}),trim=new THREE.MeshStandardMaterial({color:0xd9623f,roughness:.5});
   box(3.3,.42,1.3,hull,0,.12,0,{r:.16});box(.9,.36,1.05,hull,1.75,.16,0,{r:.16});box(3.36,.08,1.36,trim,0,.34,0,{r:.03});   // hull, bow, a coloured rail
-  box(2.6,.06,.98,M.wood||trim,-.1,.2,0);box(.3,.1,1,M.wood||trim,-.5,.42,0);box(.3,.1,1,M.wood||trim,.6,.42,0);              // floor and two benches
+  box(2.6,.06,.98,M.walnut,-.1,.2,0);box(.3,.1,1,M.walnut,-.5,.42,0);box(.3,.1,1,M.walnut,.6,.42,0);              // floor and two benches
   box(.26,.5,.3,M.black,-1.75,.38,0,{r:.05});cyl(.03,.03,.5,M.steel,-1.75,-.05,0,8);                                          // the little motor at the back
   const rider=new THREE.Group();g.add(rider);cur=rider;                                                                          // you, sitting on the back bench with a hand on the motor
   const skin=new THREE.MeshStandardMaterial({color:0xe8b996,roughness:.85}),top=new THREE.MeshStandardMaterial({color:0x2b3a67,roughness:.85}),leg=new THREE.MeshStandardMaterial({color:0x3a3a3a,roughness:.85});
