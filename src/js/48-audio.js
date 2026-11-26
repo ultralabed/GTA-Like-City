@@ -1,7 +1,7 @@
 /* ---------- sound ---------- */
 // Every sound is made on the spot from simple tones and hiss, so there are no sound files to load.
 // Browsers only allow sound after you click or press a key, so it starts then.
-let AC=null,master=null,soundOn=true,noiseBuf=null,rainG=null,engO=null,engG=null,stepNo=0,lastBounce=0;
+let AC=null,master=null,soundOn=true,noiseBuf=null,rainG=null,engO=null,engG=null,stepNo=0,lastBounce=0;let windG=null,windF=null;
 function audioStart(){
   if(AC||!soundOn)return;const A=window.AudioContext||window.webkitAudioContext;if(!A)return;
   try{AC=new A();}catch(e){return;}
@@ -9,6 +9,7 @@ function audioStart(){
   noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
   const src=AC.createBufferSource();src.buffer=noiseBuf;src.loop=true;                               // rain: hiss that never stops, turned up when it rains
   const hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=1700;rainG=AC.createGain();rainG.gain.value=0;src.connect(hp);hp.connect(rainG);rainG.connect(master);src.start();
+  const wf=AC.createBiquadFilter();wf.type='bandpass';wf.frequency.value=380;wf.Q.value=.6;windG=AC.createGain();windG.gain.value=0;src.connect(wf);wf.connect(windG);windG.connect(master);windF=wf;   // wind: the same hiss, low and hollow
   engO=AC.createOscillator();engO.type='sawtooth';engO.frequency.value=50;                           // engine: a low buzz whose pitch follows the speed
   const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=320;engG=AC.createGain();engG.gain.value=0;engO.connect(lp);lp.connect(engG);engG.connect(master);engO.start();
 }
@@ -32,7 +33,8 @@ function sfxBoom(k){const v=Math.max(.2,k)*(roomAt(pos.x,pos.z)?.4:1);noise(.5,2
 function sfxBump(){noise(.18,140,.8,.4);tone(60,.2,.3,'sine',.5);}
 function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
-  rainG.gain.setTargetAtTime(soundOn?rain*(roomAt(pos.x,pos.z)?.04:.15):0,t,.3);                     // quieter indoors
+  rainG.gain.setTargetAtTime(soundOn?rain*(roomAt(pos.x,pos.z)?.04:.15):0,t,.3);
+  {const wv=Math.hypot(windX,windZ);windG.gain.setTargetAtTime(soundOn?Math.min(.3,Math.max(0,wv-1.5)*.03)*(roomAt(pos.x,pos.z)?.25:1):0,t,.4);windF.frequency.setTargetAtTime(300+wv*35,t,.5);}   // louder and higher as it blows harder                     // quieter indoors
   let ev=0,ef=50;
   if(ride&&ride.kind!=='bike'){const m=ride.kind==='moto'?1.8:1;ev=.04+Math.min(.07,Math.abs(ride.v)*.006);ef=(48+Math.abs(ride.v)*11)*m;}   // a motorbike buzzes higher than a car
   else{let best=30,bc=null;for(const c of cars)if(c.on){const d=Math.hypot(c.x-pos.x,c.z-pos.z);if(d<best){best=d;bc=c;}}

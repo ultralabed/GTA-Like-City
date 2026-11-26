@@ -197,7 +197,7 @@ PREFAB.tank=()=>{                                                           // a
 PREFAB.flag=()=>{                                                          // a pole with a chequered flag
   cyl(.04,.05,3.2,M.steel,0,1.6,0,8);
   const c=document.createElement('canvas');c.width=64;c.height=48;const g=c.getContext('2d');for(let i=0;i<4;i++)for(let j=0;j<3;j++){g.fillStyle=(i+j)%2?'#111':'#f4f4f4';g.fillRect(i*16,j*16,16,16);}
-  const f=new THREE.Mesh(new THREE.PlaneGeometry(1,.75),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),side:THREE.DoubleSide}));f.position.set(.52,2.8,0);cur.add(f);
+  const f=new THREE.Mesh(new THREE.PlaneGeometry(1,.75),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),side:THREE.DoubleSide}));f.geometry.translate(.5,0,0);f.position.set(.02,2.8,0);cur.add(f);flagMesh=f;
   f.userData={tip:'點一下：計時賽的起點（要先坐上車、機車或腳踏車）',act:()=>startRace()};interact.push(f);
   return{solid:[[-.08,.08,-.08,.08]]};
 };

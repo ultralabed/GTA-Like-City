@@ -516,7 +516,7 @@ const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
-const decorG={};
+const decorG={};let flagMesh=null;
 let root=scene;              // where new furniture groups go
 const marks={streetLamp:[],item:[],hoop:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
@@ -787,7 +787,7 @@ PREFAB.tank=()=>{                                                           // a
 PREFAB.flag=()=>{                                                          // a pole with a chequered flag
   cyl(.04,.05,3.2,M.steel,0,1.6,0,8);
   const c=document.createElement('canvas');c.width=64;c.height=48;const g=c.getContext('2d');for(let i=0;i<4;i++)for(let j=0;j<3;j++){g.fillStyle=(i+j)%2?'#111':'#f4f4f4';g.fillRect(i*16,j*16,16,16);}
-  const f=new THREE.Mesh(new THREE.PlaneGeometry(1,.75),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),side:THREE.DoubleSide}));f.position.set(.52,2.8,0);cur.add(f);
+  const f=new THREE.Mesh(new THREE.PlaneGeometry(1,.75),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),side:THREE.DoubleSide}));f.geometry.translate(.5,0,0);f.position.set(.02,2.8,0);cur.add(f);flagMesh=f;
   f.userData={tip:'點一下：計時賽的起點（要先坐上車、機車或腳踏車）',act:()=>startRace()};interact.push(f);
   return{solid:[[-.08,.08,-.08,.08]]};
 };
@@ -1439,6 +1439,7 @@ let windX=0,windZ=0,windS=0,windDir=rnd(0,6.28),windGoal=1,windT=0,windForce=-1,
 function windStep(dt){windT-=dt;if(windT<=0){windT=rnd(15,40);windGoal=storm?rnd(7,11):rainOn?rnd(3,6):Math.random()<.2?rnd(4,6.5):rnd(0,2.2);windDir+=rnd(-.8,.8);}
   const goal=windForce>=0?windForce:windGoal;windS+=(goal-windS)*(1-Math.exp(-dt*.3));const gust=1+.25*Math.sin(carClock*.7)+.12*Math.sin(carClock*2.3);
   windX=Math.cos(windDir)*windS*gust;windZ=Math.sin(windDir)*windS*gust;
+  if(flagMesh){const k=Math.min(1,windS/6);flagMesh.rotation.y=-windDir+Math.sin(carClock*(3+windS))*(.1+.25*k);flagMesh.rotation.z=-(1-k)*1.1;}   // the flag points downwind, hangs limp in a calm, flaps in a blow
   if(windS>4.2&&!toldWind){toldWind=true;say('起風了！風推東西的力氣跟「面積」有關：又大又輕的海灘球最容易被吹走，小小的網球和很重的保齡球幾乎不動。');}if(windS<2)toldWind=false;}
 // fireworks over the sea: Saturday and Sunday evening from 8 to 9, if it is not raining
 let fwOn=false,fwForce=false,fwT=0,fwTold=false,fwCount=0;
@@ -1894,7 +1895,7 @@ showItems();
 /* ---------- sound ---------- */
 // Every sound is made on the spot from simple tones and hiss, so there are no sound files to load.
 // Browsers only allow sound after you click or press a key, so it starts then.
-let AC=null,master=null,soundOn=true,noiseBuf=null,rainG=null,engO=null,engG=null,stepNo=0,lastBounce=0;
+let AC=null,master=null,soundOn=true,noiseBuf=null,rainG=null,engO=null,engG=null,stepNo=0,lastBounce=0;let windG=null,windF=null;
 function audioStart(){
   if(AC||!soundOn)return;const A=window.AudioContext||window.webkitAudioContext;if(!A)return;
   try{AC=new A();}catch(e){return;}
@@ -1902,6 +1903,7 @@ function audioStart(){
   noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
   const src=AC.createBufferSource();src.buffer=noiseBuf;src.loop=true;                               // rain: hiss that never stops, turned up when it rains
   const hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=1700;rainG=AC.createGain();rainG.gain.value=0;src.connect(hp);hp.connect(rainG);rainG.connect(master);src.start();
+  const wf=AC.createBiquadFilter();wf.type='bandpass';wf.frequency.value=380;wf.Q.value=.6;windG=AC.createGain();windG.gain.value=0;src.connect(wf);wf.connect(windG);windG.connect(master);windF=wf;   // wind: the same hiss, low and hollow
   engO=AC.createOscillator();engO.type='sawtooth';engO.frequency.value=50;                           // engine: a low buzz whose pitch follows the speed
   const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=320;engG=AC.createGain();engG.gain.value=0;engO.connect(lp);lp.connect(engG);engG.connect(master);engO.start();
 }
@@ -1925,7 +1927,8 @@ function sfxBoom(k){const v=Math.max(.2,k)*(roomAt(pos.x,pos.z)?.4:1);noise(.5,2
 function sfxBump(){noise(.18,140,.8,.4);tone(60,.2,.3,'sine',.5);}
 function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
-  rainG.gain.setTargetAtTime(soundOn?rain*(roomAt(pos.x,pos.z)?.04:.15):0,t,.3);                     // quieter indoors
+  rainG.gain.setTargetAtTime(soundOn?rain*(roomAt(pos.x,pos.z)?.04:.15):0,t,.3);
+  {const wv=Math.hypot(windX,windZ);windG.gain.setTargetAtTime(soundOn?Math.min(.3,Math.max(0,wv-1.5)*.03)*(roomAt(pos.x,pos.z)?.25:1):0,t,.4);windF.frequency.setTargetAtTime(300+wv*35,t,.5);}   // louder and higher as it blows harder                     // quieter indoors
   let ev=0,ef=50;
   if(ride&&ride.kind!=='bike'){const m=ride.kind==='moto'?1.8:1;ev=.04+Math.min(.07,Math.abs(ride.v)*.006);ef=(48+Math.abs(ride.v)*11)*m;}   // a motorbike buzzes higher than a car
   else{let best=30,bc=null;for(const c of cars)if(c.on){const d=Math.hypot(c.x-pos.x,c.z-pos.z);if(d<best){best=d;bc=c;}}
