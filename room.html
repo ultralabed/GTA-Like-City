@@ -2744,7 +2744,7 @@ const pets=[];
 })();
 function bark(d){const v=.25*hear(d.x,d.z,25);tone(520,.09,v,'square',.7);setTimeout(()=>tone(440,.11,v,'square',.6),120);}
 // --- 小橘, the street cat. Her list: get out of the rain, keep away from the dog, then nap in the sun or wander to another favourite place ---
-const CAT_AT=[[19.9,17.2,'在長椅旁邊曬太陽'],[-21.3,4.6,'窩在公車亭下面'],[14.4,14.5,'窩在公車亭下面'],[35.6,14.8,'在商店門口等魚'],[6,-8.2,'在沙灘上看海鷗'],[-6.6,3.6,'在販賣機旁邊打盹'],[24.6,15.4,'在小吃攤旁邊聞香味']];
+const CAT_AT=[[19.9,17.2,'在長椅旁邊曬太陽'],[-21,4.9,'窩在公車亭下面'],[14.3,14.1,'窩在公車亭下面'],[35.6,14.8,'在商店門口等魚'],[6,-8.2,'在沙灘上看海鷗'],[-6.3,3.6,'在販賣機旁邊打盹'],[24.6,15.4,'在小吃攤旁邊聞香味']];
 const cat=(function(){
   const g=new THREE.Group();dyn.add(g);cur=g;const fur=new THREE.MeshStandardMaterial({color:0xe08a3c,roughness:.9}),wh=new THREE.MeshStandardMaterial({color:0xf4ece0,roughness:.9});
   box(.4,.17,.16,fur,0,.25,0,{r:.07});box(.17,.15,.15,fur,.24,.34,0,{r:.06});box(.07,.06,.09,wh,.33,.31,0,{r:.02});
@@ -2764,8 +2764,11 @@ function updateCat(dt,t){const c=cat,d=pets[0];c.think-=dt;c.purr-=dt;
     const scared=dd<4.5||(pd<2.2&&c.trust<1&&(ride||Math.hypot(vel.x,vel.z)>2.6))||(ride&&pd<5&&Math.abs(ride.v)>3);
     if(scared&&!c.run){let best=c.at,bd=-1;CAT_AT.forEach((q,i)=>{const far=Math.min(d?Math.hypot(q[0]-d.x,q[1]-d.z):99,Math.hypot(q[0]-pos.x,q[1]-pos.z));if(i!==c.at&&far>bd&&Math.hypot(q[0]-c.x,q[1]-c.z)<45){bd=far;best=i;}});
       c.mood=dd<4.5?'被小黃嚇到，快跑！':'被嚇到，跑走了';catGo(c,best,true);}
+    else if(!c.path.length&&c.purr<=0&&Math.random()<.06){                                  // someone walking by stops to say hello to her
+      const n=people.find(m=>!m.hidden&&!m.react&&!m.lie&&m.phase==='go'&&m.mood>.45&&Math.hypot(m.pos.x-c.x,m.pos.z-c.z)<2.4);
+      if(n){react(n,n.o.playful>.5?'小橘～來，摸摸！':'喔，是小橘啊。',2.2,null);n.mood=Math.min(1,n.mood+.04);n.need.calm=Math.min(1,n.need.calm+.05);c.purr=2.2;}}
     else if(!c.path.length){c.run=false;if(c.mood.includes('跑')||c.mood==='要去別的地方')c.mood=CAT_AT[c.at][2];c.stay-=.5;
-      if(rain>.4&&!CAT_AT[c.at][2].includes('公車亭')){catGo(c,Math.hypot(c.x+21.3,c.z-4.6)<Math.hypot(c.x-14.4,c.z-14.5)?1:2,true);c.mood='下雨了，去躲雨';}
+      if(rain>.4&&!CAT_AT[c.at][2].includes('公車亭')){catGo(c,Math.hypot(c.x+21,c.z-4.9)<Math.hypot(c.x-14.3,c.z-14.1)?1:2,true);c.mood='下雨了，去躲雨';}
       else if(c.stay<=0&&rain<.4&&c.purr<=0){c.stay=rnd(14,40);let i=Math.floor(Math.random()*CAT_AT.length);if(i===c.at)i=(i+1)%CAT_AT.length;if(dark>.8)i=5;catGo(c,i,false);}}}
   const sp=c.run?4.2:1.1;let moving=false;
   if(c.path.length){const q=c.path[0],dx=q[0]-c.x,dz=q[1]-c.z,L=Math.hypot(dx,dz),st=sp*dt;const S=WORLD.street,cross=z=>z>S.z0&&z<S.z1;
