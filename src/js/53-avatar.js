@@ -23,9 +23,11 @@ function thirdCam(dt,t){
   const wd=waterDepth();
   let name='idle',y=me.stand+jumpY-wd,lieQ2=null,hy=1.55+jumpY-wd*.75;
   if(seat){const A=seat.A;name=A.pose;y=A.an[1];meYaw=A.yaw||0;hy=A.an[1]+.55;if(seat.lie)lieQ2=A.q;}
+  else if(emote==='dance'&&!moving){name='dance';}
   else if(moving&&boarding()){name='idle';y+=.1;}                              // gliding: stand still on the deck
   else if(moving){name='walk';me.ph+=dt*sp*3.9;}
   pose(P,name,me,t);
+  if(emote==='wave'){P.arx=-2.7;P.arz=-.25+Math.sin(t*11)*.35;P.erx=-.35;}
   if(held){P.alx=P.arx=-1.15;P.elx=P.erx=-.7;}else if(use.umbrella){P.arx=-1.5;P.erx=-1.1;}else if(use.flashlight){P.arx=-1.2;P.erx=-.3;}
   const kp=1-Math.exp(-dt*(name==='walk'?20:9));JK.forEach(k=>me.cur[k]+=(P[k]-me.cur[k])*kp);
   const c=me.cur,J=me.J;

@@ -235,6 +235,7 @@ function updNPC(n,dt,t){
   pose(P,name,n,t);
   if(!lie){
     if(R||(dP<2.3&&name!=='dance'))P.ny=Math.max(-1.1,Math.min(1.1,angDiff(R&&R.at?Math.atan2(R.at.pos.x-n.pos.x,R.at.pos.z-n.pos.z):Math.atan2(dpx,dpz),n.yaw)));
+    if(R&&R.pose==='dance'){pose(P,'dance',n,t);}
     if(R){if(R.pose==='wave'){P.arx=-2.7;P.arz=-.25+Math.sin(t*11)*.35;P.erx=-.35;}
       else if(R.pose==='startle'){P.alx=P.arx=-1.9;P.alz=.9;P.arz=-.9;P.elx=P.erx=-1.2;P.yo+=.03;P.sx=-.1;}
       else if(R.pose==='glare'){P.alz=.5;P.arz=-.5;P.elx=P.erx=-1.3;P.sx=.06;}}
