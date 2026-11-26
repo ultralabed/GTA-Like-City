@@ -136,7 +136,15 @@ const STORIES=[
   {id:'beach',menu:'小芳：海邊需要幫忙…',reward:90,who:()=>people.find(n=>n.guard),name:'淨灘日',
     intro:w=>'昨天風好大，沙灘上被吹來好多垃圾，海龜吃到會生病。'+w.o.name+'一個人撿不完。你可以去幫忙撿四個地方嗎？撿完去跟他說一聲，我請你 $90。',
     steps:w=>[[-13,-9.8,'一個塑膠袋'],[-3,-11.2,'兩個寶特瓶'],[9,-10,'一團釣魚線'],[17,-11,'一個破掉的保麗龍箱']].map((q,k)=>({at:[q[0],q[1]],col:[0xdfe9ef,0x7fc4e8,0x59d07a,0xf2f2f2][k],big:[1.8,1.6,1.2,3][k],text:'淨灘日 '+(k+1)+'/4：沿著沙灘走，撿起垃圾（小雷達橘點的位置）',done:'你撿起'+q[2]+'，放進袋子。'+(k<3?'':'沙灘乾淨了！去找'+w.o.name+'。')})),
-    ask:'沙灘的垃圾我都撿好了',thanks:'太好了！沙灘乾淨，海裡的動物才安全。謝謝你這麼熱心。',cheer:()=>'謝謝你幫忙撿垃圾！',end:w=>'沙灘變乾淨了。'}];
+    ask:'沙灘的垃圾我都撿好了',thanks:'太好了！沙灘乾淨，海裡的動物才安全。謝謝你這麼熱心。',cheer:()=>'謝謝你幫忙撿垃圾！',end:w=>'沙灘變乾淨了。'},
+  {id:'lunch',menu:'小芳：想請你送便當…',reward:150,who:()=>people.find(n=>n.o.job),name:'愛心便當',
+    intro:w=>'街上有三位鄰居今天不方便出門。小吃攤老闆做了三個熱便當要送給他們，可是沒有人手。你可以幫忙送嗎？有一家在第二條馬路那邊，比較遠，開車或騎車比較快。送完回來跟我說，我給你 $150。',
+    steps:w=>{const door=no=>{const H=houses.find(h=>h.no===no),f=H.front;return[f.x+f.dx*.9,f.z+f.dz*.9];};return[
+      {at:[23.5,14.6],col:0xf2b25a,big:2.6,text:'愛心便當 1/4：去公園旁邊的小吃攤拿三個便當',done:'老闆把三個熱騰騰的便當交給你：「趁熱送喔！」'},
+      {at:door(7),col:0xf2b25a,big:1.6,text:'愛心便當 2/4：送到 7 號門口（大馬路最西邊）',done:'你把便當放在 7 號門口，按了門鈴。屋裡有人說：「謝謝你！」'},
+      {at:door(2),col:0xf2b25a,big:1.6,text:'愛心便當 3/4：送到 2 號門口（大馬路南邊）',done:'2 號的便當送到了。還剩最後一個，在第二條馬路。'},
+      {at:door(10),col:0xf2b25a,big:1.6,text:'愛心便當 4/4：送到 10 號門口（第二條馬路上）',done:'三個便當都送完了！回夕陽商店找'+w.o.name+'。'}];},
+    ask:'便當都送到了',thanks:'太謝謝你了！他們剛剛都打電話來說便當好好吃。夕陽街有你真好。',cheer:()=>'謝謝你幫忙送便當！',end:w=>'三位鄰居都吃到熱便當了。'}];
 // --- a little story in steps: go to each place in turn, then talk to the person it is all for ---
 function storyQuest(){const q=quest;if(!q||q.type!=='story')return;
   if(q.i>=q.steps.length){q.text=q.S.name+'：去找'+q.who.o.name+'，跟他說話'+(q.who.hidden?'（他現在不在街上，可能去上班了，等他回來）':'');return;}
