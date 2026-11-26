@@ -35,6 +35,17 @@ const puddles=new THREE.Group();puddles.visible=false;scene.add(puddles);
 {let sd=7;const r=()=>(sd=(sd*16807)%2147483647)/2147483647,S=WORLD.street;
   for(let i=0;i<26;i++){const m=new THREE.Mesh(new THREE.CircleGeometry(1,14),puddleMat);m.rotation.x=-Math.PI/2;
     m.position.set(-36+r()*80,.016,i%4===0?(i%8===0?S.z0-1:S.z1+1)+(r()-.5)*.8:S.z0+.8+r()*(S.z1-S.z0-1.6));m.scale.set(.5+r()*1.1,.35+r()*.7,1);m.rotation.z=r()*3;m.renderOrder=2;puddles.add(m);}}
+// a rainbow: after rain, when the sun is out, look away from the sun
+const bowC=document.createElement('canvas');bowC.width=512;bowC.height=256;
+{const g=bowC.getContext('2d'),cols=['#ff3b3b','#ff9a2e','#ffe53b','#4fd66a','#3ba8ff','#5a5bff','#a44dff'];g.lineWidth=7;
+  cols.forEach((c,i)=>{g.strokeStyle=c;g.beginPath();g.arc(256,256,236-i*6.5,Math.PI,0);g.stroke();});}
+const bowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(bowC),transparent:true,opacity:0,depthWrite:false,fog:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
+const bow=new THREE.Mesh(new THREE.PlaneGeometry(360,180),bowMat);bow.visible=false;bow.frustumCulled=false;scene.add(bow);
+let bowK=0,toldBow=false;
+function bowStep(dt){const want=wet>.25&&rain<.15&&mist<.1&&sunDir.y>.08&&dark<.4?1:0;bowK+=(want-bowK)*(1-Math.exp(-dt*.25));
+  bow.visible=bowK>.02;if(!bow.visible){if(want===0&&bowK<.01)toldBow=false;return;}
+  const L=Math.hypot(sunDir.x,sunDir.z)||1,dx=-sunDir.x/L,dz=-sunDir.z/L;bow.position.set(pos.x+dx*250,90-sunDir.y*120,pos.z+dz*250);bow.lookAt(pos.x,bow.position.y,pos.z);bowMat.opacity=bowK*.8;
+  if(!toldBow&&bowK>.5){toldBow=true;say('彩虹！太陽光照到空中的小水滴，被分成紅橙黃綠藍靛紫。彩虹永遠在太陽的對面，背對太陽找找看。');}}
 // going through a puddle fast throws water sideways: anyone standing close gets wet, and says so
 const splashRing=new THREE.Mesh(new THREE.RingGeometry(.55,.75,20),new THREE.MeshBasicMaterial({color:0xcfe3f2,transparent:true,opacity:0,depthWrite:false}));splashRing.rotation.x=-Math.PI/2;splashRing.position.y=.05;splashRing.visible=false;scene.add(splashRing);
 let ringT=0,splashAt=-9,toldSplash=false,whooshAt=-9;
@@ -49,7 +60,7 @@ function splashStep(dt){
     if(!toldSplash){toldSplash=true;say('嘩啦！你衝過水坑，水往兩邊噴。'+(hit?'':'旁邊有人的話會被濺濕，他會不高興。'));}
     return;}}
 function updateWeather(dt){
-  splashStep(dt);
+  splashStep(dt);bowStep(dt);
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}
