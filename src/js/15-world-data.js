@@ -87,7 +87,8 @@ const WORLD={
   bounds:{x0:-38,x1:45,z0:-26,z1:26},                               // as far as anyone can walk
   east:{x0:40.3,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
   side:{x0:49,x1:56},                                              // the side street runs south from the main street between these x
-  shore:-12.5,                                                     // the sea starts here (everything with a smaller z is water)
+  shore:-12.5,
+  zebra2:27.5,                                                       // the z of the zebra crossing on the side street                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
   rides:[{kind:'car',x:-1.2,z:3.65,h:0},{kind:'bike',x:3.3,z:3.3,h:-Math.PI/2},{kind:'moto',x:-9.4,z:15.7,h:Math.PI/2},{kind:'boat',x:12,z:-14.5,h:0}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens

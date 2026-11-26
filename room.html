@@ -382,7 +382,8 @@ const WORLD={
   bounds:{x0:-38,x1:45,z0:-26,z1:26},                               // as far as anyone can walk
   east:{x0:40.3,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
   side:{x0:49,x1:56},                                              // the side street runs south from the main street between these x
-  shore:-12.5,                                                     // the sea starts here (everything with a smaller z is water)
+  shore:-12.5,
+  zebra2:27.5,                                                       // the z of the zebra crossing on the side street                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
   rides:[{kind:'car',x:-1.2,z:3.65,h:0},{kind:'bike',x:3.3,z:3.3,h:-Math.PI/2},{kind:'moto',x:-9.4,z:15.7,h:Math.PI/2},{kind:'boat',x:12,z:-14.5,h:0}],   // things you can ride. h = which way it points (0 is along +x)                                       // your car, parked by the kerb. h = which way it points (0 is along +x)                        // where you stand when the page opens
@@ -937,7 +938,8 @@ function updateDoors(dt){
   flat(LEN,S.walk,M.concrete,0,-.012,S.z0-S.walk/2,1.5);flat(LEN,S.walk,M.concrete,0,-.012,S.z1+S.walk/2,1.5);   // sidewalks
   for(let x=-110;x<=110;x+=4)flat(1.7,.14,M.paint,x,-.008,mid);                                  // centre dashes
   [S.z0+.25,S.z1-.25].forEach(z=>flat(LEN,.1,M.paint,0,-.008,z));                              // edge lines
-  for(let i=0;i<7;i++)flat(.5,S.z1-S.z0-.9,M.paint,1.9-3+i,-.008,mid);                         // zebra crossing in front of number 1
+  for(let i=0;i<7;i++)flat(.5,S.z1-S.z0-.9,M.paint,1.9-3+i,-.008,mid);
+  for(let x=JX0+.55;x<JX1-.2;x+=1)flat(.5,3,M.paint,x,-.006,WORLD.zebra2);                      // and one across the side street                         // zebra crossing in front of number 1
   for(const H of houses)if(H.front&&Math.abs(H.front.dx)>.5){const f=H.front,edge=f.dx>0?JX0-S.walk:JX1+S.walk;flat(Math.abs(edge-f.x),1.2,M.concrete,(f.x+edge)/2,-.012,f.z,1.2);}   // houses on the side street
   for(const H of houses)if(H.front&&Math.abs(H.front.dx)<=.5){const f=H.front,edge=f.dz>0?S.z0-S.walk:S.z1+S.walk,len=Math.abs(edge-f.z);   // garden path from each front door
     flat(1.2,len,M.concrete,f.x,-.012,(f.z+edge)/2,1.2);}
@@ -1539,6 +1541,7 @@ function drawMap(radar){
   g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),HH);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),HH);   // the side street
   g.fillStyle='#9b958c';g.fillRect(W0,Y(S.z0-S.walk),WW,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(W0,Y(S.z0),WW,k*(S.z1-S.z0));
   g.fillStyle='#e8e4d8';for(let i=0;i<7;i++)g.fillRect(X(-1.1+i)-k*.25,Y(S.z0)+2,k*.5,k*(S.z1-S.z0)-4);
+  for(let x=JX0+.55;x<JX1-.2;x+=1)g.fillRect(X(x)-k*.25,Y(WORLD.zebra2-1.5),k*.5,k*3);
   g.font='bold '+Math.round(k*2.2)+'px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
   for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
     if(!radar){g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}}
@@ -2268,7 +2271,7 @@ function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
   for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=BB.x0+(i+.5)*GC,z=BB.z0+(j+.5)*GC,k=j*GW+i;
     if(!inWorld(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
     const side=x>JX0-S.walk&&x<JX1+S.walk&&z>=S.z1;                         // the side street and its sidewalks
-    cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):side?(x>JX0&&x<JX1?5:1):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
+    cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):side?(x>JX0&&x<JX1?(Math.abs(z-WORLD.zebra2)<1.6?1.3:5):1):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
 })();
 const cellX=x=>Math.max(0,Math.min(GW-1,Math.floor((x-BB.x0)/GC))),cellZ=z=>Math.max(0,Math.min(GH-1,Math.floor((z-BB.z0)/GC)));
 function nearestFree(i,j){if(!grid[j*GW+i])return j*GW+i;
