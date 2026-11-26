@@ -266,7 +266,7 @@ function autoHome(){
     if(watching!==H.wantTv){H.wantTv=watching;if(H.S.tv!==watching){H.S.tv=watching;applySwitches();}}}
   updateStreetLamps();neighbourChat();passingHello();for(const m of blockMats)m.emissiveIntensity=dark*1.6;
   const here=roomAt(pos.x,pos.z);if(bakeKey()!==bakedKey){envDirty=true;envTimer=0;}                // walked somewhere new: redo the reflections
-  const txt=here?'你在 '+here.house.no+' 號的'+here.name+' · '+(home.length?'在家：'+home.join('、'):'沒有人在家'):'你在街上 · 外面有 '+out+' 個人';
+  const txt=here?'你在 '+here.house.no+' 號的'+here.name+' · '+(here.house.lot.forSale?(homeOwned?'這是你的家':'這間在賣'):home.length?'在家：'+home.join('、'):'沒有人在家'):'你在街上 · 外面有 '+out+' 個人';
   if(txt!==subText){subText=txt;$('sub').textContent=txt;}
   if(!$('minds').hidden)$('minds').textContent=people.filter(n=>!n.hidden).sort((a,b)=>Math.hypot(a.pos.x-pos.x,a.pos.z-pos.z)-Math.hypot(b.pos.x-pos.x,b.pos.z-pos.z)).slice(0,3).map(n=>{const pr=progress(n);
     return n.o.name+' '+moodFace(n)+'　目標：'+GOALS[n.goal.id].label+(pr>=0?' '+Math.round(pr*100)+'%':'')+(n.resume?'（之後回去'+GOALS[n.resume.id].label+'）':'')+

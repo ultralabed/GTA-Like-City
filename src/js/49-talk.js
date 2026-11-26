@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,starGot,raceBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,homeOwned,starGot,raceBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;homeOwned=!!d.homeOwned;if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -24,6 +24,7 @@ const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺'
   ['job1',()=>stats.jobs>=1,'熱心鄰居：完成第 1 個任務',10],['job5',()=>stats.jobs>=5,'街上的好幫手：完成 5 個任務',50],['job15',()=>stats.jobs>=15,'夕陽街之星：完成 15 個任務',150],
   ['bus',()=>busTrips>=1,'搭過公車了',5],['taxi',()=>taxiTrips>=1,'搭過計程車了',5],['fish',()=>fishCount>=5,'釣魚達人：釣到 5 次',30],['hoop',()=>baskets>=3,'神射手：投進 3 球',30],
   ['stars',()=>Object.keys(starGot).length>=5,'小小探險家：找到 5 顆星星',30],
+  ['home',()=>homeOwned,'有自己的家了',0],
   ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
 function trackStats(){
   if(stLast){const d=Math.hypot(pos.x-stLast[0],pos.z-stLast[1]);if(d<12){if(ride)stats.drive+=d;else if(!onBus)stats.walk+=d;}}stLast=[pos.x,pos.z];
@@ -143,7 +144,7 @@ function storyQuest(){const q=quest;if(!q||q.type!=='story')return;
   if(ride&&Math.abs(ride.v)>2||onBus||Math.hypot(pos.x-s.at[0],pos.z-s.at[1])>2.2)return;
   q.i++;sfxCoin();say(s.done);q.text=q.i<q.steps.length?q.steps[q.i].text:q.S.name+'：去找'+q.who.o.name+'，跟他說話';}
 // --- ten hidden stars: tucked away at the edges of the map (two of them out at sea), to reward looking around ---
-const STARS=[[-36,-9.5],[31,-10],[-34,22],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-58,-38]],starGot={},starM=[];
+const STARS=[[-36,-9.5],[31,-10],[-36.8,3.2],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-58,-38]],starGot={},starM=[];
 {const geo=new THREE.OctahedronGeometry(.28),mat=new THREE.MeshBasicMaterial({color:new THREE.Color(3.2,2.6,.6)});
   STARS.forEach((p,i)=>{const m=new THREE.Mesh(geo,mat);m.position.set(p[0],1.1,p[1]);m.scale.y=1.5;scene.add(m);starM.push(m);});}
 function starStep(){const t=performance.now()/1000;let n=0;
@@ -152,6 +153,11 @@ function starStep(){const t=performance.now()/1000;let n=0;
     if(d<1.7&&!onBus){starGot[i]=1;n++;m.visible=false;cash+=20;sfxCoin();tone(1320,.25,.2,'triangle');
       const all=Object.keys(starGot).length>=STARS.length;if(all){cash+=300;addRep(2);}
       say('⭐ 你找到一顆藏起來的星星！（'+Object.keys(starGot).length+'/'+STARS.length+'，+$20）'+(all?' 全部找齊了！大獎 $300！':p[1]<-20?' 這顆在海上，要開船才拿得到。':''));}});}
+// --- a home of your own: number 14 is for sale ---
+let homeOwned=false;
+function buyHome(H){if(Math.hypot(H.front.x-pos.x,H.front.z-pos.z)>4){say('走近一點才看得到門上的出售牌。');return;}
+  if(cash<500){say(H.no+' 號在賣，要 $500。你現在有 $'+cash+'，還差 $'+(500-cash)+'。多做任務、送報紙、釣魚、比賽都可以賺錢。');return;}
+  cash-=500;homeOwned=true;sfxCoin();sfxBell();saveGame();say('恭喜！你買下 '+H.no+' 號了，這裡是你的家。門可以開了；裡面有床可以睡、衣櫃可以換衣服。搭計程車也可以直接說「回家」。');}
 // --- the paper round: once a day, five front doors in any order ---
 let paperDay=0;
 function paperQuest(){const q=quest;if(!q||q.type!=='papers')return;const left=Math.ceil((q.until-performance.now())/1000);

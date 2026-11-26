@@ -261,7 +261,8 @@ function taxiStopped(c){
 function taxiMenu(line){const c=onBus,el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='計程車司機';const p=document.createElement('p');p.textContent=line||'你好！要去哪裡？你有 $'+cash+'。';el.append(h,p);
   const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
-  for(const D of TAXI_TO){const far=Math.abs(D[1]-c.x);if(far<9)continue;const fare=10+Math.round(far*.4);
+  const H14=houses.find(h=>h.lot.forSale),dests=homeOwned&&H14?[['回家（'+H14.no+' 號）',H14.front.x]].concat(TAXI_TO):TAXI_TO;
+  for(const D of dests){const far=Math.abs(D[1]-c.x);if(far<9)continue;const fare=10+Math.round(far*.4);
     add(D[0]+' $'+fare,()=>{if(cash<fare){taxiMenu('錢不夠喔，去'+D[0]+'要 $'+fare+'，你只有 $'+cash+'。');return;}
       cash-=fare;sfxCoin();const ahead=(D[1]-c.x)*c.busDir>6,fd=ahead?c.busDir:-c.busDir;c.dest=D[0];c.stopX=kerbX(D[1],fd)+fd*c.hl;c.served=false;c.dwell=.6;el.hidden=true;taxiTrips++;
       say('司機：「好，去'+D[0]+'。」車錢 $'+fare+(ahead?'':'。那個地方在後面，計程車會先開到街尾掉頭')+'。');});}
@@ -292,6 +293,7 @@ function raceStep(){const q=quest,on=!!q&&q.type==='race';gate.visible=on;if(!on
   q.text='計時賽：第 '+(q.i+1)+'/'+RACE.length+' 個圈圈，'+secs.toFixed(1)+' 秒';
   if(!ride){quest=null;say('你下車了，計時賽取消。');return;}
   if(secs>150){quest=null;say('超過時間了，計時賽結束。再試一次吧。');return;}
+  if(q.i===4&&!q.warn&&Math.hypot(pos.x-c[0],pos.z-c[1])<16){q.warn=1;say('前面那個圈圈之後要掉頭往回開：先煞車、慢慢轉。');}
   if(Math.hypot(pos.x-c[0],pos.z-c[1])>4.2)return;
   q.i++;tone(880+q.i*60,.12,.2,'triangle');if(q.i<RACE.length)return;
   quest=null;const m=MEDAL.find(M2=>secs<=M2[0]),old=raceBest?MEDAL.findIndex(M2=>raceBest<=M2[0]):-1,now=m?MEDAL.indexOf(m):-1,better=!raceBest||secs<raceBest;

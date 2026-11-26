@@ -122,6 +122,7 @@ const WORLD={
     {no:11,tpl:'cottage',x:61.5,z:24,turn:3,ext:0xe9dcc0,accent:0x4a2a4a,roof:0x383038,door:0x7a2c5a,balls:'few',people:[
       person('雅婷',1.63,0xeec6a6,0x2a1a14,0x8ad0b0,0x2b3a67,0xd9623f,true,[10,18],[23,8],.7,.6,{energy:1,food:1,fun:1.1,fit:.9,calm:1,care:1.1}),
       person('俊傑',1.8,0xba8560,0x141010,0xd9d0c0,0x3a3a3a,0x202020,false,[7,15],[22,6],.5,.7,{energy:1,food:1.1,fun:1.1,fit:1.3,calm:.8,care:.7})]},
+    {no:14,tpl:'cottage',x:-31.5,z:19,flip:true,ext:0xf3ead8,accent:0x2f6f8a,roof:0x3a3f4a,door:0xf2c23d,balls:'few',forSale:true,people:[]},   // empty: you can buy this one
     {no:8,tpl:'shop',x:34.5,z:19.6,flip:true,ext:0xffd9a8,accent:0x1c4a50,roof:0x7a2c2c,door:0x1f6a6e,balls:'few',people:[]}
   ],
   // people who do not live here: they walk in from one end of the street, do something, and walk out the other end
@@ -140,7 +141,7 @@ const WORLD={
     {type:'streetLamp',x:48.2,z:22,rot:1},{type:'streetLamp',x:48.2,z:40,rot:1},{type:'streetLamp',x:56.8,z:31,rot:3},{type:'streetLamp',x:56.8,z:52,rot:3},
     // trees
     {type:'tree',x:-15.6,z:3.4},{type:'tree',x:-8.4,z:3.5,s:.85},{type:'tree',x:4.6,z:3.4,s:.9},{type:'tree',x:18.6,z:3.4},{type:'tree',x:36.6,z:2.8,s:1.15},{type:'tree',x:-35.8,z:-2.5,s:1.1},{type:'tree',x:40.5,z:-3,s:.9},
-    {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:-29.5,z:18.5,s:1.2},{type:'tree',x:-33,z:22,s:.95},{type:'tree',x:41.5,z:17,s:1},{type:'tree',x:4.4,z:15.7,s:.85},
+    {type:'tree',x:-13.5,z:15.8,s:.9},{type:'tree',x:41.5,z:17,s:1},{type:'tree',x:4.4,z:15.7,s:.85},
     {type:'tree',x:17,z:19.5,s:1.1},{type:'tree',x:21.5,z:23},{type:'tree',x:25.5,z:17.5,s:.9},{type:'tree',x:25,z:22,s:1.2},
     // street lamps: their arm reaches over the road
     {type:'streetLamp',x:-30,z:5.8},{type:'streetLamp',x:30,z:5.8},{type:'streetLamp',x:42,z:5.8},{type:'streetLamp',x:-18,z:5.8},{type:'streetLamp',x:-6,z:5.8},{type:'streetLamp',x:6,z:5.8},{type:'streetLamp',x:18,z:5.8},
