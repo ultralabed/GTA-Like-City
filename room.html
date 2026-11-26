@@ -1754,11 +1754,11 @@ function refuel(){const r=ride||rides.find(q=>q.S.tank&&Math.hypot(q.x-PUMP.x,q.
 const FLAG=WORLD.outdoor.find(o=>o.type==='flag');
 const RACE=[[-8,11.3],[20,11.3],[42,11.3],[52.6,24],[52.6,46],[52.6,24],[42,7.8],[10,7.8],[-28,7.8]];
 const gate=new THREE.Mesh(new THREE.TorusGeometry(2.6,.14,8,28),new THREE.MeshBasicMaterial({color:new THREE.Color(3,2,.4),transparent:true,opacity:.85,fog:false}));gate.visible=false;scene.add(gate);
-const MEDAL=[[48,'金牌 🥇',80],[62,'銀牌 🥈',50],[85,'銅牌 🥉',25]];let raceBest=0;
+const MEDAL=[[38,'金牌 🥇',80],[50,'銀牌 🥈',50],[70,'銅牌 🥉',25]];let raceBest=0;
 const atFlag=()=>!!ride&&!ride.S.water&&!quest&&Math.hypot(ride.x-FLAG.x,ride.z-FLAG.z)<9;
 function startRace(){if(!ride||ride.S.water){say('計時賽要坐在車子、機車或腳踏車上才能開始。');return;}if(quest){say('你現在有別的任務，先做完再來比賽。');return;}
   if(Math.hypot(ride.x-FLAG.x,ride.z-FLAG.z)>=9){say('把'+ride.S.name+'開到黑白格子旗旁邊再開始。');return;}
-  quest={type:'race',i:0,t0:performance.now(),reward:0,text:''};actKey='';sfxBell();say('預備——開始！照順序穿過發亮的圈圈。金牌 48 秒、銀牌 62 秒、銅牌 85 秒內。'+(raceBest?'你的最佳紀錄 '+raceBest.toFixed(1)+' 秒。':''));}
+  quest={type:'race',i:0,t0:performance.now(),reward:0,text:''};actKey='';sfxBell();say('預備——開始！照順序穿過發亮的圈圈。金牌 38 秒、銀牌 50 秒、銅牌 70 秒內。'+(raceBest?'你的最佳紀錄 '+raceBest.toFixed(1)+' 秒。':''));}
 function raceStep(){const q=quest,on=!!q&&q.type==='race';gate.visible=on;if(!on)return;
   const secs=(performance.now()-q.t0)/1000,c=RACE[q.i],n=RACE[q.i+1];
   gate.position.set(c[0],2.4,c[1]);if(n)gate.rotation.y=Math.atan2(n[0]-c[0],n[1]-c[1]);gate.material.opacity=.6+.3*Math.sin(performance.now()/150);
