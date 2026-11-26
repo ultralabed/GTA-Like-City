@@ -72,7 +72,7 @@ function hudStats(){$('cash').textContent='$'+cash+'　名聲 '+(rep>0?'+':'')+r
   if(heat&&performance.now()-heatAt>45000){heat--;heatAt=performance.now();}              // 45 quiet seconds take one star away
   if(++saveNo%40===0)saveGame();                                                          // the game saves itself every 10 seconds or so
   const q=$('quest');q.hidden=!quest;if(quest)q.textContent=quest.type==='race'?quest.text:'任務：'+quest.text+'（做完給 $'+quest.reward+'）';
-  rideQuest();parcelQuest();paperQuest();storyQuest();dogQuest();waterQuest();trackStats();
+  rideQuest();parcelQuest();paperQuest();askFavor();storyQuest();dogQuest();waterQuest();trackStats();
   $('speed').hidden=!ride;if(ride)$('speed').textContent=Math.round(Math.abs(ride.v)*3.6)+' km/h'+(ride.S.tank?'　油 '+Math.round(ride.fuel*100)+'%'+(ride.fuel<=.15?' ⚠':''):'');
   if(talkN&&(talkN.hidden||talkN.lie||Math.hypot(talkN.pos.x-pos.x,talkN.pos.z-pos.z)>4.2))closeTalk();}
 // running uses up your breath; walking, and especially sitting, brings it back
@@ -181,6 +181,15 @@ let homeOwned=false;
 function buyHome(H){if(Math.hypot(H.front.x-pos.x,H.front.z-pos.z)>4){say('走近一點才看得到門上的出售牌。');return;}
   if(cash<500){say(H.no+' 號在賣，要 $500。你現在有 $'+cash+'，還差 $'+(500-cash)+'。多做任務、送報紙、釣魚、比賽都可以賺錢。');return;}
   cash-=500;homeOwned=true;sfxCoin();sfxBell();saveGame();say('恭喜！你買下 '+H.no+' 號了，這裡是你的家。門可以開了；裡面有床可以睡、衣櫃可以換衣服。搭計程車也可以直接說「回家」。');}
+// --- people who know you a little will call you over themselves when they need a hand ---
+let favorAt=0;
+function askFavor(){const now=performance.now()/1000;if(quest||talkN||ride||onBus||seat||emote||now<favorAt||!$('talk').hidden)return;favorAt=now+8;
+  if(roomAt(pos.x,pos.z))return;
+  for(const n of people){if(n.hidden||n.lie||n.react||n.guard||n.like<1||n.mood<.4||!n.goal||n.goal.id==='work'||n.goal.id==='sleep'||n.goal.id==='guest'||(n.askedAt&&n.askedAt>now-240))continue;
+    if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>5.5||roomAt(n.pos.x,n.pos.z)||Math.random()>.35)continue;
+    n.askedAt=now;favorAt=now+75;const q=offer(n);sfxBell();
+    showTalk(n,'欸，等一下！'+q.ask,[['好，我幫你',()=>{quest=q;if(q.start)q.start();showTalk(n,'太好了，謝謝！做完我給你 $'+q.reward+'。');}],['現在不行，抱歉',()=>{n.mood-=.03;showTalk(n,'沒關係，你忙。');}]]);
+    say(n.o.name+'叫住你，好像有事想拜託你。');return;}}
 // --- the paper round: once a day, five front doors in any order ---
 let paperDay=0;
 function paperQuest(){const q=quest;if(!q||q.type!=='papers')return;const left=Math.ceil((q.until-performance.now())/1000);
