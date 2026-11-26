@@ -1566,7 +1566,7 @@ function drawMap(radar){
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
   for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#'+r.paint.color.getHexString():r.kind==='moto'?'#2a8fb0':r.kind==='boat'?'#f4efe4':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
-  for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
+  for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');dot(cat.x,cat.z,k*.3,'#e08a3c');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
   g.fillStyle='#35c9a0';g.fillRect(X(PUMP.x)-k*.7,Y(PUMP.z)-k*.7,k*1.4,k*1.4);                        // the petrol pump
   let qt=null;if(quest){const q=quest;qt=q.type==='ride'?(q.in?[q.dest[1],q.dest[2]]:[q.from.pos.x,q.from.pos.z]):q.type==='race'?RACE[q.i]:q.type==='parcel'?[q.house.front.x,q.house.front.z]:q.type==='story'?(q.i<q.steps.length?q.steps[q.i].at:[q.who.pos.x,q.who.pos.z]):q.type==='papers'?(()=>{let b=q.left[0];for(const h of q.left)if(Math.hypot(h.front.x-pos.x,h.front.z-pos.z)<Math.hypot(b.front.x-pos.x,b.front.z-pos.z))b=h;return[b.front.x,b.front.z];})():(q.type==='find'||q.type==='dog')&&!q.got?[q.at[1],q.at[2]]:q.type==='water'?q.plants[q.done].ap:q.type==='letter'?[q.to.pos.x,q.to.pos.z]:[q.from.pos.x,q.from.pos.z];}
@@ -2751,6 +2751,39 @@ const pets=[];
   pets.push(d);
 })();
 function bark(d){const v=.25*hear(d.x,d.z,25);tone(520,.09,v,'square',.7);setTimeout(()=>tone(440,.11,v,'square',.6),120);}
+// --- 小橘, the street cat. Her list: get out of the rain, keep away from the dog, then nap in the sun or wander to another favourite place ---
+const CAT_AT=[[19.9,17.2,'在長椅旁邊曬太陽'],[-21.3,4.6,'窩在公車亭下面'],[14.4,14.5,'窩在公車亭下面'],[35.6,14.8,'在商店門口等魚'],[6,-8.2,'在沙灘上看海鷗'],[-6.6,3.6,'在販賣機旁邊打盹'],[24.6,15.4,'在小吃攤旁邊聞香味']];
+const cat=(function(){
+  const g=new THREE.Group();dyn.add(g);cur=g;const fur=new THREE.MeshStandardMaterial({color:0xe08a3c,roughness:.9}),wh=new THREE.MeshStandardMaterial({color:0xf4ece0,roughness:.9});
+  box(.4,.17,.16,fur,0,.25,0,{r:.07});box(.17,.15,.15,fur,.24,.34,0,{r:.06});box(.07,.06,.09,wh,.33,.31,0,{r:.02});
+  [-.05,.05].forEach(z=>{box(.04,.07,.04,fur,.22,.44,z,{r:.01});});
+  const legs=[[.14,.06],[.14,-.06],[-.14,.06],[-.14,-.06]].map(q=>{const L=new THREE.Group();L.position.set(q[0],.18,q[1]);g.add(L);cur=L;box(.045,.18,.045,q[0]>0?wh:fur,0,-.09,0,{r:.015});cur=g;return L;});
+  const tail=new THREE.Group();tail.position.set(-.2,.3,0);g.add(tail);cur=tail;box(.04,.3,.04,fur,-.02,.14,0,{r:.015}).rotation.z=.35;cur=scene;
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(.6,.5,.35),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=.28;g.add(hit);
+  const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
+  const c={name:'小橘',g,legs,tail,tag,x:CAT_AT[0][0],z:CAT_AT[0][1],h:0,path:[],at:0,stay:rnd(10,25),think:0,ph:0,mood:CAT_AT[0][2],run:false,trust:0,purr:0};
+  hit.userData={tip:'點一下：摸摸小橘',act:()=>{if(Math.hypot(c.x-pos.x,c.z-pos.z)>2.6){say('太遠了，慢慢走近一點才摸得到小橘。');return;}
+    if(c.run){say('小橘正在跑，現在摸不到。');return;}c.trust=Math.min(5,c.trust+1);c.purr=3;c.stay=Math.max(c.stay,6);tone(95,.9,.12,'sawtooth',1.02);
+    say(c.trust<3?'小橘讓你摸了一下，尾巴豎起來。（再多摸幾次牠會更信任你）':'小橘呼嚕呼嚕地蹭你的腳。牠很喜歡你。');}};interact.push(hit);
+  return c;})();
+function catGo(c,i,run){c.at=i;c.run=!!run;c.path=findPath(c.x,c.z,CAT_AT[i][0],CAT_AT[i][1])||[];c.mood=run?c.mood:'要去別的地方';}
+function updateCat(dt,t){const c=cat,d=pets[0];c.think-=dt;c.purr-=dt;
+  if(c.think<=0){c.think=.5;const dd=d?Math.hypot(d.x-c.x,d.z-c.z):99,pd=Math.hypot(pos.x-c.x,pos.z-c.z);
+    const scared=dd<4.5||(pd<2.2&&c.trust<1&&(ride||Math.hypot(vel.x,vel.z)>2.6))||(ride&&pd<5&&Math.abs(ride.v)>3);
+    if(scared&&!c.run){let best=c.at,bd=-1;CAT_AT.forEach((q,i)=>{const far=Math.min(d?Math.hypot(q[0]-d.x,q[1]-d.z):99,Math.hypot(q[0]-pos.x,q[1]-pos.z));if(i!==c.at&&far>bd&&Math.hypot(q[0]-c.x,q[1]-c.z)<45){bd=far;best=i;}});
+      c.mood=dd<4.5?'被小黃嚇到，快跑！':'被嚇到，跑走了';catGo(c,best,true);}
+    else if(!c.path.length){c.run=false;if(c.mood.includes('跑')||c.mood==='要去別的地方')c.mood=CAT_AT[c.at][2];c.stay-=.5;
+      if(rain>.4&&!CAT_AT[c.at][2].includes('公車亭')){catGo(c,Math.hypot(c.x+21.3,c.z-4.6)<Math.hypot(c.x-14.4,c.z-14.5)?1:2,true);c.mood='下雨了，去躲雨';}
+      else if(c.stay<=0&&rain<.4&&c.purr<=0){c.stay=rnd(14,40);let i=Math.floor(Math.random()*CAT_AT.length);if(i===c.at)i=(i+1)%CAT_AT.length;if(dark>.8)i=5;catGo(c,i,false);}}}
+  const sp=c.run?4.2:1.1;let moving=false;
+  if(c.path.length){const q=c.path[0],dx=q[0]-c.x,dz=q[1]-c.z,L=Math.hypot(dx,dz),st=sp*dt;const S=WORLD.street,cross=z=>z>S.z0&&z<S.z1;
+    if(!c.run&&!cross(c.z)&&cross(q[1])&&cars.some(k=>k.on&&k.dir&&k.v>1&&(c.x-k.x)*k.dir>-2&&(c.x-k.x)*k.dir<k.v*3+4)){c.mood='等車子過';}
+    else{if(L<=st){c.x=q[0];c.z=q[1];c.path.shift();}else{c.x+=dx/L*st;c.z+=dz/L*st;c.h+=angDiff(Math.atan2(-dz,dx),c.h)*(1-Math.exp(-dt*10));}moving=true;c.ph+=dt*sp*7;}}
+  const sit=moving?0:1;c.g.position.set(c.x,-.07*sit,c.z);c.g.rotation.y=c.h;c.g.rotation.z=0;
+  c.legs.forEach((L,i)=>{L.rotation.z=moving?Math.sin(c.ph+(i%3?Math.PI:0))*.7:(i<2?-.2:1.1);});c.tail.rotation.y=Math.sin(t*(c.purr>0?9:1.6))*.5;c.tail.rotation.z=c.purr>0?-.5:0;
+  const pd=Math.hypot(c.x-pos.x,c.z-pos.z);c.g.visible=pd<60;
+  pv3.set(c.x,.75,c.z).project(camera);const show=pd<12&&pv3.z<1&&Math.abs(pv3.x)<1.1&&Math.abs(pv3.y)<1.1&&!roomAt(pos.x,pos.z);c.tag.hidden=!show;
+  if(show){c.tag.style.left=((pv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-pv3.y)/2*canvas.clientHeight)+'px';const s=c.name+' · '+(c.purr>0?'呼嚕呼嚕 ♥':c.mood);if(c.tag.textContent!==s)c.tag.textContent=s;}}
 // --- seagulls: a few of them wheel over the beach by day; a loud bang (thunder, fireworks) sends them off for a while ---
 const gulls=[];let gullAway=0,gullCry=6;
 {const wm=new THREE.MeshBasicMaterial({color:0xf2f2ee,side:THREE.DoubleSide}),wg=new THREE.PlaneGeometry(.55,.16);wg.translate(.275,0,0);
@@ -3016,7 +3049,7 @@ function tick(now){
   const p0=performance.now();
   for(const n of people)updNPC(n,dt,t);
   const p1=performance.now();
-  updateDoors(dt);updateCars(dt);updateWeather(dt);updatePets(dt,t);updateGulls(dt,t);
+  updateDoors(dt);updateCars(dt);updateWeather(dt);updatePets(dt,t);updateCat(dt,t);updateGulls(dt,t);
   autoT+=dt;if(autoT>.5){autoT=0;autoHome();}
   const p2=performance.now();
   acc+=dt;let steps=0;while(acc>=PH&&steps<14){physStep(PH);acc-=PH;steps++;}if(steps===14)acc=0;
@@ -3052,7 +3085,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

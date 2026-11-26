@@ -61,7 +61,7 @@ function drawMap(radar){
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
   for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#'+r.paint.color.getHexString():r.kind==='moto'?'#2a8fb0':r.kind==='boat'?'#f4efe4':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
-  for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');
+  for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');dot(cat.x,cat.z,k*.3,'#e08a3c');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
   g.fillStyle='#35c9a0';g.fillRect(X(PUMP.x)-k*.7,Y(PUMP.z)-k*.7,k*1.4,k*1.4);                        // the petrol pump
   let qt=null;if(quest){const q=quest;qt=q.type==='ride'?(q.in?[q.dest[1],q.dest[2]]:[q.from.pos.x,q.from.pos.z]):q.type==='race'?RACE[q.i]:q.type==='parcel'?[q.house.front.x,q.house.front.z]:q.type==='story'?(q.i<q.steps.length?q.steps[q.i].at:[q.who.pos.x,q.who.pos.z]):q.type==='papers'?(()=>{let b=q.left[0];for(const h of q.left)if(Math.hypot(h.front.x-pos.x,h.front.z-pos.z)<Math.hypot(b.front.x-pos.x,b.front.z-pos.z))b=h;return[b.front.x,b.front.z];})():(q.type==='find'||q.type==='dog')&&!q.got?[q.at[1],q.at[2]]:q.type==='water'?q.plants[q.done].ap:q.type==='letter'?[q.to.pos.x,q.to.pos.z]:[q.from.pos.x,q.from.pos.z];}
