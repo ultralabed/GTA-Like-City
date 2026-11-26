@@ -35,7 +35,21 @@ const puddles=new THREE.Group();puddles.visible=false;scene.add(puddles);
 {let sd=7;const r=()=>(sd=(sd*16807)%2147483647)/2147483647,S=WORLD.street;
   for(let i=0;i<26;i++){const m=new THREE.Mesh(new THREE.CircleGeometry(1,14),puddleMat);m.rotation.x=-Math.PI/2;
     m.position.set(-36+r()*80,.016,i%4===0?(i%8===0?S.z0-1:S.z1+1)+(r()-.5)*.8:S.z0+.8+r()*(S.z1-S.z0-1.6));m.scale.set(.5+r()*1.1,.35+r()*.7,1);m.rotation.z=r()*3;m.renderOrder=2;puddles.add(m);}}
+// going through a puddle fast throws water sideways: anyone standing close gets wet, and says so
+const splashRing=new THREE.Mesh(new THREE.RingGeometry(.55,.75,20),new THREE.MeshBasicMaterial({color:0xcfe3f2,transparent:true,opacity:0,depthWrite:false}));splashRing.rotation.x=-Math.PI/2;splashRing.position.y=.05;splashRing.visible=false;scene.add(splashRing);
+let ringT=0,splashAt=-9,toldSplash=false,whooshAt=-9;
+function splashStep(dt){
+  if(ringT>0){ringT-=dt;const k=1-ringT/.45;splashRing.scale.setScalar(.6+k*2.4);splashRing.material.opacity=.7*(1-k);if(ringT<=0)splashRing.visible=false;}
+  const now=carClock,sp=ride?Math.abs(ride.v):Math.hypot(vel.x,vel.z);
+  if(!onBus&&!ride&&sp>4&&now-whooshAt>2.5&&!roomAt(pos.x,pos.z))for(const n of people)if(!n.hidden&&!n.react&&n.phase==='go'&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<1.1){whooshAt=now;notify(n,'whoosh');break;}   // skating or running right past someone
+  if(wet<.3||onBus||sp<2.5||jumpY>.05||now-splashAt<.8||(ride&&ride.S.water))return;
+  for(const m of puddles.children){const dx=pos.x-m.position.x,dz=pos.z-m.position.z;if(dx*dx+dz*dz>m.scale.x*m.scale.x)continue;
+    splashAt=now;splashRing.position.x=pos.x;splashRing.position.z=pos.z;splashRing.visible=true;ringT=.45;noise(.22,ride?700:1100,.7,ride?.3:.16);
+    const reach=ride?3.2:1.8;let hit=0;for(const n of people)if(!n.hidden&&!n.lie&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<reach){notify(n,'splash',ride);hit++;}
+    if(!toldSplash){toldSplash=true;say('嘩啦！你衝過水坑，水往兩邊噴。'+(hit?'':'旁邊有人的話會被濺濕，他會不高興。'));}
+    return;}}
 function updateWeather(dt){
+  splashStep(dt);
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}

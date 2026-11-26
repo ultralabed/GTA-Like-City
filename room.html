@@ -1391,7 +1391,21 @@ const puddles=new THREE.Group();puddles.visible=false;scene.add(puddles);
 {let sd=7;const r=()=>(sd=(sd*16807)%2147483647)/2147483647,S=WORLD.street;
   for(let i=0;i<26;i++){const m=new THREE.Mesh(new THREE.CircleGeometry(1,14),puddleMat);m.rotation.x=-Math.PI/2;
     m.position.set(-36+r()*80,.016,i%4===0?(i%8===0?S.z0-1:S.z1+1)+(r()-.5)*.8:S.z0+.8+r()*(S.z1-S.z0-1.6));m.scale.set(.5+r()*1.1,.35+r()*.7,1);m.rotation.z=r()*3;m.renderOrder=2;puddles.add(m);}}
+// going through a puddle fast throws water sideways: anyone standing close gets wet, and says so
+const splashRing=new THREE.Mesh(new THREE.RingGeometry(.55,.75,20),new THREE.MeshBasicMaterial({color:0xcfe3f2,transparent:true,opacity:0,depthWrite:false}));splashRing.rotation.x=-Math.PI/2;splashRing.position.y=.05;splashRing.visible=false;scene.add(splashRing);
+let ringT=0,splashAt=-9,toldSplash=false,whooshAt=-9;
+function splashStep(dt){
+  if(ringT>0){ringT-=dt;const k=1-ringT/.45;splashRing.scale.setScalar(.6+k*2.4);splashRing.material.opacity=.7*(1-k);if(ringT<=0)splashRing.visible=false;}
+  const now=carClock,sp=ride?Math.abs(ride.v):Math.hypot(vel.x,vel.z);
+  if(!onBus&&!ride&&sp>4&&now-whooshAt>2.5&&!roomAt(pos.x,pos.z))for(const n of people)if(!n.hidden&&!n.react&&n.phase==='go'&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<1.1){whooshAt=now;notify(n,'whoosh');break;}   // skating or running right past someone
+  if(wet<.3||onBus||sp<2.5||jumpY>.05||now-splashAt<.8||(ride&&ride.S.water))return;
+  for(const m of puddles.children){const dx=pos.x-m.position.x,dz=pos.z-m.position.z;if(dx*dx+dz*dz>m.scale.x*m.scale.x)continue;
+    splashAt=now;splashRing.position.x=pos.x;splashRing.position.z=pos.z;splashRing.visible=true;ringT=.45;noise(.22,ride?700:1100,.7,ride?.3:.16);
+    const reach=ride?3.2:1.8;let hit=0;for(const n of people)if(!n.hidden&&!n.lie&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<reach){notify(n,'splash',ride);hit++;}
+    if(!toldSplash){toldSplash=true;say('嘩啦！你衝過水坑，水往兩邊噴。'+(hit?'':'旁邊有人的話會被濺濕，他會不高興。'));}
+    return;}}
 function updateWeather(dt){
+  splashStep(dt);
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}
@@ -2276,6 +2290,10 @@ function notify(n,type,b){
     react(n,n.mood>.5?'好啦好啦，我讓一下。':'按什麼按啦！',1.3,n.mood>.5?null:'glare');n.mood-=.02;
     if(n.phase==='go'&&b){const fx=Math.cos(b.h),fz=-Math.sin(b.h),side=((n.pos.x-b.x)*fz-(n.pos.z-b.z)*fx)>0?1:-1,tx=n.pos.x+fz*side*1.4,tz=n.pos.z-fx*side*1.4;
       if(!nBlocked(tx,tz))n.path.unshift([tx,tz]);}}
+  else if(type==='splash'){n.wets=(now-(n.wetAt||-99)<90?n.wets||0:0)+1;n.wetAt=now;n.mood-=.12;n.like=Math.max(-5,n.like-(b?1:.5));     // soaked by a puddle you went through
+    if(n.brolly&&!b){react(n,'還好我有撐傘，沒濺到。',1.5,null);n.like+=.5;n.mood+=.12;return;}
+    react(n,n.wets<2?(b?'啊！水都濺到我身上了！':'欸！水濺到我了啦！'):'又來！你是故意的吧！',n.wets<2?1.8:2.2,n.wets<2?'startle':'glare',()=>{if(n.wets>=2&&GOALS[g.id].outside){n.cool[g.id]=.6;n.resume=null;endGoal(n,false);}});}   // twice: gives up and goes home to change
+  else if(type==='whoosh'){if(n.mood>.6&&n.o.playful>.6)react(n,'哇，好快！帥喔！',1.4,'wave');else{n.mood-=.04;react(n,'哇！嚇我一跳，慢一點啦。',1.5,'startle');}}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
     if(n.brolly){react(n,'下雨了，還好我有帶傘。',1.6,null);return;}        // people with an umbrella just open it and carry on
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
@@ -2757,7 +2775,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

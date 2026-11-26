@@ -128,6 +128,10 @@ function notify(n,type,b){
     react(n,n.mood>.5?'好啦好啦，我讓一下。':'按什麼按啦！',1.3,n.mood>.5?null:'glare');n.mood-=.02;
     if(n.phase==='go'&&b){const fx=Math.cos(b.h),fz=-Math.sin(b.h),side=((n.pos.x-b.x)*fz-(n.pos.z-b.z)*fx)>0?1:-1,tx=n.pos.x+fz*side*1.4,tz=n.pos.z-fx*side*1.4;
       if(!nBlocked(tx,tz))n.path.unshift([tx,tz]);}}
+  else if(type==='splash'){n.wets=(now-(n.wetAt||-99)<90?n.wets||0:0)+1;n.wetAt=now;n.mood-=.12;n.like=Math.max(-5,n.like-(b?1:.5));     // soaked by a puddle you went through
+    if(n.brolly&&!b){react(n,'還好我有撐傘，沒濺到。',1.5,null);n.like+=.5;n.mood+=.12;return;}
+    react(n,n.wets<2?(b?'啊！水都濺到我身上了！':'欸！水濺到我了啦！'):'又來！你是故意的吧！',n.wets<2?1.8:2.2,n.wets<2?'startle':'glare',()=>{if(n.wets>=2&&GOALS[g.id].outside){n.cool[g.id]=.6;n.resume=null;endGoal(n,false);}});}   // twice: gives up and goes home to change
+  else if(type==='whoosh'){if(n.mood>.6&&n.o.playful>.6)react(n,'哇，好快！帥喔！',1.4,'wave');else{n.mood-=.04;react(n,'哇！嚇我一跳，慢一點啦。',1.5,'startle');}}
   else if(type==='rain'){const out=GOALS[g.id].outside;                    // caught in the rain: drop outdoor plans and head for shelter
     if(n.brolly){react(n,'下雨了，還好我有帶傘。',1.6,null);return;}        // people with an umbrella just open it and carry on
     react(n,out?'下雨了！快回家':'下雨了！',1.3,'startle',()=>{if(out){n.cool[g.id]=1;n.resume=null;endGoal(n,false);}});}
