@@ -10,7 +10,7 @@ function nBlocked(x,z){if(!inWorld(x,z,NR))return true;
     const i0=Math.max(0,Math.floor((c[0]-NR-BB.x0)/GC)),i1=Math.min(GW-1,Math.ceil((c[1]+NR-BB.x0)/GC)),j0=Math.max(0,Math.floor((c[2]-NR-BB.z0)/GC)),j1=Math.min(GH-1,Math.ceil((c[3]+NR-BB.z0)/GC));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=BB.x0+(i+.5)*GC,z=BB.z0+(j+.5)*GC;if(x>c[0]-NR&&x<c[1]+NR&&z>c[2]-NR&&z<c[3]+NR)grid[j*GW+i]=1;}}
   for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=BB.x0+(i+.5)*GC,z=BB.z0+(j+.5)*GC,k=j*GW+i;
-    if(!inWorld(x,z,NR)||z<WORLD.shore+.6){grid[k]=1;continue;}             // nobody but you walks into the sea
+    if(!inWorld(x,z,NR)||(z<WORLD.shore+.6&&!onPier(x,z,NR+.15))){grid[k]=1;continue;}             // nobody but you walks into the sea
     const side=x>JX0-S.walk&&x<JX1+S.walk&&z>=S.z1;                         // the side street and its sidewalks
     cost[k]=z>S.z0&&z<S.z1?(Math.abs(x-1.9)<3.2?1.3:5):side?(x>JX0&&x<JX1?(Math.abs(z-WORLD.zebra2)<1.6?1.3:5):1):(z>S.z0-S.walk&&z<S.z1+S.walk)||roomAt(x,z)?1:1.5;}   // the zebra crossing is the cheap way over
 })();

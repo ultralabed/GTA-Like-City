@@ -15,6 +15,10 @@
   // the beach behind the north houses, and the sea beyond it
   flat(LEN,7,M.sand,0,-.018,-9.5,3);
   flat(900,400,M.water,0,-.014,WORLD.shore-200);
+  {const P=WORLD.pier,cx=(P.x0+P.x1)/2,pg=new THREE.Group(),pv=cur;scene.add(pg);cur=pg;                // the pier: planks on posts
+    for(let z=P.z0+.3;z<P.z1+.6;z+=.62)box(P.x1-P.x0,.07,.56,M.walnut,cx,.05,z);
+    for(let z=P.z0+.5;z<P.z1;z+=3){cyl(.11,.11,1.5,M.bark,P.x0+.12,-.5,z,8);cyl(.11,.11,1.5,M.bark,P.x1-.12,-.5,z,8);}
+    [P.x0+.1,P.x1-.1].forEach(x=>{cyl(.09,.09,.9,M.bark,x,.5,P.z0+.15,8);});box(P.x1-P.x0,.08,.1,M.bark,cx,.9,P.z0+.15);cur=pv;weldStatic(pg);}
   // the side street: runs south from the main street
   const SZ=S.z1,SL=130;flat(JX1-JX0,SL,M.asphalt,(JX0+JX1)/2,-.02,SZ+SL/2,4);
   flat(JX1-JX0,S.walk+.3,M.asphalt,(JX0+JX1)/2,-.006,SZ+S.walk/2,4);                               // the mouth of the junction, over the sidewalk

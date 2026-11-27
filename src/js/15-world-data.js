@@ -88,6 +88,7 @@ const WORLD={
   east:{x0:40.3,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
   side:{x0:49,x1:56},                                              // the side street runs south from the main street between these x
   shore:-12.5,
+  pier:{x0:19,x1:21.4,z0:-24.6,z1:-12.2},                           // a wooden pier out over the sea
   zebra2:27.5,                                                       // the z of the zebra crossing on the side street                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
   start:{x:-5.5,z:5.1,yaw:-1.2,pitch:-.03},
@@ -166,6 +167,8 @@ const WORLD={
     {type:'spot',kind:'lift',chase:true,lift:true,pose:'idle',shared:true,label:'等你開車載他'},
     // places to walk to
     {type:'spot',kind:'watch',x:-9,z:-8.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-6,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-2.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:0.5,z:-9.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:4.5,z:-8.7,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:7,z:-9.5,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:10.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:13.5,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},
+    {type:'spot',kind:'fishing',x:20.2,z:-23.7,yaw:Math.PI,pose:'fish',shared:true,label:'在碼頭釣魚'},{type:'rod',x:20.2,z:-24.3},
+    {type:'spot',kind:'stroll',x:19.6,z:-20,yaw:Math.PI/2,pose:'window',shared:true,label:'在碼頭上看海'},
     {type:'spot',kind:'fishing',x:2.6,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:2.6,z:-12.1},
     {type:'spot',kind:'fishing',x:-11.5,z:-11.5,yaw:Math.PI,pose:'fish',shared:true,label:'在海邊釣魚'},{type:'rod',x:-11.5,z:-12.1},
     {type:'spot',kind:'hoops',x:19.2,z:20.9,yaw:0,pose:'shoot',shared:true,label:'在公園投籃'},
@@ -197,6 +200,7 @@ const houses=WORLD.lots.map((L,i)=>{
   H.z0=Math.min(...H.rooms.map(r=>r.z0))-WALL_T;H.z1=Math.max(...H.rooms.map(r=>r.z1))+WALL_T;
   return H;
 });
+const onPier=(x,z,m)=>{const P=WORLD.pier;m=m||0;return x>P.x0+m&&x<P.x1-m&&z>P.z0+m&&z<P.z1+1;};
 const rooms=houses.flatMap(H=>H.rooms);
 function roomAt(x,z){for(const r of rooms)if(x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)return r;return null;}   // doorways count as inside
 // the town proper (where everybody lives and walks), plus a strip to the east with the junction and the side street, for you and your vehicles
