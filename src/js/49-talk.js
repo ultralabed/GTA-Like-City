@@ -308,7 +308,26 @@ function starStep(){const t=performance.now()/1000;let n=0;
       say('⭐ 你找到一顆藏起來的星星！（'+Object.keys(starGot).length+'/'+STARS.length+'，+$20）'+(all?' 全部找齊了！大獎 $300！':p[1]<-20?' 這顆要開船才拿得到。':''));}});}
 // --- things for your home, from the shop ---
 const decorOwn={};
-function showDecor(){for(const k in decorG)decorG[k].visible=!!decorOwn[k];}
+// things you have not bought are hidden AND out of the way (no invisible obstacle). The plant can be carried to another free spot: click it.
+function decorInit(g){if(g.userData.home)return;g.userData.home=[g.position.x,g.position.z];g.userData.cols0=(g.userData.cols||[]).map(c=>c.slice());}
+function decorPut(g,x,z,solid){const h=g.userData.home,dx=x-h[0],dz=z-h[1];g.position.x=x;g.position.z=z;
+  (g.userData.cols||[]).forEach((c,i)=>{const o=g.userData.cols0[i];if(solid){c[0]=o[0]+dx;c[1]=o[1]+dx;c[2]=o[2]+dz;c[3]=o[3]+dz;}else c[0]=c[1]=c[2]=c[3]=1e9;});}
+function plantSpots(){const g=decorG.plant,h=g.userData.home,R0=roomAt(h[0],h[1]),out=[h];if(!R0)return out;
+  for(let x=R0.x0+.45;x<=R0.x1-.44;x+=.55)for(let z=R0.z0+.45;z<=R0.z1-.44;z+=.55){
+    if(Math.hypot(x-h[0],z-h[1])<.6||colliders.some(c=>x>c[0]-.36&&x<c[1]+.36&&z>c[2]-.36&&z<c[3]+.36))continue;
+    if(doors.some(d=>{const c=d.shut;return x>c[0]-1&&x<c[1]+1&&z>c[2]-1&&z<c[3]+1;}))continue;
+    if(Object.values(ACT).some(A=>A.ap&&Math.hypot(A.ap[0]-x,A.ap[1]-z)<.6))continue;
+    out.push([x,z]);}
+  return out;}
+function showDecor(){for(const k in decorG){const g=decorG[k],on=!!decorOwn[k];decorInit(g);g.visible=on;let at=g.userData.home;
+    if(k==='plant'&&on){decorPut(g,at[0],at[1],false);const L=plantSpots();at=L[(decorOwn[k]-1)%L.length]||at;}
+    decorPut(g,at[0],at[1],on);if(g.userData.hit)g.userData.hit.layers.set(on?0:1);}}
+function movePlant(){const g=decorG.plant;if(!decorOwn.plant)return;if(Math.hypot(pos.x-g.position.x,pos.z-g.position.z)>3){say('走近一點才搬得動盆栽。');return;}
+  decorPut(g,g.userData.home[0],g.userData.home[1],false);const L=plantSpots();let i=decorOwn.plant%L.length;
+  for(let k=0;k<L.length&&Math.hypot(L[i][0]-pos.x,L[i][1]-pos.z)<.7;k++)i=(i+1)%L.length;                 // never drop it on your own feet
+  decorOwn.plant=i+1;showDecor();say('你把盆栽搬到另一個位置（第 '+(i+1)+'/'+L.length+' 個）。不喜歡就再點一次。');}
+if(decorG.plant){const hit=new THREE.Mesh(new THREE.BoxGeometry(.6,1.2,.6),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=.6;hit.userData={tip:'點一下：把盆栽搬到別的位置',act:movePlant};decorG.plant.add(hit);decorG.plant.userData.hit=hit;interact.push(hit);}
+showDecor();
 // --- a home of your own: number 14 is for sale ---
 let homeOwned=false;
 function buyHome(H){if(Math.hypot(H.front.x-pos.x,H.front.z-pos.z)>4){say('走近一點才看得到門上的出售牌。');return;}

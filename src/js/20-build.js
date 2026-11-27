@@ -64,8 +64,9 @@ function makeFrame(ox,oz,rot){
 function place(item,R){
   const rot=(item.rot||0)*Math.PI/2,F=makeFrame((R?R.cx:0)+(item.x||0),(R?R.cz:0)+(item.z||0),rot),g=F.g,pt=F.pt,span=F.span;
   const prev=cur;cur=g;const d=PREFAB[item.type](item)||{};cur=prev;
-  if(item.decor){g.userData.dyn=true;g.visible=false;decorG[item.decor]=g;}                // bought later: kept out of the welded mesh, hidden for now
+  if(item.decor){g.userData.dyn=true;g.visible=false;decorG[item.decor]=g;g.userData.c0=colliders.length;}                // bought later: kept out of the welded mesh, hidden for now
   (d.solid||[]).forEach(q=>colliders.push(span(q[0],q[1],q[2],q[3])));
+  if(item.decor)g.userData.cols=colliders.slice(g.userData.c0);
   (d.boxes||[]).forEach(q=>{const r=span(q[0],q[1],q[4],q[5]);pboxes.push([r[0],r[1],q[2],q[3],r[2],r[3]]);});
   const id=++furnSeq;
   (d.spots||[]).forEach(sp=>{const n=spotCount[sp.type]=(spotCount[sp.type]||0)+1,o=Object.assign({},sp,{owner:id,room:R?R.id:null,house:R?R.house.id:null});
