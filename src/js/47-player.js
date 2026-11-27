@@ -59,7 +59,7 @@ function drawMap(radar){
   for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
     if(!radar){g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
-  for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
+  for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.line?'#2f9fb0':c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#'+r.paint.color.getHexString():r.kind==='moto'?'#2a8fb0':r.kind==='boat'?'#f4efe4':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');dot(cat.x,cat.z,k*.3,'#e08a3c');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
@@ -250,12 +250,12 @@ function boardBus(){const c=nearBus();if(!c)return;
   if(c.taxi){putDown();standUp();onBus=c;busBell=false;vel.x=vel.z=0;jumpY=jumpV=0;sfxDoor(c.x,c.z);taxiMenu();return;}
   if(cash<5){say('公車票要 $5，你的錢不夠。');return;}
   putDown();standUp();cash-=5;sfxCoin();onBus=c;busBell=false;c.dwell=Math.max(c.dwell,1.5);vel.x=vel.z=0;jumpY=jumpV=0;busTrips++;
-  say('你上公車了（車票 $5）。到下一站會停；想提早下車就按「下車鈴」。');}
+  say(c.line==='south'?'你上了南線公車（藍綠色，車票 $5）。它會右轉進第二條馬路，在那邊的公車站停。':'你上公車了（車票 $5）。到下一站會停；想提早下車就按「下車鈴」。');}
 let busTrips=0;
 function leaveBus(){const c=onBus;if(!c)return;
   if(!(c.dwell>0)){if(!busBell){busBell=true;sfxBell();say('叮！司機聽到了，會在前面安全的路邊停車。');}return;}
   const fx=Math.cos(c.h),fz=-Math.sin(c.h);
-  for(const d of[2.6,3.3,-2.6,-3.3]){const x=c.x-fz*d,z=c.z+fx*d;                              // the kerb side first
+  for(const q of[[2.6,0],[3.3,0],[2.6,2.4],[2.6,-2.4],[3.3,2.4],[3.3,-2.4],[2.6,4],[2.6,-4],[-2.6,0],[-3.3,0]]){const d=q[0],x=c.x-fz*d+fx*q[1],z=c.z+fx*d+fz*q[1];   // the kerb side first, a little forward or back if the shelter is in the way; the road side only as a last resort
     if(!blocked(x,z)){onBus=null;busBell=false;pos.x=x;pos.z=z;yaw=Math.atan2(fz*Math.sign(d),-fx*Math.sign(d));pitch=-.05;say('你下公車了。');return;}}
   say('車門外面被擋住了，等一下再下車。');}
 function busStep(dt){const c=onBus;if(!c.on){onBus=null;return;}
@@ -356,10 +356,10 @@ function updateActs(){
     if(!seat&&nearFolk(4).length)list.push('wave','dance');
     if(fish||atShore())list.push('fish');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+emote+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(nbus&&nbus.taxi?'tx':'')+(fish?fish.bite:'');
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+emote+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(nbus&&nbus.taxi?'tx':nbus&&nbus.line?'sl':'')+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='dance'?(emote==='dance'?'停止跳舞':'跳舞'):id==='bus'&&nbus.taxi?'上計程車':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':nr.kind==='boat'?'上船':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='dance'?(emote==='dance'?'停止跳舞':'跳舞'):id==='bus'&&nbus.taxi?'上計程車':id==='bus'&&nbus.line?'搭南線公車 $5':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':nr.kind==='boat'?'上船':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));

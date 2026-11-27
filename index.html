@@ -461,6 +461,7 @@ const WORLD={
     // bus stops: where people leave for work and come back
     {type:'busStop',x:-21.8,z:4.7,dir:-1},                           // dir = which way that stop's bus is heading (-1 = toward -x)
     {type:'busStop',x:15,z:14.3,rot:2,dir:1},
+    {type:'busStop',x:47.9,z:38.2,rot:1,dir:2},                         // the south line's stop on the side street (dir 2)
     // where the patrol officer walks to
     {type:'spot',kind:'patrol',x:-31,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:38,z:14.3,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:-16,z:5,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:14,z:5,yaw:-1.57,pose:'window',shared:true,label:'巡邏'},
     {type:'spot',kind:'patrol',x:-14,z:14,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:20,z:14.4,yaw:0,pose:'window',shared:true,label:'巡邏'},
@@ -1284,8 +1285,12 @@ const BUS_STOP={'-1':-25.3,'1':18.5};   // where the front of each bus ends up, 
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:1e9,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,taxi:true,busDir:1,stopX:0,served:true,dwell:0,dest:null}));}
 const taxi=cars[cars.length-1];
+// the south line: a teal bus that stops by the park, then turns down the side street and stops there too
+const SIDE_STOP=38.2;
+{const m=busMesh(0x2f9fb0);m.g.visible=false;const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
+  cars.push(Object.assign(m,{dir:1,busDir:1,z:0,x:0,h:0,v:0,on:false,t:24,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,line:'south',home:1,stopX:BUS_STOP[1],dwell:0,served:false,served2:false}));}
 const kerbX=(x,dir)=>x>ZEBRA[0]-3&&x<ZEBRA[1]+3?(dir>0?ZEBRA[1]+3.5:ZEBRA[0]-3.5):x;      // never pull up on the zebra crossing: go just past it
-const busAt=dir=>cars.some(c=>c.bus&&c.busDir===dir&&c.on&&c.dwell>0);
+const busAt=dir=>dir===2?cars.some(c=>c.line==='south'&&c.on&&c.dwell>0&&c.served2):cars.some(c=>c.bus&&c.busDir===dir&&c.on&&c.dwell>0&&!c.served2);
 // --- the traffic light at the zebra crossing ---
 // One clock runs it: cars get green, then yellow, then red while the walkers get their green figure.
 let sigCars='g',sigWalk=false;const SIG={r:new THREE.MeshBasicMaterial(),y:new THREE.MeshBasicMaterial(),g:new THREE.MeshBasicMaterial(),walk:new THREE.MeshBasicMaterial(),stop:new THREE.MeshBasicMaterial()};
@@ -1344,14 +1349,14 @@ const STOPS={east:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jE}],eastSouth:[zebraE,{p:[JX
   northLeft:[{p:[LN.n,ST.z1+2.6],st:()=>jS},zebraW],northRight:[{p:[LN.n,ST.z1+2.6],st:()=>jS}]};
 const onAnyRoad=(x,z)=>onRoad(z)||(x>JX0&&x<JX1&&z>=ST.z1);
 function startCar(c){
-  const name=c.bus||c.taxi?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
+  const name=c.line==='south'?'eastSouth':c.bus||c.taxi?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
   const R=ROUTES[name];if(cars.some(o=>o!==c&&o.on&&Math.hypot(o.x-R[0][0],o.z-R[0][1])<24))return false;
-  c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=!!c.taxi&&c.served;c.dwell=0;return true;
+  c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=!!c.taxi&&c.served;c.served2=false;c.dwell=0;return true;
 }
 // you are aboard: the bus goes round the block off the end of the street and comes back the other way
 function busTurn(c){const nd=-c.busDir,R2=ROUTES[nd>0?'east':'west'],sx=-nd*76,sz=R2[0][1];
   if(cars.some(o=>o!==c&&o.on&&Math.abs(o.z-sz)<1.6&&Math.abs(o.x-sx)<16)){c.v=0;return;}          // wait for a gap in the other lane
-  c.busDir=nd;if(c.bus)c.stopX=BUS_STOP[nd];c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=CAR_SPEED;c.served=false;c.dwell=0;c.dir=nd;
+  c.busDir=nd;if(c.bus)c.stopX=BUS_STOP[nd];c.served2=false;c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=CAR_SPEED;c.served=false;c.dwell=0;c.dir=nd;
   camera.position.set(c.x-nd*9,4.6,c.z);say(c.taxi?'計程車在街尾掉頭，往回開。':'公車在街尾繞了一圈，現在往回開，下一站是對面的公車站。');}
 let carClock=0;
 const cv3=new THREE.Vector3();
@@ -1365,7 +1370,7 @@ function updateCars(dt){
     if(dist<1.6+c.v*.12){c.wi++;if(c.wi>=c.route.length){
       if(c===onBus){busTurn(c);continue;}
       if(c.bus){c.busDir=c.home;c.stopX=BUS_STOP[c.home];}
-      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.taxi?1e9:c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
+      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.taxi?1e9:c.line?rnd(45,75):c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
     const turn=angDiff(Math.atan2(-(tp[1]-c.z),tp[0]-c.x),c.h),maxT=(c.v/3.3+.05)*dt;c.h+=Math.max(-maxT,Math.min(maxT,turn));
     const fx=Math.cos(c.h),fz=-Math.sin(c.h),px0=c.x+fx*c.hl,pz0=c.z+fz*c.hl;c.dir=Math.abs(fx)>.9&&onRoad(c.z)?Math.sign(fx):0;   // dir: +1/-1 while running along the main street, 0 otherwise
     let gap=1e9;
@@ -1383,6 +1388,8 @@ function updateCars(dt){
     if(c.bus||c.taxi){const d=(c.stopX-px0)*c.busDir;                                          // a bus pulls up at its stop, waits with the doors open, then goes on
       if(c.dwell>0){c.dwell-=dt;gap=0;}
       else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=c.taxi?(onBus===c?3:25):6;c.served=true;sfxDoor(c.x,c.z);if(c.taxi)taxiStopped(c);}}}
+    if(c.line==='south'&&c.served&&!c.served2&&!(c.dwell>0)&&fz>.9&&Math.abs(c.x-LN.s)<1.5){const d=SIDE_STOP+c.hl-pz0;      // its second stop, on the side street
+      if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.4){c.dwell=7;c.served2=true;sfxDoor(c.x,c.z);if(c===onBus)say('第二條馬路站到了。要下車請按「下車」。');}}
     if(c===onBus&&busBell&&!(c.dwell>0)&&c.dir!==0&&(c.x<JX0-8||c.x>JX1+8)&&(c.x<ZEBRA[0]-6||c.x>ZEBRA[1]+6)){gap=0;   // you rang the bell: pull up at the next safe bit of kerb
       if(c.v<.15){c.dwell=4;busBell=false;sfxDoor(c.x,c.z);leaveBus();}}
     let want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
@@ -1568,7 +1575,7 @@ function drawMap(radar){
   for(const H of houses){for(const r of H.rooms){g.fillStyle='#'+H.mats.ext.color.getHexString();g.fillRect(X(r.x0),Y(r.z0),k*r.w,k*r.d);}
     if(!radar){g.fillStyle='#20242c';g.fillText(H.no,X((H.x0+H.x1)/2),Y((H.z0+H.z1)/2));}}
   const dot=(x,z,r,col)=>{g.fillStyle=col;g.beginPath();g.arc(X(x),Y(z),r,0,7);g.fill();};
-  for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
+  for(const c2 of cars)if(c2.on&&c2.x>BB.x0&&c2.x<BB.x1&&c2.z<BB.z1){const q=c2.box;g.fillStyle=c2.line?'#2f9fb0':c2.bus?'#e8a23a':'#d9d3c8';g.fillRect(X(q[0]),Y(q[2]),k*(q[1]-q[0]),k*(q[3]-q[2]));}
   for(const r of rides){g.fillStyle=r.kind==='car'?'#'+r.paint.color.getHexString():r.kind==='moto'?'#2a8fb0':r.kind==='boat'?'#f4efe4':'#ff7ac0';g.save();g.translate(X(r.x),Y(r.z));g.rotate(-r.h);g.fillRect(-k*r.S.len*.9,-k*r.S.R*.9,k*r.S.len*1.8,k*r.S.R*1.8);g.restore();}
   for(const d of pets)dot(d.x,d.z,k*.4,'#d9a441');dot(cat.x,cat.z,k*.3,'#e08a3c');
   for(const n of people)if(!n.hidden)dot(n.pos.x,n.pos.z,k*.55,'#'+n.o.top.toString(16).padStart(6,'0'));
@@ -1759,12 +1766,12 @@ function boardBus(){const c=nearBus();if(!c)return;
   if(c.taxi){putDown();standUp();onBus=c;busBell=false;vel.x=vel.z=0;jumpY=jumpV=0;sfxDoor(c.x,c.z);taxiMenu();return;}
   if(cash<5){say('公車票要 $5，你的錢不夠。');return;}
   putDown();standUp();cash-=5;sfxCoin();onBus=c;busBell=false;c.dwell=Math.max(c.dwell,1.5);vel.x=vel.z=0;jumpY=jumpV=0;busTrips++;
-  say('你上公車了（車票 $5）。到下一站會停；想提早下車就按「下車鈴」。');}
+  say(c.line==='south'?'你上了南線公車（藍綠色，車票 $5）。它會右轉進第二條馬路，在那邊的公車站停。':'你上公車了（車票 $5）。到下一站會停；想提早下車就按「下車鈴」。');}
 let busTrips=0;
 function leaveBus(){const c=onBus;if(!c)return;
   if(!(c.dwell>0)){if(!busBell){busBell=true;sfxBell();say('叮！司機聽到了，會在前面安全的路邊停車。');}return;}
   const fx=Math.cos(c.h),fz=-Math.sin(c.h);
-  for(const d of[2.6,3.3,-2.6,-3.3]){const x=c.x-fz*d,z=c.z+fx*d;                              // the kerb side first
+  for(const q of[[2.6,0],[3.3,0],[2.6,2.4],[2.6,-2.4],[3.3,2.4],[3.3,-2.4],[2.6,4],[2.6,-4],[-2.6,0],[-3.3,0]]){const d=q[0],x=c.x-fz*d+fx*q[1],z=c.z+fx*d+fz*q[1];   // the kerb side first, a little forward or back if the shelter is in the way; the road side only as a last resort
     if(!blocked(x,z)){onBus=null;busBell=false;pos.x=x;pos.z=z;yaw=Math.atan2(fz*Math.sign(d),-fx*Math.sign(d));pitch=-.05;say('你下公車了。');return;}}
   say('車門外面被擋住了，等一下再下車。');}
 function busStep(dt){const c=onBus;if(!c.on){onBus=null;return;}
@@ -1865,10 +1872,10 @@ function updateActs(){
     if(!seat&&nearFolk(4).length)list.push('wave','dance');
     if(fish||atShore())list.push('fish');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+emote+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(nbus&&nbus.taxi?'tx':'')+(fish?fish.bite:'');
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+emote+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(nbus&&nbus.taxi?'tx':nbus&&nbus.line?'sl':'')+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='dance'?(emote==='dance'?'停止跳舞':'跳舞'):id==='bus'&&nbus.taxi?'上計程車':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':nr.kind==='boat'?'上船':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='dance'?(emote==='dance'?'停止跳舞':'跳舞'):id==='bus'&&nbus.taxi?'上計程車':id==='bus'&&nbus.line?'搭南線公車 $5':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':nr.kind==='boat'?'上船':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
@@ -3092,7 +3099,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
