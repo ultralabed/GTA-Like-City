@@ -1769,11 +1769,11 @@ const bobber=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),new THREE.MeshBas
 const onBoat=()=>!!ride&&!!ride.S.water&&Math.abs(ride.v)<.8;
 const atShore=()=>onBoat()||!ride&&!seat&&(onIsle(pos.x,pos.z,-1)&&!onIsle(pos.x,pos.z,3)||onPier(pos.x,pos.z)&&pos.z<WORLD.shore-1||pos.z<WORLD.shore+2.2&&pos.z>WORLD.shore-3&&inTown(pos.x,pos.z,0));
 function fishing(){
-  if(!fish&&onBoat()){const r=ride;fish={x:r.x+Math.sin(r.h)*3.2,z:r.z+Math.cos(r.h)*3.2,t:0,at:rnd(3,8),bite:false,px:pos.x,pz:pos.z,deep:r.z<WORLD.shore-25};
+  if(!fish&&onBoat()){const r=ride;fish={x:r.x+Math.sin(r.h)*3.2,z:r.z+Math.cos(r.h)*3.2,t:0,at:rnd(3,8)*(bag.rod?.5:1),bite:false,px:pos.x,pz:pos.z,deep:r.z<WORLD.shore-25};
     say('你從船上把釣線甩出去了。'+(fish.deep?'這裡離岸邊很遠，水很深，比較容易釣到大魚。':'')+'船一開走就會收線。');noise(.2,1200,.8,.15);actKey='';return;}
-  if(!fish&&onIsle(pos.x,pos.z,-1)){const I=WORLD.isle,d=Math.hypot(pos.x-I.x,pos.z-I.z)||1,k=(I.r+4)/d;fish={x:I.x+(pos.x-I.x)*k,z:I.z+(pos.z-I.z)*k,t:0,at:rnd(3,9),bite:false,px:pos.x,pz:pos.z,deep:true};say('你從島邊把釣線甩出去了。');noise(.2,1200,.8,.15);actKey='';return;}
+  if(!fish&&onIsle(pos.x,pos.z,-1)){const I=WORLD.isle,d=Math.hypot(pos.x-I.x,pos.z-I.z)||1,k=(I.r+4)/d;fish={x:I.x+(pos.x-I.x)*k,z:I.z+(pos.z-I.z)*k,t:0,at:rnd(3,9)*(bag.rod?.5:1),bite:false,px:pos.x,pz:pos.z,deep:true};say('你從島邊把釣線甩出去了。');noise(.2,1200,.8,.15);actKey='';return;}
   if(!fish){if(!atShore())return;camera.getWorldDirection(camDir);const fx=camDir.x,fz=Math.min(-.3,camDir.z),L=Math.hypot(fx,fz);
-    fish={x:pos.x+fx/L*4.5,z:Math.min(WORLD.shore-1.5,pos.z+fz/L*4.5),t:0,at:rnd(4,11),bite:false,px:pos.x,pz:pos.z,deep:pos.z<WORLD.shore-8};if(onPier(pos.x,pos.z)){const P=WORLD.pier;fish.x=pos.x+(fx<0?-1:1)*(Math.abs(fx)>.5?3.6:0);fish.z=Math.abs(fx)>.5?pos.z:pos.z-3.6;if(fish.x>P.x0-1&&fish.x<P.x1+1&&fish.z>P.z0-1)fish.z=P.z0-2.5;}say('你把釣線甩出去了。等浮標沉下去，再按「拉！」。走開就會收線。');noise(.2,1200,.8,.15);return;}
+    fish={x:pos.x+fx/L*4.5,z:Math.min(WORLD.shore-1.5,pos.z+fz/L*4.5),t:0,at:rnd(4,11)*(bag.rod?.5:1),bite:false,px:pos.x,pz:pos.z,deep:pos.z<WORLD.shore-8};if(onPier(pos.x,pos.z)){const P=WORLD.pier;fish.x=pos.x+(fx<0?-1:1)*(Math.abs(fx)>.5?3.6:0);fish.z=Math.abs(fx)>.5?pos.z:pos.z-3.6;if(fish.x>P.x0-1&&fish.x<P.x1+1&&fish.z>P.z0-1)fish.z=P.z0-2.5;}say('你把釣線甩出去了。等浮標沉下去，再按「拉！」。走開就會收線。');noise(.2,1200,.8,.15);return;}
   if(fish.bite){const where=Math.hypot(fish.x-WORLD.isle.x,fish.z-WORLD.isle.z)<WORLD.isle.r+9?'isle':fish.deep&&ride?'deep':fish.deep?'pier':'shore',night=dark>.6;
     const pool=FISH.filter(F=>F[3].includes(where)&&(F[4]==null||F[4]===night));let tot=0;for(const F of pool)tot+=F[2];let r=Math.random()*tot,F=pool[0];for(const q of pool){r-=q[2];if(r<=0){F=q;break;}}
     const isNew=!fishGot[F[0]];fishGot[F[0]]=(fishGot[F[0]]||0)+1;fishBag+=F[1];fishCount++;fish=null;sfxCoin();const n=Object.keys(fishGot).length;
@@ -1786,7 +1786,7 @@ function fishStep(dt,t){
   if(Math.hypot(pos.x-fish.px,pos.z-fish.pz)>1.2||(ride&&!ride.S.water)){fish=null;actKey='';say('你收線了。');return;}
   fish.t+=dt;const was=fish.bite;fish.bite=fish.t>fish.at&&fish.t<fish.at+1.7;
   if(fish.bite&&!was){actKey='';noise(.25,700,.7,.3);say('有魚咬了！快按「拉！」');}
-  if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10);say('魚跑掉了。再等一下。');}
+  if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10)*(bag.rod?.5:1);say('魚跑掉了。再等一下。');}
   bobber.position.set(fish.x,fish.bite?-.06:.04+Math.sin(t*3)*.02,fish.z);}
 // --- things you can do with your body: wave at people, or dance (some of them join in) ---
 let emote='',emoteT=0,danceTick=0;
@@ -2387,7 +2387,7 @@ function talk(n){
 }
 // --- the shop ---
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
-const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],['好釣竿',90,()=>{bag.rod=true;},()=>bag.rod],
   ['家裡的盆栽',40,()=>{decorOwn.plant=1;showDecor();},()=>!homeOwned||decorOwn.plant],['家裡的掛畫',60,()=>{decorOwn.art=1;showDecor();},()=>!homeOwned||decorOwn.art],['家裡的金魚缸',90,()=>{decorOwn.tank=1;showDecor();},()=>!homeOwned||decorOwn.tank]];
 function shopMenu(line){
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;

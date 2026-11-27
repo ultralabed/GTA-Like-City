@@ -297,7 +297,7 @@ function talk(n){
 }
 // --- the shop ---
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
-const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],['好釣竿',90,()=>{bag.rod=true;},()=>bag.rod],
   ['家裡的盆栽',40,()=>{decorOwn.plant=1;showDecor();},()=>!homeOwned||decorOwn.plant],['家裡的掛畫',60,()=>{decorOwn.art=1;showDecor();},()=>!homeOwned||decorOwn.art],['家裡的金魚缸',90,()=>{decorOwn.tank=1;showDecor();},()=>!homeOwned||decorOwn.tank]];
 function shopMenu(line){
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
