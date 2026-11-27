@@ -90,8 +90,18 @@ function giftStep(){if(ride||onBus||talkN||quest&&quest.type==='race')return;
   for(const n of people){if(n.hidden||n.lie||n.react||n.like<4.6||gifted[n.o.name]||Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>4.5)continue;
     gifted[n.o.name]=1;const G=GIFTS[Object.keys(gifted).length%GIFTS.length];G[1]();stCash=cash;actKey='';sfxCoin();sfxBell();n.react={say:'這個送你，謝謝你一直這麼照顧我！',t:3.5,pose:'wave'};
     say('🎁 '+n.o.name+'把你當成最好的朋友，送你'+G[0]+G[2]+'。');return;}}
+// --- a good name pays you back: with rep 6 or more, a neighbour who sees you in a fix helps out (once a day) ---
+let helpDay=-1;
+function helpStep(){if(rep<6||helpDay===day||onBus||talkN||quest&&quest.type==='race')return;
+  const car=rides[0],dry=car.fuel<=.02&&Math.hypot(car.x-pos.x,car.z-pos.z)<7,soak=rain>.4&&!bag.umbrella&&!ride&&!roomAt(pos.x,pos.z),tired=stam<.25&&!ride&&!seat;
+  if(!dry&&!soak&&!tired)return;
+  const n=people.find(m=>!m.hidden&&!m.lie&&!m.react&&!m.guard&&m.like>=0&&m.goal&&Math.hypot(m.pos.x-pos.x,m.pos.z-pos.z)<6&&!roomAt(m.pos.x,m.pos.z));if(!n)return;
+  helpDay=day;stats.helped=(stats.helped||0)+1;actKey='';sfxBell();n.like=Math.min(5,n.like+.3);
+  if(dry){car.fuel=Math.max(car.fuel,.3);n.react={say:'沒油了？我家剛好有一桶，先加給你！',t:3.5,pose:'wave'};say('🤝 '+n.o.name+'看到你的車沒油，提了一桶油幫你加到 30%。你的名聲好，大家都願意幫你。');}
+  else if(soak){bag.umbrella=true;n.react={say:'下這麼大的雨怎麼沒帶傘！這把給你。',t:3.5,pose:'wave'};say('🤝 '+n.o.name+'送你一把雨傘（按 2 撐開）。你的名聲好，大家都願意幫你。');}
+  else{drinks++;n.react={say:'你看起來好累，這罐給你喝。',t:3.5,pose:'wave'};say('🤝 '+n.o.name+'看你很累，請你一罐飲料。你的名聲好，大家都願意幫你。');}}
 function trackStats(){
-  dailyStep();giftStep();shellStep(.25);buddyStep(.25);citizenStep();
+  dailyStep();giftStep();helpStep();shellStep(.25);buddyStep(.25);citizenStep();
   if(stLast){const d=Math.hypot(pos.x-stLast[0],pos.z-stLast[1]);if(d<12){if(ride)stats.drive+=d;else if(!onBus)stats.walk+=d;}}stLast=[pos.x,pos.z];
   if(stCash!=null&&cash>stCash){stats.earned+=cash-stCash;if(stQuest&&!quest)stats.jobs++;}stCash=cash;stQuest=quest;
   for(const B of BADGES)if(!stats.done[B[0]]&&B[1]()){stats.done[B[0]]=1;cash+=B[3];stCash=cash;sfxCoin();say('🏅 成就：'+B[2]+(B[3]?'！獎金 $'+B[3]+'。':'！'));break;}}
