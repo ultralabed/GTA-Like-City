@@ -103,6 +103,9 @@ const getGuide=()=>[
   [()=>Object.keys(fishGot).length<FISH.length,'釣魚圖鑑 '+Object.keys(fishGot).length+'/'+FISH.length+'。換地方、換白天晚上釣，會釣到不一樣的。'],
   [()=>daily.list.some(d=>!d.done),'今天的每日挑戰還沒做完，在「我的紀錄」可以看是哪三個。'],
   [()=>!isWeekend()&&day%7!==5,'週五、六、日晚上 6 點海邊有夜市；週六、日晚上 8 點有煙火。可以在設定把時間調快。'],
+  [()=>Object.keys(album).length<4,'按 P 進拍照模式，再按 Enter 拍照。把燈塔、碼頭、商店這些景點拍下來可以收進相簿（每張 $25）。'],
+  [()=>!bag.kite&&cash>=40,'商店有賣風箏（$40）。風大的時候到外面按 5 放風箏。'],
+  [()=>shells<3,'沙灘上有小貝殼，走過去就能撿起來換錢。'],
   [()=>people.filter(n=>n.like>=3).length<3,'多跟同一個人聊天、幫他忙、請他喝飲料，他會變成你的好朋友（♥♥♥），之後會來你家作客。']];
 function showGuide(){const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='接下來可以做什麼？';el.appendChild(h);

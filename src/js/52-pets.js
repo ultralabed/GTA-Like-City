@@ -64,6 +64,23 @@ function updateVendors(t){for(const n of vendors){const near=Math.hypot(n.vx-pos
     n.J.spine.rotation.z=Math.sin(t*1.3+n.vx)*.04;n.J.neck.rotation.y=Math.sin(t*.6+n.vx)*.5;n.J.ar.rotation.x=-1.0+Math.sin(t*3+n.vx)*.25;
     pv3.set(n.vx,2,-9.05).project(camera);const show=Math.hypot(n.vx-pos.x,-9.05-pos.z)<9&&pv3.z<1&&Math.abs(pv3.x)<1.1&&Math.abs(pv3.y)<1.1;n.tag.hidden=!show;
     if(show){n.tag.style.left=((pv3.x+1)/2*canvas.clientWidth)+'px';n.tag.style.top=((1-pv3.y)/2*canvas.clientHeight)+'px';const s=n.o.name+' · '+n.line;if(n.tag.textContent!==s)n.tag.textContent=s;}}}
+// --- the busker: Saturday and Sunday afternoons he plays guitar in the park. People walking by stop to listen; you can tip him ---
+const busker=(function(){const n=makePerson(person('吉他手阿樂',1.76,0xd2a27c,0x3a2a1a,0x7a4fd0,0x2a2a30,0x101010,false,null,null,.8,.9,{}));const X=21.2,Z=18.4;
+  n.root.position.set(X,n.stand,Z);n.root.rotation.y=Math.PI;n.root.visible=false;n.tag.hidden=true;n.bx=X;n.bz=Z;n.note=0;n.tips=0;n.beat=0;
+  const g=new THREE.Group();const body=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.09,14),new THREE.MeshStandardMaterial({color:0xc98a4a,roughness:.5}));body.rotation.x=Math.PI/2;g.add(body);
+  const neck=new THREE.Mesh(new THREE.BoxGeometry(.6,.05,.04),new THREE.MeshStandardMaterial({color:0x4a2f1a,roughness:.6}));neck.position.x=.45;g.add(neck);g.position.set(.02,.18,.2);g.rotation.z=.35;n.J.spine.add(g);
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(.8,1.8,.8),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=0;n.root.add(hit);
+  hit.userData={tip:'點一下：給街頭藝人 $5',act:()=>{if(!buskOn)return;if(Math.hypot(X-pos.x,Z-pos.z)>4){say('走近一點再打賞。');return;}if(cash<5){say('你身上不到 $5。');return;}
+    cash-=5;n.tips++;sfxCoin();addRep(n.tips===1||n.tips%4===0?1:0);n.thanks=3;say(n.tips===1?'你放了 $5 在吉他盒裡。阿樂對你點點頭，彈得更起勁了。附近的人也看到了。':'你又給了 $5。阿樂：「謝謝！這首送給你。」');}};interact.push(hit);return n;})();
+let buskOn=false,buskForce=false,buskTold=false;const BUSK_TUNE=[392,494,587,494,440,523,659,523,392,494,587,784,659,587,494,440];
+function updateBusker(dt,t){const n=busker,d=day%7;buskOn=buskForce||((d===6||d===0)&&clock>=14&&clock<17.5&&rain<.3);n.root.visible=buskOn&&Math.hypot(n.bx-pos.x,n.bz-pos.z)<70;if(!buskOn){n.tag.hidden=true;buskTold=false;return;}
+  if(!buskTold&&Math.hypot(n.bx-pos.x,n.bz-pos.z)<45){buskTold=true;say('公園裡有人在彈吉他。是街頭藝人阿樂，週末下午都會來。可以走過去聽，點他可以打賞 $5。');}
+  n.thanks=(n.thanks||0)-dt;n.beat-=dt;if(n.beat<=0){n.beat=n.thanks>0?.24:.34;const f=BUSK_TUNE[n.note++%BUSK_TUNE.length],v=.1*hear(n.bx,n.bz,26);tone(f,.3,v,'triangle');if(n.note%4===1)tone(f/2,.5,v*.8,'sine');}
+  n.J.ar.rotation.x=-1.05+Math.sin(t*11)*.22;n.J.er.rotation.x=-1.3;n.J.al.rotation.x=-.9;n.J.el.rotation.x=-1.5;n.J.spine.rotation.z=Math.sin(t*1.7)*.05;n.J.neck.rotation.x=Math.sin(t*3.4)*.08;
+  if(Math.random()<dt*.35){const m=people.find(q=>!q.hidden&&!q.react&&!q.lie&&q.phase==='go'&&q.mood>.3&&Math.hypot(q.pos.x-n.bx,q.pos.z-n.bz)<7&&!(q.heardAt&&q.heardAt>t-40));
+    if(m){m.heardAt=t;react(m,m.o.playful>.5?'這首我喜歡！':'彈得真好聽。',3.2,null);m.mood=Math.min(1,m.mood+.06);m.need.fun=Math.min(1,m.need.fun+.08);m.need.calm=Math.min(1,m.need.calm+.05);}}
+  pv3.set(n.bx,2,n.bz).project(camera);const show=n.root.visible&&Math.hypot(n.bx-pos.x,n.bz-pos.z)<12&&pv3.z<1&&Math.abs(pv3.x)<1.1&&Math.abs(pv3.y)<1.1;n.tag.hidden=!show;
+  if(show){n.tag.style.left=((pv3.x+1)/2*canvas.clientWidth)+'px';n.tag.style.top=((1-pv3.y)/2*canvas.clientHeight)+'px';const s=n.o.name+' · '+(n.thanks>0?'謝謝！♪♪':'♪ 彈吉他');if(n.tag.textContent!==s)n.tag.textContent=s;}}
 // --- seagulls: a few of them wheel over the beach by day; a loud bang (thunder, fireworks) sends them off for a while ---
 const gulls=[];let gullAway=0,gullCry=6;
 {const wm=new THREE.MeshBasicMaterial({color:0xf2f2ee,side:THREE.DoubleSide}),wg=new THREE.PlaneGeometry(.55,.16);wg.translate(.275,0,0);
