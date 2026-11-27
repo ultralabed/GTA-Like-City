@@ -119,6 +119,8 @@ const getGuide=()=>[
   [()=>stats.done.bday&&!stats.done.beach,'回商店櫃台接第二個故事「淨灘日」（$90）。'],
   [()=>stats.done.beach&&!stats.done.lunch,'回商店櫃台接第三個故事「愛心便當」（$150）。'],
   [()=>stats.done.lunch&&!stats.done.bottle,'回商店櫃台接第四個故事「漂流瓶」，要開船（$200）。'],
+  [()=>stats.done.bottle&&!stats.done.garden,'回商店櫃台接第五個故事「公園花圃」，種好的花會一直留著（$130）。'],
+  [()=>stats.done.garden&&!stats.done.meteor,'回商店櫃台接第六個故事「流星之夜」，要等天黑、開船去燈塔島（$180）。'],
   [()=>busTrips+taxiTrips<1,'在公車站等公車停下來按 F 搭車（$5），或在大馬路邊按 T 招計程車。'],
   [()=>fishCount<1,'走到海邊或碼頭上按 G 釣魚，釣到的魚可以拿去商店賣。'],
   [()=>!isleSeen,'小船停在碼頭旁邊。開船往西北邊去，有一座燈塔島可以上去。'],
@@ -266,12 +268,32 @@ const STORIES=[
       {at:[34,-40],r:6,col:0x9fe0c8,big:1.4,text:'漂流瓶 1/3：開船到碼頭東北邊的海上，撈起漂流瓶（靠近發亮的地方，慢下來）',done:'你撈起瓶子，裡面的紙條寫著：「往西北邊開，有一座燈塔島，島上有一個舊木箱，是我小時候藏的。」'},
       {at:[-52.5,-47],col:0x8a5a34,big:3.2,text:'漂流瓶 2/3：照紙條說的，往西北邊開到燈塔島，把船停在島邊，上島找舊木箱',done:'找到了！木箱裡有一張發黃的照片，是好多年前的夕陽街，還有一枚舊硬幣。'},
       {at:[20.2,-22.6],r:2.4,col:0xd8a93a,big:1.2,text:'漂流瓶 3/3：把船開回碼頭，下船走到碼頭盡頭',done:'你帶著瓶子和木箱回到碼頭。去找'+w.o.name+'，給他看。'}],
-    ask:'你看我在海上找到什麼',thanks:'這…這是我小時候跟朋友一起藏的！我都忘了。照片上這個小孩就是我。謝謝你把它找回來，這枚硬幣送你當紀念。',cheer:()=>'哇，是好久以前的夕陽街！',end:w=>w.o.name+'看著老照片，眼睛紅紅的。'}];
+    ask:'你看我在海上找到什麼',thanks:'這…這是我小時候跟朋友一起藏的！我都忘了。照片上這個小孩就是我。謝謝你把它找回來，這枚硬幣送你當紀念。',cheer:()=>'哇，是好久以前的夕陽街！',end:w=>w.o.name+'看著老照片，眼睛紅紅的。'},
+  {id:'garden',menu:'小芳：公園想種花…',reward:130,who:()=>people.slice().sort((a,b)=>b.o.calm-a.o.calm)[0],name:'公園花圃',
+    intro:w=>'公園只有草，有點單調。'+w.o.name+'一直說想要有花。我這裡有三包花種子，你可以幫忙種在公園裡嗎？種子要先澆水才會發芽，所以先去加油站旁邊的水龍頭裝水。種好跟'+w.o.name+'說一聲，我給你 $130。花會一直開在那裡喔。',
+    steps:w=>[{at:[27.2,14.6],col:0x7fc4e8,big:1.5,text:'公園花圃 1/4：去加油機旁邊裝一桶水',done:'你裝了滿滿一桶水。提著去公園吧。'}].concat(GARDEN.map((g,k)=>({at:[g[0],g[1]+.9],col:g[2],big:1.4,text:'公園花圃 '+(k+2)+'/4：到公園，把'+g[3]+'種子種下去（小雷達橘點的位置）',done:'你挖了小洞、放種子、澆水。'+g[3]+'馬上冒出來了！'+(k<2?'':'三塊花圃都種好了，去找'+w.o.name+'。')}))),
+    ask:'公園的花我種好了',thanks:'真的嗎？我剛剛就覺得公園怎麼香香的！以後散步都看得到花了，謝謝你。',cheer:()=>'公園有花了，好漂亮！',end:w=>'公園多了三塊花圃，會一直開著。'},
+  {id:'meteor',menu:'小芳：今晚有流星…',reward:180,who:()=>people.slice().sort((a,b)=>b.o.playful-a.o.playful)[0],name:'流星之夜',
+    intro:w=>'新聞說今天晚上有流星！'+w.o.name+'好想看，可是街上路燈太亮看不到。燈塔島那邊最暗。你可以帶我的相機，晚上開船去島上拍一張流星的照片嗎？相機放在碼頭盡頭的箱子上。要等天黑（晚上 8 點以後）才拍得到。拍到拿給'+w.o.name+'看，我給你 $180。',
+    steps:w=>[
+      {at:[20.2,-22.6],r:2.4,col:0x30343c,big:1.2,text:'流星之夜 1/3：走到碼頭盡頭，拿小芳的相機',done:'你拿到相機了。開船去西北邊的燈塔島，等天黑。'},
+      {at:[-52.5,-47],col:0xfff2a8,big:1.6,when:()=>dark>.75,wait:'流星之夜 2/3：你到燈塔島了，但是天還太亮。等到晚上 8 點以後（可以在島上坐著等，或回家睡到晚上）',text:'流星之夜 2/3：天黑以後，開船到燈塔島，上島拍流星',done:'咻——！一顆好亮的流星劃過天空，你按下快門。拍到了！'},
+      {at:[20.2,-22.6],r:2.4,col:0x30343c,big:1.2,text:'流星之夜 3/3：把船開回碼頭，下船走到碼頭盡頭',done:'你回到碼頭了。去找'+w.o.name+'，給他看照片。'}],
+    ask:'你看，我拍到流星了',thanks:'哇——！真的是流星！尾巴好長！我要把這張貼在房間牆上。謝謝你半夜還跑那麼遠！',cheer:()=>'是流星耶！好亮！',end:w=>w.o.name+'抱著照片跳來跳去。'}];
+// --- the park flower beds: they grow as you plant them in the 'garden' story, and then stay for good ---
+const GARDEN=[[16.6,22.6,0xff6f91,'粉紅色的花'],[26.3,19.9,0xffd24a,'黃色的花'],[17.5,17.5,0xb48cff,'紫色的花']],gardenBeds=[];
+{const soil=new THREE.MeshStandardMaterial({color:0x5a3d28,roughness:1}),stemM=new THREE.MeshStandardMaterial({color:0x3f8f45,roughness:.8}),stemG=new THREE.CylinderGeometry(.015,.02,.3,5),headG=new THREE.SphereGeometry(.07,7,5),d=new THREE.Object3D();
+  for(const g of GARDEN){const G=new THREE.Group();G.position.set(g[0],0,g[1]);G.visible=false;const bed=new THREE.Mesh(new THREE.CylinderGeometry(.75,.8,.08,14),soil);bed.position.y=.04;bed.receiveShadow=true;G.add(bed);
+    const st=new THREE.InstancedMesh(stemG,stemM,12),hd=new THREE.InstancedMesh(headG,new THREE.MeshStandardMaterial({color:g[2],roughness:.6}),12);
+    for(let i=0;i<12;i++){const a=i*2.4,r=.12+.05*i,h=.8+.5*((i*7)%5)/5;d.position.set(Math.cos(a)*r,.08+.15*h,Math.sin(a)*r);d.scale.set(1,h,1);d.updateMatrix();st.setMatrixAt(i,d.matrix);d.position.y=.08+.3*h+.03;d.scale.setScalar(.8+.4*((i*3)%4)/4);d.updateMatrix();hd.setMatrixAt(i,d.matrix);}
+    hd.castShadow=true;G.add(st,hd);scene.add(G);gardenBeds.push(G);}}
+function gardenStep(){const q=quest,on=q&&q.type==='story'&&q.S.id==='garden';gardenBeds.forEach((G,i)=>{G.visible=!!stats.done.garden||!!on&&q.i>i+1;});}
 // --- a little story in steps: go to each place in turn, then talk to the person it is all for ---
-function storyQuest(){const q=quest;if(!q||q.type!=='story')return;
+function storyQuest(){gardenStep();const q=quest;if(!q||q.type!=='story')return;
   if(q.i>=q.steps.length){q.text=q.S.name+'：去找'+q.who.o.name+'，跟他說話'+(q.who.hidden?'（他現在不在街上，可能去上班了，等他回來）':'');return;}
   const s=q.steps[q.i];
   if(ride&&Math.abs(ride.v)>(s.r?4:2)||onBus||Math.hypot(pos.x-s.at[0],pos.z-s.at[1])>(s.r||2.2))return;
+  if(s.when&&!s.when()){q.text=s.wait;return;}
   q.i++;sfxCoin();say(s.done);q.text=q.i<q.steps.length?q.steps[q.i].text:q.S.name+'：去找'+q.who.o.name+'，跟他說話';}
 // --- ten hidden stars: tucked away at the edges of the map (two of them out at sea), to reward looking around ---
 const STARS=[[-36,-9.5],[31,-10],[-36.9,-4],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-50.5,-58.5]],starGot={},starM=[];
