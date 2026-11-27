@@ -35,6 +35,14 @@ const puddles=new THREE.Group();puddles.visible=false;scene.add(puddles);
 {let sd=7;const r=()=>(sd=(sd*16807)%2147483647)/2147483647,S=WORLD.street;
   for(let i=0;i<26;i++){const m=new THREE.Mesh(new THREE.CircleGeometry(1,14),puddleMat);m.rotation.x=-Math.PI/2;
     m.position.set(-36+r()*80,.016,i%4===0?(i%8===0?S.z0-1:S.z1+1)+(r()-.5)*.8:S.z0+.8+r()*(S.z1-S.z0-1.6));m.scale.set(.5+r()*1.1,.35+r()*.7,1);m.rotation.z=r()*3;m.renderOrder=2;puddles.add(m);}}
+// the night market: Friday, Saturday and Sunday evenings from 6 to 10, down by the beach, unless it rains
+let marketOn=false,marketForce=false,marketTold=false;
+function marketStep(){const d=day%7;marketOn=marketForce||((d===5||d===6||d===0)&&clock>=18&&clock<22&&!rainOn);
+  const k=marketOn?1:0;lanternMat.color.setRGB(.35+k*5.5,.23+k*2.6,.19+k*.7);
+  if(marketOn&&!marketTold){marketTold=true;say('夜市開張了！海邊（碼頭東邊）的兩個攤位亮起燈籠，賣烤玉米和珍珠奶茶。週五、六、日晚上 6 點到 10 點。');}if(!marketOn)marketTold=false;}
+function marketBuy(mk){if(!marketOn){say('這個攤位是夜市的，現在沒開。週五、六、日晚上 6 點到 10 點再來（下雨不開）。');return;}
+  const price=mk===1?12:18;if(cash<price){say((mk===1?'烤玉米':'珍珠奶茶')+'要 $'+price+'，你的錢不夠。');return;}cash-=price;sfxCoin();
+  if(mk===1){stam=Math.min(1,stam+.5);say('你買了一根烤玉米（$12），熱熱的好香。體力恢復了一半。');}else{drinks++;actKey='';say('你買了一杯珍珠奶茶（$18），放進背包。可以自己喝（按 3），也可以請別人喝。');}}
 // wind: a gentle breeze most days, stronger in rain, strongest in a storm. It leans the rain and pushes light balls about
 let windX=0,windZ=0,windS=0,windDir=rnd(0,6.28),windGoal=1,windT=0,windForce=-1,toldWind=false;
 function windStep(dt){windT-=dt;if(windT<=0){windT=rnd(15,40);windGoal=storm?rnd(7,11):rainOn?rnd(3,6):Math.random()<.2?rnd(4,6.5):rnd(0,2.2);windDir+=rnd(-.8,.8);}
@@ -86,7 +94,7 @@ function splashStep(dt){
     if(!toldSplash){toldSplash=true;say('嘩啦！你衝過水坑，水往兩邊噴。'+(hit?'':'旁邊有人的話會被濺濕，他會不高興。'));}
     return;}}
 function updateWeather(dt){
-  splashStep(dt);bowStep(dt);fwStep(dt);windStep(dt);
+  splashStep(dt);bowStep(dt);fwStep(dt);windStep(dt);marketStep();
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}

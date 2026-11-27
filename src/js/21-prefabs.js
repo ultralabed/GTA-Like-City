@@ -219,14 +219,15 @@ PREFAB.vending=()=>{
   return{solid:[[-.52,.52,-.37,.37]],boxes:[[-.5,.5,0,1.9,-.35,.35]]};
 };
 // street-food stall with two stools. You eat facing -z (toward the stall). Click the counter to buy a snack.
-PREFAB.stall=()=>{
-  box(2.2,.9,.7,M.coral,0,.45,-.6,{r:.03});box(2.3,.05,.8,M.ceramic,0,.925,-.6);
+PREFAB.stall=o=>{const mk=o&&o.market;
+  box(2.2,.9,.7,mk?[M.teal,M.brass][mk-1]||M.coral:M.coral,0,.45,-.6,{r:.03});box(2.3,.05,.8,M.ceramic,0,.925,-.6);
   [-1.05,1.05].forEach(x=>cyl(.03,.03,2.3,M.steel,x,1.15,-.95,8));
-  const aw=box(2.6,.06,1.5,M.teal,0,2.3,-.45);aw.rotation.x=.12;
+  const aw=box(2.6,.06,1.5,mk?M.coral:M.teal,0,2.3,-.45);aw.rotation.x=.12;
+  if(mk){for(let i=0;i<5;i++){const L=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),lanternMat);L.position.set(-1.1+i*.55,2.05,.28);L.scale.y=1.25;cur.add(L);}}   // a string of paper lanterns: lit when the night market is open
   [-.5,0,.5].forEach((x,i)=>cyl(.12,.1,.1,[M.brass,M.ceramic,M.terracotta][i],x,1,-.6,14));
-  const till=box(.3,.2,.25,M.black,.85,1.05,-.6,{r:.02});till.userData={tip:'點一下：買點心（$15）',act:buySnack};interact.push(till);
+  const till=box(.3,.2,.25,M.black,.85,1.05,-.6,{r:.02});till.userData=mk?{tip:mk===1?'點一下：夜市烤玉米（$12，開張時才賣）':'點一下：夜市珍珠奶茶（$18，開張時才賣）',act:()=>marketBuy(mk)}:{tip:'點一下：買點心（$15）',act:buySnack};interact.push(till);
   const seat=x=>{cyl(.17,.17,.05,M.walnut,x,.5,.25,16);cyl(.03,.04,.5,M.steel,x,.25,.25,8);
-    return{type:'eat',ap:[x,.95],an:[x,.58,.25],yaw:Math.PI,pose:'eat',label:'在小吃攤吃東西',pub:true};};
+    return{type:'eat',ap:[x,.95],an:[x,.58,.25],yaw:Math.PI,pose:'eat',label:mk?'在夜市吃東西':'在小吃攤吃東西',pub:true,market:!!mk};};
   return{solid:[[-1.15,1.15,-1,-.2],[-.7,-.3,.05,.45],[.3,.7,.05,.45]],boxes:[[-1.1,1.1,0,.95,-.95,-.25],[-1.3,1.3,2.25,2.35,-1.2,.3]],spots:[seat(-.5),seat(.5)]};
 };
 // bus stop: a sign, a little shelter and a bench. People wait in front of it (+z, toward the road).

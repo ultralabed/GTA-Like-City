@@ -6,7 +6,7 @@ const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
-const decorG={},treeTops=[];let flagMesh=null;
+const decorG={},treeTops=[];const lanternMat=new THREE.MeshBasicMaterial({color:0x5a3a30});let flagMesh=null;
 let root=scene;              // where new furniture groups go
 const marks={streetLamp:[],item:[],hoop:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open

@@ -154,7 +154,7 @@ const WORLD={
     {type:'vending',x:16.2,z:15.75,rot:2},{type:'vending',x:-7.4,z:3.45},
     {type:'pump',x:28,z:13.5,rot:2},
     {type:'flag',x:-25,z:13.5},                                         // the start line of the time trial                                    // the petrol pump: stop your car beside it
-    {type:'stall',x:23.5,z:16.2,rot:2},{type:'hoop',x:19.2,z:23.4,rot:2},
+    {type:'stall',x:23.5,z:16.2,rot:2},{type:'stall',x:25.2,z:-7.6,market:1},{type:'stall',x:29.4,z:-7.6,market:2},   // the last two are the night market, down by the beach{type:'hoop',x:19.2,z:23.4,rot:2},
     {type:'bench',x:19.5,z:16.4},{type:'bench',x:22.6,z:19.6,rot:3},
     // bus stops: where people leave for work and come back
     {type:'busStop',x:-21.8,z:4.7,dir:-1},                           // dir = which way that stop's bus is heading (-1 = toward -x)

@@ -32,7 +32,7 @@ const onShift=n=>inSpan(n.o.shift,clock)&&(n.visitor||n.o.job||!isWeekend());
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
   const type=id==='work'&&n.o.job?'serve':GOALS[id].type;let best=null,bs=-1e9;   // someone with a job on the street works there instead of leaving
-  for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;
+  for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;if(A.market&&!marketOn)continue;                       // the night market stalls only serve when it is open
     if(A.house!=null&&A.house!==n.home&&!A.pub&&type!=='serve')continue;                         // other people's houses are off limits
     if(!A.shared){let taken=!!seat&&seat.k===k;                           // you might be sitting there
       for(const m of people){if(m===n||!m.want)continue;const O=ACT[m.want];
@@ -51,6 +51,7 @@ function utility(n,id){
   if(id==='work')return onShift(n)?5:-1;
   if(id==='guest'){const r=roomAt(pos.x,pos.z);                           // friends drop in, but only while you are at home, in the daytime
     if(!homeOwned||n.like<3||n.guard||n.o.job||clock<10||clock>20.5||!r||!r.house.lot.forSale||!freeAct(n,id)||n.cool[id]>0)return -1;return 1.3+n.like*.1;}
+  if(id==='eatout'&&marketOn&&!rainOn&&n.need.food<.8&&!n.cool[id]&&freeAct(n,id))return 1.6+Math.random()*.4;   // market night: most people fancy a bite out
   if(id==='watch'&&(!fwOn||rainOn))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
