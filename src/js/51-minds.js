@@ -23,6 +23,7 @@ const GOALS={                                                           // type 
   watch:{label:'去海邊看煙火',type:'watch',need:'fun',gain:.8,dur:.9,outside:true,also:'calm'},
   guest:{label:'去你家作客',type:'guest',need:'fun',gain:1.1,dur:.35,also:'calm'},
   kite:{label:'去沙灘放風箏',type:'kiteSpot',need:'fun',gain:1.3,dur:.5,outside:true,also:'calm'},
+  picnic:{label:'去野餐',type:'picnic',need:'food',gain:1.5,dur:.7,outside:true,also:'fun'},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
   lift:{label:'等你開車載他',type:'lift'}
@@ -55,6 +56,8 @@ function utility(n,id){
     if(!homeOwned||n.like<3||n.guard||n.o.job||clock<10||clock>20.5||!r||!r.house.lot.forSale||!freeAct(n,id)||n.cool[id]>0)return -1;return 1.3+n.like*.1;}
   if(id==='eatout'&&marketOn&&!rainOn&&n.need.food<.8&&!n.cool[id]&&freeAct(n,id))return 1.6+Math.random()*.4;   // market night: most people fancy a bite out
   if(id==='kite'){if(windS<4||rainOn||dark>.5||n.cool[id]>0||!freeAct(n,id))return -1;return (.9+n.o.playful*.9)*(1-n.need.fun*.5);}   // a breezy day: the playful ones fancy flying a kite
+  if(id==='picnic'){if(!isWeekend()||clock<10.5||clock>15.5||rainOn||windS>7||n.cool[id]>0||!freeAct(n,id))return -1;   // a weekend lunchtime outing; more tempting when someone from home is already going
+    return .9+(1-n.need.food)*.6+(mates(n).some(m=>m.goal&&m.goal.id==='picnic')?1.2:0);}
   if(id==='watch'&&(!fwOn||rainOn))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
@@ -78,7 +81,8 @@ function choose(n){
 }
 function endGoal(n,ok){if(n.visitor&&n.goal.id==='work'){n.stay=rnd(1,2.2);for(const k in n.need)n.need[k]=rnd(.25,.6);n.need.energy=1;}   // a visitor arriving: fresh, with things they feel like doing
   const was=n.goal.id;if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=.6;}n.goal=null;choose(n);
-  if(ok&&was==='kite')react(n,'風箏飛得好高，真過癮！',1.8,null);
+  if(ok&&was==='picnic')react(n,'吃飽了，在外面吃東西特別香。',1.8,null);
+  else if(ok&&was==='kite')react(n,'風箏飛得好高，真過癮！',1.8,null);
   else if(ok&&was==='guest'){const k=Object.keys(decorOwn).length;n.like=Math.min(5,n.like+.3);react(n,k>=3?'你家佈置得好漂亮！我最喜歡那個金魚缸。':k?'你家越來越有樣子了！':'謝謝招待！你家還有點空，可以去商店買些擺設。',2.6,'wave');}
   else if(ok&&was==='fish')react(n,Math.random()<.7?'釣到一條魚了！':'今天魚都不咬…',1.8,null);else if(ok&&was==='hoops')react(n,'呼，投得真過癮。',1.5,null);}
 function brain(n,dt){
@@ -169,6 +173,7 @@ function pose(P,name,n,t){
   if(name==='walk'){const w=Math.sin(n.ph);P.hlx=-w*.55;P.hrx=w*.55;P.klx=Math.max(0,Math.sin(n.ph+.9))*.9;P.krx=Math.max(0,Math.sin(n.ph+.9+Math.PI))*.9;
     P.alx=w*.45;P.arx=-w*.45;P.elx=P.erx=-.3;P.sx=.05;P.yo=Math.abs(Math.cos(n.ph))*.02-.02;}
   else if(name==='eat'){P.hlx=P.hrx=-1.5;P.klx=P.krx=1.45;P.sx=.06;P.alx=-.45;P.elx=-.7;P.arx=-1.2+Math.sin(t*3)*.25;P.erx=-1.9+Math.sin(t*3)*.3;P.nx=.12;}   // sitting, one hand going to the mouth
+  else if(name==='ground'){P.hlx=P.hrx=-1.5;P.klx=.25;P.krx=.1;P.sx=-.2;P.alx=-.5;P.arx=-.9+Math.sin(t*1.1+n.stand*4)*.25;P.elx=-.5;P.erx=-1.3;P.ny=Math.sin(t*.4+n.stand*9)*.4;}   // sitting on the ground, legs out, nibbling
   else if(name==='sit'){P.hlx=P.hrx=-1.5;P.klx=P.krx=1.45;P.sx=-.14;P.alx=P.arx=-.45;P.elx=P.erx=-.7;P.nx=.08;}
   else if(name==='lie'){P.alz=.14;P.arz=-.14;P.sx=0;P.yo=Math.sin(t*1.1)*.006;}
   else if(name==='dance'){const b=t*6+n.stand*5;P.yo=Math.abs(Math.sin(b))*.04-.03;P.sz=Math.sin(b*.5)*.13;P.alx=-2.4+Math.sin(b)*.4;P.arx=-2.4+Math.sin(b+1.5)*.4;
@@ -233,7 +238,7 @@ function updNPC(n,dt,t){
     if(A.bus)label='等公車';
     if(n.phase==='at'&&A.hide&&(!A.bus||busAt(A.bus))){n.hidden=true;n.root.visible=false;n.tag.hidden=true;return;}   // gets on when the bus has stopped
   }
-  n.lie=lie;n.sit=name==='sit'||name==='eat';
+  n.lie=lie;n.sit=name==='sit'||name==='eat'||name==='ground';
   n.vx=(n.pos.x-ox)/dt;n.vz=(n.pos.z-oz)/dt;
   n.yaw+=angDiff(tyaw,n.yaw)*(1-Math.exp(-dt*8));
   n.y+=(ty-n.y)*(1-Math.exp(-dt*6));

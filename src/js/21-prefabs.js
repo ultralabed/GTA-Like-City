@@ -203,6 +203,13 @@ PREFAB.flag=()=>{                                                          // a 
   f.userData={tip:'點一下：計時賽的起點（要先坐上車、機車或腳踏車）',act:()=>startRace()};interact.push(f);
   return{solid:[[-.08,.08,-.08,.08]]};
 };
+PREFAB.blanket=()=>{                                                       // a picnic blanket with a basket: two can sit on it
+  const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');for(let i=0;i<4;i++)for(let j=0;j<4;j++){g.fillStyle=(i+j)%2?'#e9e2d6':'#d9463b';g.fillRect(i*16,j*16,16,16);}
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;const m=new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.9),new THREE.MeshStandardMaterial({map:t,roughness:.95}));m.rotation.x=-Math.PI/2;m.position.y=.02;m.receiveShadow=true;cur.add(m);
+  box(.42,.26,.3,M.walnut,0,.15,-.55,{r:.04});cyl(.09,.09,.04,M.ceramic,-.35,.05,.1,12);cyl(.09,.09,.04,M.ceramic,.35,.05,.1,12);
+  const seat=(x,yaw)=>({type:'picnic',ap:[x*1.9,.2],an:[x,.2,.25],yaw,pose:'ground',label:'在野餐'});
+  return{spots:[seat(-.75,Math.PI/2),seat(.75,-Math.PI/2)]};
+};
 PREFAB.parking=o=>{flat(2.8,5.8,M.concrete,0,-.011,0,1.4);flat(1.2,1.4,M.concrete,0,-.011,3.5,1.2);
   return{spots:[{type:'exit',ap:[1.75,1.4],yaw:-Math.PI/2,pose:'idle',hide:true,only:o.owner,car:true,label:'開車去上班'}],marks:[{kind:'parking',x:0,z:0,owner:o.owner}]};};
 PREFAB.pump=()=>{

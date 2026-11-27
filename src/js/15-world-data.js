@@ -169,6 +169,7 @@ const WORLD={
     {type:'spot',kind:'lift',chase:true,lift:true,pose:'idle',shared:true,label:'等你開車載他'},
     // places to walk to
     {type:'spot',kind:'watch',x:-9,z:-8.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-6,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-2.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:0.5,z:-9.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:4.5,z:-8.7,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:7,z:-9.5,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:10.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:13.5,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},
+    {type:'blanket',x:23.6,z:21.2},{type:'blanket',x:-6.5,z:-8.6,rot:1},{type:'blanket',x:12.5,z:-8.9},
     {type:'spot',kind:'kiteSpot',x:-22,z:-9.4,yaw:Math.PI,pose:'fish',label:'在沙灘放風箏'},{type:'spot',kind:'kiteSpot',x:33.5,z:-9.6,yaw:Math.PI,pose:'fish',label:'在沙灘放風箏'},
     {type:'spot',kind:'fishing',x:20.2,z:-23.7,yaw:Math.PI,pose:'fish',shared:true,label:'在碼頭釣魚'},{type:'rod',x:20.2,z:-24.3},
     {type:'spot',kind:'stroll',x:19.6,z:-20,yaw:Math.PI/2,pose:'window',shared:true,label:'在碼頭上看海'},
