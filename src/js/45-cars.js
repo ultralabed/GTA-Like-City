@@ -169,7 +169,9 @@ function updateCars(dt){
     const hx=Math.abs(fx)*c.hl+Math.abs(fz)*c.hw+.05,hz=Math.abs(fz)*c.hl+Math.abs(fx)*c.hw;
     c.box[0]=c.x-hx;c.box[1]=c.x+hx;c.box[2]=c.z-hz;c.box[3]=c.z+hz;
     carLights(c,want<c.v-.5);
-    c.tag.hidden=c.honk<=0;
-    if(c.honk>0){cv3.set(c.x,2,c.z).project(camera);if(cv3.z<1){c.tag.style.left=((cv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-cv3.y)/2*canvas.clientHeight)+'px';}else c.tag.hidden=true;}
+    const stopd=c.bus&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<28;                     // a bus at its stop shows which line it is
+    c.tag.hidden=c.honk<=0&&!stopd;
+    {const txt=c.honk>0?'叭叭！':c.line?(c.served2?'南線 · 第二條馬路站':'南線 · 往第二條馬路 →'):c.busDir>0?'公車 · 往東 →':'公車 · ← 往西';if(!c.tag.hidden&&c.tag.textContent!==txt)c.tag.textContent=txt;}
+    if(c.honk>0||stopd){cv3.set(c.x,2,c.z).project(camera);if(cv3.z<1){c.tag.style.left=((cv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-cv3.y)/2*canvas.clientHeight)+'px';}else c.tag.hidden=true;}
   }
 }
