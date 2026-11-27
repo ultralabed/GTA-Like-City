@@ -54,6 +54,39 @@ function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   for(const F of FISH){const p=document.createElement('p'),g2=fishGot[F[0]];p.textContent=g2?'🐟 '+F[0].replace(/^一[隻條]/,'')+' ×'+g2+(F[1]?'（$'+F[1]+'）':''):'❔ ？？？（線索：'+FISH_HINT[F[0]]+'）';p.style.opacity=g2?1:.6;p.style.margin='2px 0';box.appendChild(p);}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
 $('bStats').onclick=showStats;
+// --- "what next?": a short list of things you have not done yet, most useful first ---
+const getGuide=()=>[
+  [()=>stats.jobs<1,'跟街上的人說話（點他），選「需要幫忙嗎？」接第一個任務賺錢。'],
+  [()=>stats.drive<50,'黃色的車停在 1 號前面，走過去按 F 上車，W A S D 開車。'],
+  [()=>!bag.flashlight||!bag.umbrella,'手電筒和雨傘放在每間房子的大門旁邊，走近按 E 撿起來。'],
+  [()=>paperDay!==day&&clock>=9&&clock<20,'去夕陽商店櫃台（8 號）接今天的「送報紙」，最多賺 $100。'],
+  [()=>!stats.done.bday,'夕陽商店櫃台有「小芳有事想拜託你…」，是第一個有故事的任務（$120）。'],
+  [()=>stats.done.bday&&!stats.done.beach,'回商店櫃台接第二個故事「淨灘日」（$90）。'],
+  [()=>stats.done.beach&&!stats.done.lunch,'回商店櫃台接第三個故事「愛心便當」（$150）。'],
+  [()=>stats.done.lunch&&!stats.done.bottle,'回商店櫃台接第四個故事「漂流瓶」，要開船（$200）。'],
+  [()=>busTrips+taxiTrips<1,'在公車站等公車停下來按 F 搭車（$5），或在大馬路邊按 T 招計程車。'],
+  [()=>fishCount<1,'走到海邊或碼頭上按 G 釣魚，釣到的魚可以拿去商店賣。'],
+  [()=>!isleSeen,'小船停在碼頭旁邊。開船往西北邊去，有一座燈塔島可以上去。'],
+  [()=>!raceBest,'大馬路西邊有黑白格子旗，把車開過去按 B 可以比計時賽。'],
+  [()=>!seaBest&&isleSeen,'碼頭盡頭外面的紅色浮標旁邊，開船按 B 可以比海上計時賽。'],
+  [()=>!bag.board&&cash>=120,'你的錢夠買滑板了（商店 $120），溜起來比跑步快又不累。'],
+  [()=>!homeOwned&&cash>=500,'你的錢夠買房子了！大馬路西南角黃色門的 14 號，點門就能買（$500）。'],
+  [()=>!homeOwned&&cash<500,'存到 $500 可以買下 14 號當自己的家（現在有 $'+cash+'）。'],
+  [()=>homeOwned&&Object.keys(decorOwn).length<3,'你有家了！商店現在多賣盆栽、掛畫、金魚缸，買來佈置客廳。'],
+  [()=>carUp.eng<2&&cash>=160,'把車停在綠色加油機旁邊按 U，可以升級引擎讓車子更快。'],
+  [()=>Object.keys(starGot).length<STARS.length,'地圖角落藏了 '+STARS.length+' 顆發亮的星星，你找到 '+Object.keys(starGot).length+' 顆了。兩顆要開船。'],
+  [()=>Object.keys(fishGot).length<FISH.length,'釣魚圖鑑 '+Object.keys(fishGot).length+'/'+FISH.length+'。換地方、換白天晚上釣，會釣到不一樣的。'],
+  [()=>daily.list.some(d=>!d.done),'今天的每日挑戰還沒做完，在「我的紀錄」可以看是哪三個。'],
+  [()=>!isWeekend()&&day%7!==5,'週五、六、日晚上 6 點海邊有夜市；週六、日晚上 8 點有煙火。可以在設定把時間調快。'],
+  [()=>people.filter(n=>n.like>=3).length<3,'多跟同一個人聊天、幫他忙、請他喝飲料，他會變成你的好朋友（♥♥♥），之後會來你家作客。']];
+function showGuide(){const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
+  const h=document.createElement('strong');h.textContent='接下來可以做什麼？';el.appendChild(h);
+  const box=document.createElement('div');box.style.cssText='max-height:42vh;overflow:auto;margin:6px 0;flex:1 1 100%;width:100%';el.appendChild(box);
+  const L=getGuide().filter(g=>{try{return g[0]();}catch(e){return false;}}).slice(0,6);
+  if(!L.length){const p=document.createElement('p');p.textContent='你幾乎什麼都做過了！可以挑戰計時賽的金牌，或是到處逛逛，看看居民今天在忙什麼。';box.appendChild(p);}
+  L.forEach((g,i)=>{const p=document.createElement('p');p.textContent=(i+1)+'. '+g[1];p.style.margin='5px 0';box.appendChild(p);});
+  const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
+$('bGuide').onclick=showGuide;
 // --- the full list of keys, grouped by what you are doing ---
 const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／第三人稱、滑鼠轉頭、Esc 放開滑鼠'],
   ['手上的東西','E 撿起／放下、點畫面 丟出去、1 手電筒、2 雨傘、3 喝飲料、4 滑板、M 手機地圖'],
