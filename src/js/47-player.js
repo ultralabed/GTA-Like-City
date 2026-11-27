@@ -111,9 +111,13 @@ const nearSeat=()=>nearSpot('sit'),nearBed=()=>nearSpot('lie');
 function sitDown(){const k=nearSeat();if(!k)return;seat={k,A:ACT[k]};vel.x=vel.z=0;yaw=seat.A.yaw+Math.PI;pitch=-.05;}   // face the way the seat faces
 // lying down: time runs fast until morning (or until you move), and you wake up rested
 let napSpeed=-1;
-function lieDown(){const k=nearBed();if(!k)return;seat={k,A:ACT[k],lie:true};vel.x=vel.z=0;pitch=1.15;napSpeed=speedIdx;speedIdx=2;$('bSpeed').textContent='時間：'+SPEEDS[2][1];
+let napFrom=0;
+function lieDown(){const k=nearBed();if(!k)return;seat={k,A:ACT[k],lie:true};napFrom=clock;vel.x=vel.z=0;pitch=1.15;napSpeed=speedIdx;speedIdx=2;$('bSpeed').textContent='時間：'+SPEEDS[2][1];
   say('你躺下來睡覺了。時間會過得很快，早上 7 點會自己醒來；動一下也會醒。');}
-function standUp(){if(!seat)return;if(seat.lie){speedIdx=napSpeed<0?1:napSpeed;$('bSpeed').textContent='時間：'+SPEEDS[speedIdx][1];stam=1;pitch=-.05;say('你睡醒了，體力全滿。現在是 '+$('clk').textContent+'。');}
+function standUp(){if(!seat)return;if(seat.lie){speedIdx=napSpeed<0?1:napSpeed;$('bSpeed').textContent='時間：'+SPEEDS[speedIdx][1];stam=1;pitch=-.05;let extra='';
+    {const H=houses.find(h=>h.lot.forSale),c=rides[0];                       // your own car parked outside your own home: it gets looked after while you sleep
+      if(homeOwned&&H&&(clock-napFrom+24)%24>=3&&Math.hypot(pos.x-H.front.x,pos.z-H.front.z)<14&&Math.hypot(c.x-H.front.x,c.z-H.front.z)<11&&carDmg>.02){carDmg=0;stats.homeFix=(stats.homeFix||0)+1;extra='車子停在家門口，你睡前順手把它修好、擦亮了（免費）。';}}
+    say('你睡醒了，體力全滿。現在是 '+$('clk').textContent+'。'+extra);}
   pos.x=seat.A.ap[0];pos.z=seat.A.ap[1];seat=null;}
 
 // --- riding: a car and a bicycle ---
