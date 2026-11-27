@@ -2189,8 +2189,11 @@ const DAILY=[['fish','釣到 2 條魚',()=>fishCount,2],['walk','走路 400 公�
   ['job','完成 2 個任務',()=>stats.jobs,2],['bus','搭 1 次公車或計程車',()=>busTrips+taxiTrips,1],['cab','開車載 1 位客人',()=>fares,1],['wave','跟 4 個人揮手打招呼',()=>waves,4],['shell','在沙灘撿 3 個貝殼',()=>shells,3],['earn','賺到 $100',()=>stats.earned,100]];
 let daily={day:-1,list:[]};
 function dailyStep(){
-  if(daily.day!==day){const pool=DAILY.slice().sort(()=>Math.random()-.5).slice(0,3);daily={day,list:pool.map(D=>({id:D[0],base:D[2](),done:false}))};
-    if(saveNo>3)say('新的一天！今天的三個挑戰：'+pool.map(D=>D[1]).join('、')+'。每個 $40，在「我的紀錄」可以看進度。');}
+  if(daily.day!==day){const oldSnap=daily.snap;const pool=DAILY.slice().sort(()=>Math.random()-.5).slice(0,3);daily={day,list:pool.map(D=>({id:D[0],base:D[2](),done:false}))};
+    if(saveNo>3){const d=day%7,ev=[];if(d===5||d===6||d===0)ev.push('晚上 6 點海邊有夜市');if(d===6||d===0)ev.push('晚上 8 點放煙火');if(!ev.length)ev.push('今天是平常日，大家白天去上班，街上比較安靜');
+      const y=oldSnap||{jobs:stats.jobs,earned:stats.earned,fish:fishCount};const dj=stats.jobs-y.jobs,de=stats.earned-y.earned,df=fishCount-y.fish;
+      say('📰 夕陽日報 · 週'+DOW[d]+'：'+ev.join('、')+'。'+(dj||de||df?'昨天你完成 '+dj+' 個任務、賺了 $'+de+(df?'、釣到 '+df+' 次':'')+'。':'')+'今天的挑戰：'+pool.map(D=>D[1]).join('、')+'（每個 $40）。');}
+    daily.snap={jobs:stats.jobs,earned:stats.earned,fish:fishCount};}
   for(const d of daily.list){if(d.done)continue;const D=DAILY.find(q=>q[0]===d.id);if(!D)continue;if(D[2]()-d.base>=D[3]){d.done=true;cash+=40;stCash=cash;sfxCoin();
       const all=daily.list.every(q=>q.done);if(all){cash+=60;stCash=cash;}say('✅ 今日挑戰完成：'+D[1]+'！+$40'+(all?'。三個都完成了，再加 $60！':''));break;}}}
 // --- shells on the beach: a few lie on the sand at any time; the sea leaves new ones, more after rain. Walk over one to pick it up ---
