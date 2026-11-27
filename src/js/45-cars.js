@@ -171,7 +171,7 @@ function updateCars(dt){
     let want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
     if(Math.abs(turn)>.2)want=Math.min(want,3.6);                                      // slow down for corners
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=fx*c.v*dt;c.z+=fz*c.v*dt;
-    if(c.v<.2&&gap<4&&!(c.dwell>0)&&!c.stops.some(sp=>sp.st()!=='g')){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
+    if(c.v<.2&&gap<4&&!(c.dwell>0)&&!c.stops.some(sp=>sp.st()!=='g')){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;if(Math.hypot(c.x-pos.x,c.z-pos.z)<32)say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
     c.honk-=dt;
     c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;spinWheels(c,c.v,dt,Math.max(-1,Math.min(1,turn*2)));
     const hx=Math.abs(fx)*c.hl+Math.abs(fz)*c.hw+.05,hz=Math.abs(fz)*c.hl+Math.abs(fx)*c.hw;
