@@ -806,8 +806,8 @@ PREFAB.streetLamp=()=>{
 };
 // park bench for two. You sit facing +z.
 PREFAB.bench=()=>{
-  box(1.5,.06,.46,M.walnut,0,.45,0);box(1.5,.44,.05,M.walnut,0,.76,-.22);
-  [-.65,.65].forEach(x=>{box(.06,.45,.42,M.steel,x,.225,0);box(.06,.5,.05,M.steel,x,.7,-.22);});
+  [-.165,-.055,.055,.165].forEach(z=>box(1.5,.035,.095,M.walnut,0,.455,z,{r:.012}));[.6,.75,.9].forEach((y,k)=>box(1.5,.11,.03,M.walnut,0,y,-.215-k*.022,{r:.012}));   // four seat slats and three back slats, leaning back a little
+  [-.65,.65].forEach(x=>{box(.05,.44,.05,M.steel,x,.22,.18);box(.05,.98,.05,M.steel,x,.49,-.2);box(.05,.04,.46,M.steel,x,.42,-.01);box(.05,.04,.44,M.steel,x,.68,0);box(.05,.26,.04,M.steel,x,.55,.2);});   // iron ends with armrests
   const sit=x=>({type:'bench',ap:[x,.62],an:[x,.56,.04],yaw:0,pose:'sit',label:'坐在長椅上'});
   return{solid:[[-.78,.78,-.28,.25]],boxes:[[-.75,.75,0,.48,-.23,.23],[-.75,.75,.48,.98,-.26,-.19]],spots:[sit(-.38),sit(.38)]};
 };
@@ -839,18 +839,34 @@ PREFAB.blanket=()=>{                                                       // a 
 };
 PREFAB.parking=o=>{flat(2.8,5.8,M.concrete,0,-.011,0,1.4);flat(1.2,1.4,M.concrete,0,-.011,3.5,1.2);
   return{spots:[{type:'exit',ap:[1.75,1.4],yaw:-Math.PI/2,pose:'idle',hide:true,only:o.owner,car:true,label:'開車去上班'}],marks:[{kind:'parking',x:0,z:0,owner:o.owner}]};};
+// a picture painted on a little canvas and used as a material: signs, screens, posters, striped awnings
+const FONT='"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+function cardMat(w,h,draw,o){o=o||{};const c=document.createElement('canvas');c.width=o.px||256;c.height=Math.max(8,Math.round(c.width*h/w));const g=c.getContext('2d');draw(g,c.width,c.height);
+  const t=new THREE.CanvasTexture(c);if('colorSpace' in t)t.colorSpace='srgb';else t.encoding=THREE.sRGBEncoding;if(o.repeat){t.wrapS=t.wrapT=THREE.RepeatWrapping;}
+  return o.basic?new THREE.MeshBasicMaterial({map:t}):new THREE.MeshStandardMaterial({map:t,roughness:.7,side:o.two?THREE.DoubleSide:THREE.FrontSide});}
+function cardAt(w,h,mat,x,y,z,ry){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);m.position.set(x,y,z);m.rotation.y=ry||0;m.userData.dyn=true;cur.add(m);return m;}
+const stripeMat=col=>cardMat(1,1,(g,W,H)=>{g.fillStyle='#f6f1e7';g.fillRect(0,0,W,H);g.fillStyle=col;for(let k=0;k<4;k++)g.fillRect(k*W/4,0,W/8,H);},{repeat:true,px:128}),stripes={};
 PREFAB.pump=()=>{
-  box(.9,.12,.6,M.concrete,0,.06,0);box(.6,1.5,.4,M.teal,0,.87,0,{r:.04});box(.66,.2,.46,M.ceramic,0,1.7,0,{r:.04});
-  const scr=new THREE.Mesh(new THREE.PlaneGeometry(.4,.3),new THREE.MeshBasicMaterial({color:0xfff0c0}));scr.position.set(0,1.25,.205);cur.add(scr);
-  box(.06,.5,.06,M.black,.34,.9,.1);cyl(.03,.03,.3,M.steel,.34,1.2,.1,8);
+  box(1.0,.14,.7,M.concrete,0,.07,0,{r:.02});box(.62,1.45,.42,M.ceramic,0,.86,0,{r:.04});box(.64,.3,.44,M.teal,0,.45,0,{r:.03});box(.7,.22,.48,M.teal,0,1.72,0,{r:.05});   // island, cabinet with a coloured band, a cap
+  cardAt(.56,.16,cardMat(.56,.16,(g,W,H)=>{g.fillStyle='#1f6a6e';g.fillRect(0,0,W,H);g.fillStyle='#fff';g.font='bold '+(H*.7)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('夕陽加油',W/2,H/2);}),0,1.72,.245);
+  const scr=cardAt(.42,.34,cardMat(.42,.34,(g,W,H)=>{g.fillStyle='#10161a';g.fillRect(0,0,W,H);g.fillStyle='#ffd77a';g.font='bold '+(H*.3)+'px monospace';g.textAlign='right';g.fillText('$ 00.00',W-12,H*.36);g.fillText('L 00.00',W-12,H*.72);g.fillStyle='#8fd0c0';g.font=(H*.16)+'px '+FONT;g.textAlign='left';g.fillText('92 無鉛',10,H*.94);},{basic:true}),0,1.25,.215);
+  [.5,.62,.74].forEach((y,k)=>box(.08,.06,.02,[M.coral,M.brass,M.steel][k],-.18,y+.25,.212));                               // three grade buttons
+  box(.07,.3,.1,M.black,.36,1.0,.06,{r:.02});box(.05,.05,.22,M.black,.36,1.12,.16);                                           // the nozzle in its holster
+  {const g=new THREE.TorusGeometry(.34,.022,6,12,Math.PI);g.rotateZ(Math.PI);const m=new THREE.Mesh(g,M.black);m.position.set(.36,.86,.1);m.rotation.y=Math.PI/2;add(m);}   // the hose hanging in a loop
   scr.userData={tip:'點一下：加油（要先把車停在旁邊）',act:()=>refuel()};interact.push(scr);
   return{solid:[[-.4,.4,-.28,.28]],boxes:[[-.3,.3,0,1.8,-.2,.2]]};
 };
 PREFAB.vending=()=>{
-  box(1,1.9,.7,M.coral,0,.95,0,{r:.03});
-  const front=new THREE.Mesh(new THREE.PlaneGeometry(.8,1.1),new THREE.MeshBasicMaterial({color:0xbfe8ff}));front.position.set(0,1.2,.356);cur.add(front);
-  [-.25,0,.25].forEach((x,i)=>cyl(.05,.05,.16,[M.teal,M.brass,M.ceramic][i],x,1.25,.33,10));
-  box(.6,.12,.02,M.black,0,.35,.36);
+  box(1,1.9,.7,M.coral,0,.95,0,{r:.035});box(1.02,.1,.72,M.black,0,.05,0);
+  const front=cardAt(.9,1.72,cardMat(.9,1.72,(g,W,H)=>{g.fillStyle='#c4553b';g.fillRect(0,0,W,H);g.fillStyle='#fff';g.font='bold '+(W*.13)+'px '+FONT;g.textAlign='center';g.fillText('冰涼飲料',W*.38,H*.075);
+    g.fillStyle='#dff3ff';g.fillRect(W*.05,H*.1,W*.66,H*.56);                                                                 // the lit window with four shelves of cans and bottles
+    const cols=['#e94f37','#2f9fb0','#f2c23d','#7a4fd0','#59b85a','#f08a2e'];for(let r=0;r<4;r++){g.fillStyle='#9bb6c4';g.fillRect(W*.05,H*(.1+.14*(r+1))-4,W*.66,4);
+      for(let k=0;k<5;k++){const x=W*(.08+k*.128),y=H*(.1+.14*r)+8,w=W*.09,h=H*.14-16;g.fillStyle=cols[(r*2+k)%6];g.fillRect(x,y+(r%2?h*.18:0),w,h*(r%2?.82:1));g.fillStyle='rgba(255,255,255,.75)';g.fillRect(x,y+h*.42,w,h*.2);if(r%2){g.fillStyle='#ddd';g.fillRect(x+w*.3,y,w*.4,h*.2);}
+        g.fillStyle='#fff';g.fillRect(x,H*(.1+.14*(r+1))-2,w,9);}}
+    g.fillStyle='#2a2c32';g.fillRect(W*.76,H*.1,W*.19,H*.56);g.fillStyle='#ffd77a';g.font='bold '+(W*.09)+'px monospace';g.fillText('$20',W*.855,H*.17);g.fillStyle='#111';g.fillRect(W*.82,H*.24,W*.07,H*.012);     // coin slot, price, buttons
+    for(let k=0;k<4;k++){g.fillStyle=k?'#888':'#59d07a';g.beginPath();g.arc(W*.855,H*(.32+k*.07),W*.035,0,7);g.fill();}
+    g.fillStyle='#16181c';g.fillRect(W*.12,H*.76,W*.6,H*.12);g.fillStyle='#3a3d44';g.fillRect(W*.14,H*.775,W*.56,H*.09);g.fillStyle='#fff';g.font=(W*.07)+'px '+FONT;g.fillText('取物口',W*.42,H*.94);},{basic:true,px:384}),0,.98,.352);
+  box(.94,.04,.06,M.black,0,1.86,.34);                                                                                        // a little hood over the window
   front.userData={tip:'點一下：買飲料（$20）',act:buyDrink};interact.push(front);
   return{solid:[[-.52,.52,-.37,.37]],boxes:[[-.5,.5,0,1.9,-.35,.35]]};
 };
@@ -858,7 +874,10 @@ PREFAB.vending=()=>{
 PREFAB.stall=o=>{const mk=o&&o.market;
   box(2.2,.9,.7,mk?[M.teal,M.brass][mk-1]||M.coral:M.coral,0,.45,-.6,{r:.03});box(2.3,.05,.8,M.ceramic,0,.925,-.6);
   [-1.05,1.05].forEach(x=>cyl(.03,.03,2.3,M.steel,x,1.15,-.95,8));
-  const aw=box(2.6,.06,1.5,mk?M.coral:M.teal,0,2.3,-.45);aw.rotation.x=.12;
+  const sc=mk?'#c4553b':'#1f6a6e',sm=stripes[sc]||(stripes[sc]=stripeMat(sc));
+  const aw=box(2.6,.06,1.5,sm,0,2.3,-.45);aw.rotation.x=.12;box(2.6,.2,.03,sm,0,2.13,.3);                                    // a striped awning with a hanging front edge
+  cardAt(1.5,.34,cardMat(1.5,.34,(g,W,H)=>{g.fillStyle='#fff7e6';g.fillRect(0,0,W,H);g.strokeStyle=sc;g.lineWidth=6;g.strokeRect(3,3,W-6,H-6);g.fillStyle=sc;g.font='bold '+(H*.66)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText(['小 吃 攤','烤 玉 米','珍珠奶茶'][mk||0],W/2,H*.54);},{two:true}),0,2.52,.24);
+  cyl(.2,.2,.14,M.steel,-.75,1.02,-.7,14);cyl(.22,.22,.03,M.steel,-.75,1.1,-.7,14);box(.5,.02,.36,M.walnut,.2,.96,-.72);[0,1,2].forEach(k=>cyl(.05,.05,.04,M.terracotta,.05+k*.15,.99,-.72,10));   // a steaming pot and a board of snacks
   if(mk){for(let i=0;i<5;i++){const L=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),lanternMat);L.position.set(-1.1+i*.55,2.05,.28);L.scale.y=1.25;cur.add(L);}}   // a string of paper lanterns: lit when the night market is open
   [-.5,0,.5].forEach((x,i)=>cyl(.12,.1,.1,[M.brass,M.ceramic,M.terracotta][i],x,1,-.6,14));
   const till=box(.3,.2,.25,M.black,.85,1.05,-.6,{r:.02});till.userData=mk?{tip:mk===1?'點一下：夜市烤玉米（$12，開張時才賣）':'點一下：夜市珍珠奶茶（$18，開張時才賣）',act:()=>marketBuy(mk)}:{tip:'點一下：買點心（$15）',act:buySnack};interact.push(till);
