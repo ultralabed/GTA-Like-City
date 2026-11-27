@@ -25,8 +25,10 @@
     cur=pv;weldStatic(ig);colliders.push([I.x-1.5,I.x+1.5,I.z-1.5,I.z+1.5],[I.x+2.6,I.x+4.2,I.z+3,I.z+3.45]);
     isleLamp=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),new THREE.MeshBasicMaterial({color:0x554a30}));isleLamp.position.set(I.x,8.7,I.z);scene.add(isleLamp);
     isleBeam=new THREE.Group();isleBeam.position.copy(isleLamp.position);scene.add(isleBeam);
-    for(const s2 of[1,-1]){const b=new THREE.Mesh(new THREE.CylinderGeometry(.2,1.5,44,12,1,true),new THREE.MeshBasicMaterial({color:0x2a2616,transparent:true,opacity:.13,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
-      b.rotation.z=s2*Math.PI/2;b.position.x=-s2*22;isleBeam.add(b);}
+    {const bc=document.createElement('canvas');bc.width=256;bc.height=32;const bg=bc.getContext('2d'),im=bg.createImageData(256,32);                 // a soft beam: bright by the lamp, fading along its length and toward its edges
+      for(let y=0;y<32;y++)for(let x=0;x<256;x++){const a=Math.pow(1-x/255,1.6)*Math.exp(-Math.pow((y-15.5)/(3+x*.035),2)),k=(y*256+x)*4;im.data[k]=255;im.data[k+1]=240;im.data[k+2]=200;im.data[k+3]=Math.round(255*a);}
+      bg.putImageData(im,0,0);const bt=new THREE.CanvasTexture(bc),bm=new THREE.MeshBasicMaterial({map:bt,color:0x3a3524,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false});
+      for(const s2 of[1,-1])for(const flat2 of[0,1]){const geo=new THREE.PlaneGeometry(40,5);geo.translate(20,0,0);const b=new THREE.Mesh(geo,bm);b.rotation.y=s2>0?0:Math.PI;if(flat2)b.rotation.x=Math.PI/2;isleBeam.add(b);}}
     root=scene;place({type:'tree',x:I.x-4.5,z:I.z+1.5,s:.9},null);place({type:'tree',x:I.x+3,z:I.z-4.5,s:1.1},null);root=pr;}
   {const P=WORLD.pier,cx=(P.x0+P.x1)/2,pg=new THREE.Group(),pv=cur;scene.add(pg);cur=pg;                // the pier: planks on posts
     for(let z=P.z0+.3;z<P.z1+.6;z+=.62)box(P.x1-P.x0,.07,.56,M.walnut,cx,.05,z);

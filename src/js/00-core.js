@@ -2,7 +2,7 @@ const $=id=>document.getElementById(id);
 const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
-  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕會跟著你在哪裡變：跳、跑、撿、坐、上車、搭公車、招計程車、加油、釣魚、滑板…　設定裡的「操作說明」有完整清單'
+  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>人、門、球：互動　不知道做什麼：設定 →「接下來做什麼？」'
   : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>V</b> 換視角　<b>T</b> 計程車　<b>G</b> 釣魚　<b>點人</b>：說話　<b>Esc</b> 放開滑鼠　（設定 →「操作說明」看全部按鍵）';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}

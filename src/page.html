@@ -61,6 +61,18 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   .bag button{padding:7px 10px}
   .speed{font-size:15px;padding:6px 10px}
   .radar{bottom:calc(12px + env(safe-area-inset-bottom, 0px))}
+  #hint{position:absolute;left:16%;right:16%;top:22%}
+  .radar canvas{width:88px;height:88px}
+}
+/* a phone held upright: the same rows of buttons along the bottom, and the radar moves up out of their way */
+@media (max-width:520px) and (pointer:coarse){
+  .acts{bottom:calc(20px + env(safe-area-inset-bottom, 0px));gap:5px;max-width:calc(100vw - 32px)}
+  .actcol{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+  .acts button{padding:9px 12px;font-size:13px}
+  .bag button{padding:7px 10px}
+  .speed{font-size:15px;padding:6px 10px}
+  #radar{bottom:auto;top:calc(136px + env(safe-area-inset-top, 0px))}
+  #hint{position:absolute;left:16px;right:16px;top:34%}
   .radar canvas{width:88px;height:88px}
 }
 .map{position:absolute;top:calc(14px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));border:1px solid var(--line);border-radius:12px;overflow:hidden;

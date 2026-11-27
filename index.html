@@ -69,6 +69,18 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:12px;co
   .bag button{padding:7px 10px}
   .speed{font-size:15px;padding:6px 10px}
   .radar{bottom:calc(12px + env(safe-area-inset-bottom, 0px))}
+  #hint{position:absolute;left:16%;right:16%;top:22%}
+  .radar canvas{width:88px;height:88px}
+}
+/* a phone held upright: the same rows of buttons along the bottom, and the radar moves up out of their way */
+@media (max-width:520px) and (pointer:coarse){
+  .acts{bottom:calc(20px + env(safe-area-inset-bottom, 0px));gap:5px;max-width:calc(100vw - 32px)}
+  .actcol{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+  .acts button{padding:9px 12px;font-size:13px}
+  .bag button{padding:7px 10px}
+  .speed{font-size:15px;padding:6px 10px}
+  #radar{bottom:auto;top:calc(136px + env(safe-area-inset-top, 0px))}
+  #hint{position:absolute;left:16px;right:16px;top:34%}
   .radar canvas{width:88px;height:88px}
 }
 .map{position:absolute;top:calc(14px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));border:1px solid var(--line);border-radius:12px;overflow:hidden;
@@ -157,7 +169,7 @@ const $=id=>document.getElementById(id);
 const canvas=$('view');
 const isTouch=matchMedia('(pointer:coarse)').matches;
 $('hint').innerHTML=isTouch
-  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>門：開門　<b>點</b>球：踢　<b>點</b>人：打招呼　右下角的按鈕會跟著你在哪裡變：跳、跑、撿、坐、上車、搭公車、招計程車、加油、釣魚、滑板…　設定裡的「操作說明」有完整清單'
+  ? '<b>左手</b>拖：走路　<b>右手</b>拖：轉頭　<b>點</b>人、門、球：互動　不知道做什麼：設定 →「接下來做什麼？」'
   : '<b>點畫面</b>鎖定滑鼠　<b>W A S D</b> 走路　<b>Shift</b> 跑　<b>空白鍵</b> 跳　<b>E</b> 撿起／放下　<b>F</b> 上下車　<b>Q</b> 坐下　<b>1</b> 手電筒　<b>2</b> 雨傘　<b>M</b> 地圖　<b>V</b> 換視角　<b>T</b> 計程車　<b>G</b> 釣魚　<b>點人</b>：說話　<b>Esc</b> 放開滑鼠　（設定 →「操作說明」看全部按鍵）';
 function fail(msg){$('err').hidden=false;$('err').textContent=msg;}
 if(!window.THREE){fail('3D 引擎沒有載入成功，請重新整理一次。');return;}
@@ -974,8 +986,10 @@ function updateDoors(dt){
     cur=pv;weldStatic(ig);colliders.push([I.x-1.5,I.x+1.5,I.z-1.5,I.z+1.5],[I.x+2.6,I.x+4.2,I.z+3,I.z+3.45]);
     isleLamp=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),new THREE.MeshBasicMaterial({color:0x554a30}));isleLamp.position.set(I.x,8.7,I.z);scene.add(isleLamp);
     isleBeam=new THREE.Group();isleBeam.position.copy(isleLamp.position);scene.add(isleBeam);
-    for(const s2 of[1,-1]){const b=new THREE.Mesh(new THREE.CylinderGeometry(.2,1.5,44,12,1,true),new THREE.MeshBasicMaterial({color:0x2a2616,transparent:true,opacity:.13,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
-      b.rotation.z=s2*Math.PI/2;b.position.x=-s2*22;isleBeam.add(b);}
+    {const bc=document.createElement('canvas');bc.width=256;bc.height=32;const bg=bc.getContext('2d'),im=bg.createImageData(256,32);                 // a soft beam: bright by the lamp, fading along its length and toward its edges
+      for(let y=0;y<32;y++)for(let x=0;x<256;x++){const a=Math.pow(1-x/255,1.6)*Math.exp(-Math.pow((y-15.5)/(3+x*.035),2)),k=(y*256+x)*4;im.data[k]=255;im.data[k+1]=240;im.data[k+2]=200;im.data[k+3]=Math.round(255*a);}
+      bg.putImageData(im,0,0);const bt=new THREE.CanvasTexture(bc),bm=new THREE.MeshBasicMaterial({map:bt,color:0x3a3524,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false});
+      for(const s2 of[1,-1])for(const flat2 of[0,1]){const geo=new THREE.PlaneGeometry(40,5);geo.translate(20,0,0);const b=new THREE.Mesh(geo,bm);b.rotation.y=s2>0?0:Math.PI;if(flat2)b.rotation.x=Math.PI/2;isleBeam.add(b);}}
     root=scene;place({type:'tree',x:I.x-4.5,z:I.z+1.5,s:.9},null);place({type:'tree',x:I.x+3,z:I.z-4.5,s:1.1},null);root=pr;}
   {const P=WORLD.pier,cx=(P.x0+P.x1)/2,pg=new THREE.Group(),pv=cur;scene.add(pg);cur=pg;                // the pier: planks on posts
     for(let z=P.z0+.3;z<P.z1+.6;z+=.62)box(P.x1-P.x0,.07,.56,M.walnut,cx,.05,z);
