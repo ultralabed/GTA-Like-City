@@ -283,9 +283,21 @@ function autoHome(){
 function chatLines(a,b){
   if(rainOn)return['雨好大！','對啊，快回家吧。'];
   if(a.guard||b.guard){const g=a.guard?0:1;const L=['今天街上還平靜嗎？','很平靜，辛苦了！'];return g?[L[1],L[0]]:L;}
+  if(fwOn)return[['快看，煙火！','好漂亮，今年的顏色真多。'],['碰的一聲嚇我一跳。','哈哈，光比聲音先到嘛。']][Math.floor(Math.random()*2)];
+  if(marketOn&&Math.random()<.7)return[['夜市開了，要不要去吃烤玉米？','好啊，我還想喝珍珠奶茶。'],['今天夜市人多嗎？','還好，海邊風很舒服。']][Math.floor(Math.random()*2)];
+  if(storm)return['打雷了，快進屋！','嗯，海鷗都嚇跑了。'];
+  if(mist>.5)return['霧好濃，都看不到海了。','走路小心，車子也看不清楚。'];
+  if(windS>5)return['風好大，帽子都要飛了。','海灘球一定又被吹跑了。'];
+  if(wet>.4&&!rainOn&&dark<.4&&Math.random()<.6)return['雨停了，你看到彩虹了嗎？','看到了，在太陽的對面。'];
   if(dark>.7)return['這麼晚還在外面？','睡不著，出來走走。'];
   const sets=[['早安！要去哪？','去'+GOALS[b.goal.id].label+'。'],['今天天氣真好。','是啊，適合散步。'],['吃飽了嗎？','吃飽了，謝謝！'],
-    ['你家的盆栽長得真好。','有空來看看！'],['最近工作忙嗎？',b.o.shift?'還好，就是有點累。':'我退休啦，天天放假。'],['那個開黃色車的人你認識嗎？',rep>2?'認識，人很好。':rep<-2?'小心點，他很愛亂來。':'不太熟。']];
+    ['你家的盆栽長得真好。','有空來看看！'],['最近工作忙嗎？',b.o.shift?'還好，就是有點累。':'我退休啦，天天放假。'],['你有看到小橘嗎？','剛剛在'+(typeof cat!=='undefined'?CAT_AT[cat.at][2].replace('在','').replace('窩',''):'長椅旁邊')+'。'],
+    ['碼頭那邊魚多嗎？','盡頭水深，聽說有人釣到鮪魚。'],['南線公車方便多了。','對啊，第二條馬路終於有站了。'],
+    ...(homeOwned?[['14 號有人搬進來了耶。',rep>2?'我知道，就是那個很熱心的人。':'是喔？改天去打個招呼。']]:[['14 號還沒賣掉啊？','聽說要 $500，不知道誰會買。']]),
+    ...(raceBest?[['有人在大馬路上計時賽車。','聽說跑了 '+raceBest.toFixed(0)+' 秒，'+(raceBest<=38?'好快！':'還可以啦。')]]:[]),
+    ...(stats.done.beach?[['沙灘變乾淨了。','有人幫忙撿垃圾，真好。']]:[]),
+    ...(Object.keys(starGot).length>=5?[['聽說街上藏了會發亮的星星？','有人已經找到好幾顆了。']]:[]),
+    ['那個開'+(typeof PAINTS!=='undefined'?PAINTS[paintIdx][1]:'黃色')+'車的人你認識嗎？',rep>2?'認識，人很好。':rep<-2?'小心點，他很愛亂來。':'不太熟。']];
   return sets[Math.floor(Math.random()*sets.length)];
 }
 function neighbourChat(){
