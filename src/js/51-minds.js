@@ -21,6 +21,7 @@ const GOALS={                                                           // type 
   fish:{label:'去海邊釣魚',type:'fishing',need:'calm',gain:.8,dur:.7,outside:true,also:'food'},
   hoops:{label:'去公園投籃',type:'hoops',need:'fit',gain:1.2,dur:.4,outside:true,also:'fun'},
   watch:{label:'去海邊看煙火',type:'watch',need:'fun',gain:.8,dur:.9,outside:true,also:'calm'},
+  flowers:{label:'去公園賞花',type:'flowers',need:'calm',gain:.55,dur:.45,outside:true,also:'fun'},
   guest:{label:'去你家作客',type:'guest',need:'fun',gain:1.1,dur:.35,also:'calm'},
   kite:{label:'去沙灘放風箏',type:'kiteSpot',need:'fun',gain:1.3,dur:.5,outside:true,also:'calm'},
   picnic:{label:'去野餐',type:'picnic',need:'food',gain:1.5,dur:.7,outside:true,also:'fun'},
@@ -60,6 +61,7 @@ function utility(n,id){
   if(id==='picnic'){if(!isWeekend()||clock<10.5||clock>15.5||rainOn||windS>7||n.cool[id]>0||!freeAct(n,id))return -1;   // a weekend lunchtime outing; more tempting when someone from home is already going
     return .9+(1-n.need.food)*.6+(people.some(m=>m!==n&&m.goal&&m.goal.id==='picnic'&&rel(n,m)>=1.5)?1.2:0)-(people.some(m=>m!==n&&m.goal&&m.goal.id==='picnic'&&rel(n,m)<=-1)?.5:0);}   // friends draw you along; someone you cannot stand puts you off
   if(id==='watch'&&(!fwOn||rainOn))return -1;
+  if(id==='flowers'&&(!stats.done.garden||dark>.6))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
   if(g.need==='food')u=nd<.3?1.6-nd:(1-nd)*.8;                            // hunger gets loud when it is bad
