@@ -56,6 +56,14 @@ function updateCat(dt,t){const c=cat,d=pets[0];c.think-=dt;c.purr-=dt;
   const pd=Math.hypot(c.x-pos.x,c.z-pos.z);c.g.visible=pd<60;
   pv3.set(c.x,.75,c.z).project(camera);const show=pd<12&&pv3.z<1&&Math.abs(pv3.x)<1.1&&Math.abs(pv3.y)<1.1&&!roomAt(pos.x,pos.z);c.tag.hidden=!show;
   if(show){c.tag.style.left=((pv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-pv3.y)/2*canvas.clientHeight)+'px';const s=c.name+' · '+(c.purr>0?'呼嚕呼嚕 ♥':c.mood);if(c.tag.textContent!==s)c.tag.textContent=s;}}
+// --- the two people who run the night-market stalls: they are only there while it is open ---
+const vendors=[['玉米伯',1.72,0xc9966e,0x555555,0xd9623f,0x3a3a3a,0x202020,false,25.2,'烤玉米！熱的喔！'],['奶茶姐',1.6,0xe8b996,0x2a1a16,0x2f9fb0,0x27304a,0x202024,true,29.4,'珍珠奶茶，半糖少冰？']].map(v=>{
+  const n=makePerson(person(v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],null,null,.8,.5,{}));n.root.position.set(v[8],n.stand,-9.05);n.root.visible=false;n.tag.hidden=true;n.line=v[9];n.vx=v[8];
+  n.J.al.rotation.x=-1.0;n.J.el.rotation.x=-.9;n.J.ar.rotation.x=-1.0;n.J.er.rotation.x=-.9;return n;});
+function updateVendors(t){for(const n of vendors){const near=Math.hypot(n.vx-pos.x,-9.05-pos.z)<50;n.root.visible=marketOn&&near;if(!n.root.visible){n.tag.hidden=true;continue;}
+    n.J.spine.rotation.z=Math.sin(t*1.3+n.vx)*.04;n.J.neck.rotation.y=Math.sin(t*.6+n.vx)*.5;n.J.ar.rotation.x=-1.0+Math.sin(t*3+n.vx)*.25;
+    pv3.set(n.vx,2,-9.05).project(camera);const show=Math.hypot(n.vx-pos.x,-9.05-pos.z)<9&&pv3.z<1&&Math.abs(pv3.x)<1.1&&Math.abs(pv3.y)<1.1;n.tag.hidden=!show;
+    if(show){n.tag.style.left=((pv3.x+1)/2*canvas.clientWidth)+'px';n.tag.style.top=((1-pv3.y)/2*canvas.clientHeight)+'px';const s=n.o.name+' · '+n.line;if(n.tag.textContent!==s)n.tag.textContent=s;}}}
 // --- seagulls: a few of them wheel over the beach by day; a loud bang (thunder, fireworks) sends them off for a while ---
 const gulls=[];let gullAway=0,gullCry=6;
 {const wm=new THREE.MeshBasicMaterial({color:0xf2f2ee,side:THREE.DoubleSide}),wg=new THREE.PlaneGeometry(.55,.16);wg.translate(.275,0,0);
