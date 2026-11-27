@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,daily,waves,homeOwned,decorOwn,starGot,raceBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -22,6 +22,7 @@ const stats={walk:0,drive:0,jobs:0,earned:0,done:{}};let stLast=null,stCash=null
 const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺',20],['walk2',()=>stats.walk>=3000,'健走高手：走了 3 公里',60],
   ['drive1',()=>stats.drive>=1000,'新手駕駛：開（騎）了 1 公里',20],['drive2',()=>stats.drive>=8000,'老司機：開（騎）了 8 公里',80],
   ['job1',()=>stats.jobs>=1,'熱心鄰居：完成第 1 個任務',10],['job5',()=>stats.jobs>=5,'街上的好幫手：完成 5 個任務',50],['job15',()=>stats.jobs>=15,'夕陽街之星：完成 15 個任務',150],
+  ['cab',()=>fares>=3,'小黃司機：載了 3 位客人',40],
   ['bus',()=>busTrips>=1,'搭過公車了',5],['taxi',()=>taxiTrips>=1,'搭過計程車了',5],['fish',()=>fishCount>=5,'釣魚達人：釣到 5 次',30],['hoop',()=>baskets>=3,'神射手：投進 3 球',30],
   ['stars',()=>Object.keys(starGot).length>=5,'小小探險家：找到 5 顆星星',30],
   ['home',()=>homeOwned,'有自己的家了',0],
@@ -29,7 +30,7 @@ const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺'
 // --- three small goals a day, picked fresh each morning ---
 let waves=0;
 const DAILY=[['fish','釣到 2 條魚',()=>fishCount,2],['walk','走路 400 公尺',()=>stats.walk,400],['drive','開車或騎車 800 公尺',()=>stats.drive,800],['hoop','投進 2 球',()=>baskets,2],
-  ['job','完成 2 個任務',()=>stats.jobs,2],['bus','搭 1 次公車或計程車',()=>busTrips+taxiTrips,1],['wave','跟 4 個人揮手打招呼',()=>waves,4],['earn','賺到 $100',()=>stats.earned,100]];
+  ['job','完成 2 個任務',()=>stats.jobs,2],['bus','搭 1 次公車或計程車',()=>busTrips+taxiTrips,1],['cab','開車載 1 位客人',()=>fares,1],['wave','跟 4 個人揮手打招呼',()=>waves,4],['earn','賺到 $100',()=>stats.earned,100]];
 let daily={day:-1,list:[]};
 function dailyStep(){
   if(daily.day!==day){const pool=DAILY.slice().sort(()=>Math.random()-.5).slice(0,3);daily={day,list:pool.map(D=>({id:D[0],base:D[2](),done:false}))};
@@ -45,7 +46,7 @@ function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   const h=document.createElement('strong');h.textContent='我的紀錄（第 '+day+' 天）';el.appendChild(h);
   const box=document.createElement('div');box.style.cssText='max-height:38vh;overflow:auto;margin:6px 0;flex:1 1 100%;width:100%';el.appendChild(box);
   const km=m=>m<1000?Math.round(m)+' 公尺':(m/1000).toFixed(1)+' 公里',n=BADGES.filter(B=>stats.done[B[0]]).length;
-  for(const t of['走路：'+km(stats.walk),'開車和騎車：'+km(stats.drive),'完成任務：'+stats.jobs+' 個','總共賺到：$'+stats.earned,'搭公車 '+busTrips+' 次、計程車 '+taxiTrips+' 次','釣到 '+fishCount+' 次、投進 '+baskets+' 球','找到的星星：'+Object.keys(starGot).length+' / '+STARS.length,'— 今日挑戰（每個 $40，三個全過再 $60）—'].concat(daily.list.map(d=>{const D=DAILY.find(q=>q[0]===d.id);return(d.done?'✅ ':'⬜ ')+D[1]+(d.done?'':'（'+Math.min(D[3],Math.floor(D[2]()-d.base))+' / '+D[3]+'）');})).concat(['成就：'+n+' / '+BADGES.length])){const p=document.createElement('p');p.textContent=t;p.style.margin='2px 0';box.appendChild(p);}
+  for(const t of['走路：'+km(stats.walk),'開車和騎車：'+km(stats.drive),'完成任務：'+stats.jobs+' 個','總共賺到：$'+stats.earned,'搭公車 '+busTrips+' 次、計程車 '+taxiTrips+' 次','自己開車載客：'+fares+' 位','釣到 '+fishCount+' 次、投進 '+baskets+' 球','找到的星星：'+Object.keys(starGot).length+' / '+STARS.length,'— 今日挑戰（每個 $40，三個全過再 $60）—'].concat(daily.list.map(d=>{const D=DAILY.find(q=>q[0]===d.id);return(d.done?'✅ ':'⬜ ')+D[1]+(d.done?'':'（'+Math.min(D[3],Math.floor(D[2]()-d.base))+' / '+D[3]+'）');})).concat(['成就：'+n+' / '+BADGES.length])){const p=document.createElement('p');p.textContent=t;p.style.margin='2px 0';box.appendChild(p);}
   for(const B of BADGES){const p=document.createElement('p');p.textContent=(stats.done[B[0]]?'🏅 ':'⬜ ')+B[2];p.style.opacity=stats.done[B[0]]?1:.6;p.style.margin='2px 0';box.appendChild(p);}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
 $('bStats').onclick=showStats;
@@ -55,6 +56,7 @@ const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／�
   ['表情動作','X 揮手（附近的人會回應）、J 跳舞（愛玩的人會跟你一起跳，動一下就停）'],
   ['坐和睡','Q 坐下／站起來、Z 躺下睡覺（時間會快轉）'],
   ['車子、機車、腳踏車、小船','F 上下車（船要靠岸才能下）、W 油門、S 煞車倒車、A D 轉彎、H 喇叭、R 收音機（只有車）'],
+  ['開車載客','坐在車子裡按 K 接一位客人；開到他附近停好，他上車後載到目的地再停好'],
   ['加油機旁邊','C 加油、N 幫車子噴漆換顏色（$30）'],
   ['計時賽','把車開到黑白格子旗旁邊按 B 開始，照順序穿過發亮的圈圈'],
   ['公車和計程車','公車停站時 F 上車（$5）、車上 F 按下車鈴或下車；T 招計程車，停在旁邊後 F 上車選目的地'],
@@ -181,6 +183,15 @@ let homeOwned=false;
 function buyHome(H){if(Math.hypot(H.front.x-pos.x,H.front.z-pos.z)>4){say('走近一點才看得到門上的出售牌。');return;}
   if(cash<500){say(H.no+' 號在賣，要 $500。你現在有 $'+cash+'，還差 $'+(500-cash)+'。多做任務、送報紙、釣魚、比賽都可以賺錢。');return;}
   cash-=500;homeOwned=true;sfxCoin();sfxBell();saveGame();say('恭喜！你買下 '+H.no+' 號了，這裡是你的家。門可以開了；裡面有床可以睡、衣櫃可以換衣服。搭計程車也可以直接說「回家」。');}
+// --- driving for hire: in your car, take a call; someone on the street wants a lift ---
+let fares=0;
+function startFare(){if(!ride||ride.kind!=='car'){say('要坐在車子裡才能接載客的工作。');return;}if(quest){say('你現在有別的任務，先做完。');return;}
+  const D=[['公園',19.5,11.3],['夕陽商店',36.5,11.3],['街的西邊',-30,7.8],['街的東邊',41,11.3],['碼頭',20.2,-9.5]];
+  const c=people.filter(n=>!n.hidden&&!n.lie&&!n.guard&&!n.o.job&&n.home>=0&&n.like>-2&&n.goal&&n.goal.id!=='work'&&n.goal.id!=='sleep'&&n.goal.id!=='lift');
+  if(!c.length){say('現在沒有人要叫車。晚一點再試試。');return;}
+  const n=c[Math.floor(Math.random()*c.length)],ds=D.filter(d=>Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z)>16&&d[0]!=='碼頭'),d=ds[Math.floor(Math.random()*ds.length)]||D[0];
+  const dist=Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z);quest={type:'ride',from:n,dest:d,reward:Math.round(25+dist*.9),fare:true,text:'載客：去接'+n.o.name+'（他會走到你的車旁邊），載他去'+d[0]};
+  sfxBell();actKey='';say('叮！'+n.o.name+'叫車，要去'+d[0]+'。把車開到他附近停好，他會自己走過來上車。車錢 $'+quest.reward+'。');}
 // --- people who know you a little will call you over themselves when they need a hand ---
 let favorAt=0;
 function askFavor(){const now=performance.now()/1000;if(quest||talkN||ride||onBus||seat||emote||now<favorAt||!$('talk').hidden)return;favorAt=now+8;
@@ -277,7 +288,7 @@ function rideQuest(){const q=quest;if(!q||q.type!=='ride')return;const n=q.from,
   if(!car){n.riding=false;n.hidden=false;n.root.visible=true;n.phase='go';n.act=n.want;begin(n);quest=null;say('你下車了，'+n.o.name+'也下車自己走。任務取消。');return;}
   if(Math.abs(car.v)<.6&&Math.hypot(car.x-q.dest[1],car.z-q.dest[2])<5){
     const fx=Math.cos(car.h),fz=-Math.sin(car.h);n.riding=false;n.hidden=false;n.root.visible=true;n.pos.set(car.x-fz*1.8,0,car.z+fx*1.8);n.phase='go';n.act=n.want;begin(n);
-    quest=null;cash+=q.reward;addRep(2);n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);sfxCoin();sfxDoor(car.x,car.z);n.react={say:'到了，謝謝你！',t:2.5,pose:'wave'};
+    quest=null;cash+=q.reward;if(q.fare)fares++;addRep(q.fare?1:2);n.like=Math.min(5,n.like+(q.fare?.5:2));n.mood=Math.min(1,n.mood+.2);sfxCoin();sfxDoor(car.x,car.z);n.react={say:'到了，謝謝你！',t:2.5,pose:'wave'};
     say('任務完成！'+n.o.name+'下車了，給你 $'+q.reward+'。');}
 }
 function buySnack(){if(cash<15){say('點心一份 $15，你的錢不夠。');return;}cash-=15;stam=Math.min(1,stam+.6);sfxCoin();say('你買了一份點心吃掉了（剩 $'+cash+'）。體力恢復了一些。');}
