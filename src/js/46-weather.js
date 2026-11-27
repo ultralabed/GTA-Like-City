@@ -80,6 +80,15 @@ const bowC=document.createElement('canvas');bowC.width=512;bowC.height=256;
 const bowMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(bowC),transparent:true,opacity:0,depthWrite:false,fog:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
 const bow=new THREE.Mesh(new THREE.PlaneGeometry(360,180),bowMat);bow.visible=false;bow.frustumCulled=false;scene.add(bow);
 let bowK=0,toldBow=false;
+// --- shooting stars: on clear nights one streaks across the sky now and then. Looking at one lifts your spirits a little ---
+const meteor=new THREE.Mesh(new THREE.BoxGeometry(1,.6,.6),new THREE.MeshBasicMaterial({color:new THREE.Color(3,3,2.4),fog:false}));meteor.visible=false;meteor.frustumCulled=false;scene.add(meteor);
+let meteorT=9,meteorNext=25,meteorSeen=0;const meteorA=new THREE.Vector3(),meteorV=new THREE.Vector3();
+function meteorNow(front){if(front)camera.getWorldDirection(meteorV);const a=front?Math.atan2(meteorV.z,meteorV.x)+rnd(-.25,.25):Math.random()*6.28,b=a+rnd(1.6,2.4)*(Math.random()<.5?1:-1);meteorA.set(Math.cos(a)*260,front?rnd(110,150):rnd(170,230),Math.sin(a)*260).add(camera.position);meteorA.x-=Math.cos(b)*90;meteorA.z-=Math.sin(b)*90;
+  meteorV.set(Math.cos(b)*180,-rnd(30,60),Math.sin(b)*180);meteorT=0;meteor.visible=true;}
+function meteorStep(dt){if(meteorT>1.1){meteor.visible=false;if(dark>.75&&rain<.05&&mist<.1){meteorNext-=dt;if(meteorNext<=0){meteorNext=rnd(35,80);meteorNow();}}return;}
+  meteorT+=dt;const k=meteorT/1.1;meteor.position.copy(meteorA).addScaledVector(meteorV,meteorT);meteor.lookAt(meteor.position.x+meteorV.x,meteor.position.y+meteorV.y,meteor.position.z+meteorV.z);meteor.rotateY(Math.PI/2);
+  meteor.scale.set(26*Math.sin(Math.PI*Math.min(1,k)),1-k*.6,1-k*.6);
+  if(k<.2&&!roomAt(pos.x,pos.z)&&performance.now()-meteorSeen>240000){pv3.copy(meteor.position).project(camera);if(pv3.z<1&&Math.abs(pv3.x)<.8&&Math.abs(pv3.y)<.8){meteorSeen=performance.now();say('🌠 流星！快許願！');}}}
 function bowStep(dt){const want=wet>.25&&rain<.15&&mist<.1&&sunDir.y>.08&&dark<.4?1:0;bowK+=(want-bowK)*(1-Math.exp(-dt*.25));
   bow.visible=bowK>.02;if(!bow.visible){if(want===0&&bowK<.01)toldBow=false;return;}
   const L=Math.hypot(sunDir.x,sunDir.z)||1,dx=-sunDir.x/L,dz=-sunDir.z/L;bow.position.set(pos.x+dx*250,90-sunDir.y*120,pos.z+dz*250);bow.lookAt(pos.x,bow.position.y,pos.z);bowMat.opacity=bowK*.8;
@@ -98,7 +107,7 @@ function splashStep(dt){
     if(!toldSplash){toldSplash=true;say('嘩啦！你衝過水坑，水往兩邊噴。'+(hit?'':'旁邊有人的話會被濺濕，他會不高興。'));}
     return;}}
 function updateWeather(dt){
-  splashStep(dt);bowStep(dt);fwStep(dt);windStep(dt);marketStep();
+  splashStep(dt);bowStep(dt);fwStep(dt);meteorStep(dt);windStep(dt);marketStep();
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}

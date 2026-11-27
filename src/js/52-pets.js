@@ -55,7 +55,7 @@ function updateCat(dt,t){const c=cat,d=pets[0];c.think-=dt;c.purr-=dt;
   c.legs.forEach((L,i)=>{L.rotation.z=moving?Math.sin(c.ph+(i%3?Math.PI:0))*.7:(i<2?-.2:1.1);});c.tail.rotation.y=Math.sin(t*(c.purr>0?9:1.6))*.5;c.tail.rotation.z=c.purr>0?-.5:0;
   const pd=Math.hypot(c.x-pos.x,c.z-pos.z);c.g.visible=pd<60;
   pv3.set(c.x,.75,c.z).project(camera);const show=pd<12&&pv3.z<1&&Math.abs(pv3.x)<1.1&&Math.abs(pv3.y)<1.1&&!roomAt(pos.x,pos.z);c.tag.hidden=!show;
-  if(show){c.tag.style.left=((pv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-pv3.y)/2*canvas.clientHeight)+'px';const s=c.name+' · '+(c.purr>0?'呼嚕呼嚕 ♥':c.mood);if(c.tag.textContent!==s)c.tag.textContent=s;}}
+  if(show){c.tag.style.left=((pv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-pv3.y)/2*canvas.clientHeight)+'px';const s=c.name+' · '+(c.purr>0?'呼嚕呼嚕 ♥':dark>.6?c.mood.replace('曬太陽','看月亮'):c.mood);if(c.tag.textContent!==s)c.tag.textContent=s;}}
 // --- the two people who run the night-market stalls: they are only there while it is open ---
 const vendors=[['玉米伯',1.72,0xc9966e,0x555555,0xd9623f,0x3a3a3a,0x202020,false,25.2,'烤玉米！熱的喔！'],['奶茶姐',1.6,0xe8b996,0x2a1a16,0x2f9fb0,0x27304a,0x202024,true,29.4,'珍珠奶茶，半糖少冰？']].map(v=>{
   const n=makePerson(person(v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],null,null,.8,.5,{}));n.root.position.set(v[8],n.stand,-9.05);n.root.visible=false;n.tag.hidden=true;n.line=v[9];n.vx=v[8];

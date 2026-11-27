@@ -277,7 +277,7 @@ const STORIES=[
     intro:w=>'新聞說今天晚上有流星！'+w.o.name+'好想看，可是街上路燈太亮看不到。燈塔島那邊最暗。你可以帶我的相機，晚上開船去島上拍一張流星的照片嗎？相機放在碼頭盡頭的箱子上。要等天黑（晚上 8 點以後）才拍得到。拍到拿給'+w.o.name+'看，我給你 $180。',
     steps:w=>[
       {at:[20.2,-22.6],r:2.4,col:0x30343c,big:1.2,text:'流星之夜 1/3：走到碼頭盡頭，拿小芳的相機',done:'你拿到相機了。開船去西北邊的燈塔島，等天黑。'},
-      {at:[-52.5,-47],col:0xfff2a8,big:1.6,when:()=>dark>.75,wait:'流星之夜 2/3：你到燈塔島了，但是天還太亮。等到晚上 8 點以後（可以在島上坐著等，或回家睡到晚上）',text:'流星之夜 2/3：天黑以後，開船到燈塔島，上島拍流星',done:'咻——！一顆好亮的流星劃過天空，你按下快門。拍到了！'},
+      {at:[-52.5,-47],col:0xfff2a8,big:1.6,when:()=>dark>.75,fx:()=>meteorNow(true),wait:'流星之夜 2/3：你到燈塔島了，但是天還太亮。等到晚上 8 點以後（可以在島上坐著等，或回家睡到晚上）',text:'流星之夜 2/3：天黑以後，開船到燈塔島，上島拍流星',done:'咻——！一顆好亮的流星劃過天空，你按下快門。拍到了！'},
       {at:[20.2,-22.6],r:2.4,col:0x30343c,big:1.2,text:'流星之夜 3/3：把船開回碼頭，下船走到碼頭盡頭',done:'你回到碼頭了。去找'+w.o.name+'，給他看照片。'}],
     ask:'你看，我拍到流星了',thanks:'哇——！真的是流星！尾巴好長！我要把這張貼在房間牆上。謝謝你半夜還跑那麼遠！',cheer:()=>'是流星耶！好亮！',end:w=>w.o.name+'抱著照片跳來跳去。'}];
 // --- the park flower beds: they grow as you plant them in the 'garden' story, and then stay for good ---
@@ -294,7 +294,7 @@ function storyQuest(){gardenStep();const q=quest;if(!q||q.type!=='story')return;
   const s=q.steps[q.i];
   if(ride&&Math.abs(ride.v)>(s.r?4:2)||onBus||Math.hypot(pos.x-s.at[0],pos.z-s.at[1])>(s.r||2.2))return;
   if(s.when&&!s.when()){q.text=s.wait;return;}
-  q.i++;sfxCoin();say(s.done);q.text=q.i<q.steps.length?q.steps[q.i].text:q.S.name+'：去找'+q.who.o.name+'，跟他說話';}
+  q.i++;sfxCoin();say(s.done);if(s.fx)s.fx();q.text=q.i<q.steps.length?q.steps[q.i].text:q.S.name+'：去找'+q.who.o.name+'，跟他說話';}
 // --- ten hidden stars: tucked away at the edges of the map (two of them out at sea), to reward looking around ---
 const STARS=[[-36,-9.5],[31,-10],[-36.9,-4],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-50.5,-58.5]],starGot={},starM=[];
 {const geo=new THREE.OctahedronGeometry(.28),mat=new THREE.MeshBasicMaterial({color:new THREE.Color(3.2,2.6,.6)});
