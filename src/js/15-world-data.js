@@ -16,7 +16,7 @@ const TEMPLATES={
         walls:{
           north:{mat:'wall',open:[{kind:'window',c:0,half:1.7,y0:.45,y1:2.45}]},
           east:{mat:'accent',inner:true,open:[{kind:'door',c:.2,half:.45,y1:2.1}]},
-          south:{mat:'wall',open:[{kind:'door',c:1.9,half:.45,y1:2.1,front:true}]},
+          south:{mat:'wall',open:[{kind:'window',c:-1.75,half:.6,y0:.95,y1:2.1},{kind:'door',c:1.9,half:.45,y1:2.1,front:true}]},
           west:{mat:'wall'}},
         furniture:[
           {type:'rug',x:-.95,z:.3},
@@ -24,8 +24,7 @@ const TEMPLATES={
           {type:'sofa',x:.45,z:.3},
           {type:'coffeeTable',x:-1,z:.3},
           {type:'bookshelf',x:3,z:-1.05},
-          {type:'art',x:-1.3,z:2.5,seed:0},
-          {type:'art',x:-.2,z:2.5,seed:1},
+          {type:'art',x:-.3,z:2.5,seed:0},
           {type:'plant',x:-2.4,z:-1.9},
           {type:'lampCorner',x:-2.45,z:1.95},
           {type:'neon',x:3,z:1.3},

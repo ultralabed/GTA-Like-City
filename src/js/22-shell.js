@@ -2,6 +2,26 @@
 function hmat(H,name){return(H&&H.mats[name])||M[name];}
 // One wall, built in its own frame: u runs along the wall, the inside of the room is toward +z, the wall itself sits at z < 0.
 // Holes (windows, doors) are cut by building the wall in pieces around them.
+// --- pitched roofs: every room of a house gets its own tiled gable, so a house with a wing has a roof with a wing ---
+const tileMap=(function(){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.fillStyle='#d8d8d8';g.fillRect(0,0,128,128);
+  for(let r=0;r<4;r++){g.fillStyle='rgba(0,0,0,.28)';g.fillRect(0,r*32,128,3);g.fillStyle='rgba(255,255,255,.18)';g.fillRect(0,r*32+3,128,3);
+    for(let k=0;k<4;k++){g.fillStyle='rgba(0,0,0,.2)';g.fillRect(k*32+(r%2)*16,r*32,2,32);g.fillStyle='rgba(0,0,0,'+(.03+.08*Math.random())+')';g.fillRect(k*32+(r%2)*16,r*32,32,32);}}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;if('colorSpace' in t)t.colorSpace='srgb';else t.encoding=THREE.sRGBEncoding;return t;})();
+const porchMat=new THREE.MeshBasicMaterial({color:0xffe9b8}),brickMat=new THREE.MeshStandardMaterial({color:0x9a5a48,roughness:.9});
+function gableRoof(H,fx,fz,fw,fd,chimney){const alongX=fw>=fd,L=(alongX?fw:fd)+.8,s=(alongX?fd:fw)/2+.4,h=s*.56,y0=RH+WALL_T+.14,sl=Math.hypot(s,h);
+  const mk=(P,N,U,mat)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));g.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(N),3));g.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(U),2));
+    const m=new THREE.Mesh(g,mat);m.position.set(fx,y0,fz);if(!alongX)m.rotation.y=Math.PI/2;m.castShadow=true;m.receiveShadow=true;cur.add(m);};
+  const P=[],N=[],U=[],quad=(a,b,c,d,n,uv)=>{[a,b,c,a,c,d].forEach((v,i)=>{P.push(v[0],v[1],v[2]);N.push(n[0],n[1],n[2]);const q=uv[[0,1,2,0,2,3][i]];U.push(q[0],q[1]);});};
+  const uu=L/1.3,vv=sl/1.3;
+  quad([-L/2,0,-s],[-L/2,h,0],[L/2,h,0],[L/2,0,-s],[0,s/sl,-h/sl],[[0,0],[0,vv],[uu,vv],[uu,0]]);          // the two tiled slopes
+  quad([L/2,0,s],[L/2,h,0],[-L/2,h,0],[-L/2,0,s],[0,s/sl,h/sl],[[0,0],[0,vv],[uu,vv],[uu,0]]);
+  quad([-L/2,-.02,-s],[L/2,-.02,-s],[L/2,-.02,s],[-L/2,-.02,s],[0,-1,0],[[0,0],[uu,0],[uu,1],[0,1]]);     // the underside you see from the street
+  mk(P,N,U,H.mats.roof);
+  const P2=[],N2=[],U2=[];for(const k of[-1,1]){const x=k*(L/2-.4),t=[[x,0,-s],[x,0,s],[x,h,0]];if(k>0)t.reverse();t.forEach(v=>{P2.push(v[0],v[1],v[2]);N2.push(k,0,0);U2.push(v[2],v[1]);});}
+  mk(P2,N2,U2,H.mats.ext);                                                                               // the triangular wall under each end of the roof
+  const bb=(w,hh,d,mat,x,y,z)=>{const m=box(alongX?w:d,hh,alongX?d:w,mat,fx+(alongX?x:z),y0+y,fz+(alongX?z:-x));return m;};
+  bb(L,.12,.05,M.trim,0,-.03,-s);bb(L,.12,.05,M.trim,0,-.03,s);bb(L+.02,.07,.16,H.mats.roof,0,h+.01,0);   // boards along the eaves, and the ridge
+  if(chimney){bb(.5,h*.9+.5,.45,brickMat,-L*.28,(h*.9+.5)/2+.1,-s*.35);bb(.6,.07,.55,M.black,-L*.28,h*.9+.62,-s*.35);}}
 function buildWall(R,side,def){
   const T=WALL_T,H=R.house,horiz=side==='north'||side==='south',L=horiz?R.w:R.d,W=R.walls;
   const rot={north:0,south:Math.PI,east:-Math.PI/2,west:Math.PI/2}[side],sign=(side==='north'||side==='east')?1:-1;
@@ -22,6 +42,7 @@ function buildWall(R,side,def){
     piece(u,a,0,RH);piece(a,b,0,y0);piece(a,b,y1,RH);u=b;
     if(o.kind==='window'){const WX=o.half,ym=(y0+y1)/2;
       box(2*WX+.1,.04,.3,M.trim,o.u,y0+.02,.02);                                              // sill
+      if(!def.inner){box(2*WX+.22,.06,.12,M.trim,o.u,y0-.03,-T-.05);box(2*WX+.2,.09,.05,M.trim,o.u,y1+.045,-T-.03);[-1,1].forEach(k=>box(.08,y1-y0,.05,M.trim,o.u+k*(WX+.04),ym,-T-.03));}   // outside: a ledge, a lintel and side trim
       [-WX+.03,-WX/3,WX/3,WX-.03].forEach(x=>box(.05,y1-y0,.06,M.black,o.u+x,ym,-T/2));        // mullions
       [y0+.03,y1-.03].forEach(y=>box(2*WX,.05,.06,M.black,o.u,y,-T/2));
       box(2*WX,y1-y0,.012,M.glass,o.u,ym,-T/2,{shadow:false}).receiveShadow=false;
@@ -53,7 +74,7 @@ function buildWall(R,side,def){
 houses.forEach(H=>{
   const L=H.lot,T=WALL_T;
   H.mats={accent:M.accent.clone(),ext:new THREE.MeshStandardMaterial({color:L.ext,bumpMap:plaster,bumpScale:.004,roughness:.92}),
-    roof:new THREE.MeshStandardMaterial({color:L.roof,roughness:.8}),doorLeaf:new THREE.MeshStandardMaterial({color:L.door,roughness:.45})};
+    roof:new THREE.MeshStandardMaterial({color:new THREE.Color(L.roof).multiplyScalar(1.5),map:tileMap,roughness:.8,side:THREE.DoubleSide}),doorLeaf:new THREE.MeshStandardMaterial({color:L.door,roughness:.45})};
   H.mats.accent.color.set(L.accent);
   H.shell=new THREE.Group();H.inner=new THREE.Group();scene.add(H.shell,H.inner);   // shell = floor, walls, roof; inner = furniture (hidden when far away)
   bH=H;dev=H.dev;
@@ -67,9 +88,19 @@ houses.forEach(H=>{
     box(fw+.5,.14,fd+.5,H.mats.roof,fx,RH+T+.07,fz);                                // roof with a little overhang
     pboxes.push([fx-fw/2-.25,fx+fw/2+.25,RH,RH+T+.14,fz-fd/2-.25,fz+fd/2+.25]);    // balls bounce off the ceiling from inside and land on the roof from outside
     for(const side of['north','east','south','west'])if(W[side])buildWall(R,side,W[side]);
+    if(L.tpl!=='shop')gableRoof(H,fx,fz,fw,fd,R.id==='living');
     root=H.inner;cur=H.inner;
     R.furniture.forEach(it=>place(it,R));
   });
+  if(H.front){root=H.shell;cur=H.shell;const f=H.front,shop=L.tpl==='shop',wd=shop?3.4:1.5,along=Math.abs(f.dx)>.5;           // by the front door: a canopy, a step and a lamp
+    const bx2=(a,h,b,mat,off,y,side)=>box(along?b:a,h,along?a:b,mat,f.x+f.dx*off+(along?0:side||0),y,f.z+f.dz*off+(along?side||0:0));
+    bx2(wd,.07,.85,shop?H.mats.accent:H.mats.roof,.42,2.34,0);[-1,1].forEach(k=>bx2(.05,.05,.8,M.black,.4,2.28,k*(wd/2-.08)));
+    if(shop){const c=document.createElement('canvas');c.width=512;c.height=96;const g2=c.getContext('2d');g2.fillStyle='#'+new THREE.Color(L.accent).getHexString();g2.fillRect(0,0,512,96);g2.strokeStyle='#f6e7c8';g2.lineWidth=5;g2.strokeRect(7,7,498,82);
+      g2.fillStyle='#fff3d6';g2.font='bold 58px "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';g2.textAlign='center';g2.textBaseline='middle';g2.fillText('夕 陽 商 店',256,50);
+      const t=new THREE.CanvasTexture(c);if('colorSpace' in t)t.colorSpace='srgb';else t.encoding=THREE.sRGBEncoding;
+      const sg=new THREE.Mesh(new THREE.PlaneGeometry(3.6,.68),new THREE.MeshStandardMaterial({map:t,roughness:.6}));const R0=H.rooms[0];
+      sg.position.set(along?f.x+f.dx*.07:R0.cx,2.95,along?R0.cz:f.z+f.dz*.07);sg.rotation.y=Math.atan2(f.dx,f.dz);sg.userData.dyn=true;cur.add(sg);}
+    bx2(1.3,.07,.55,M.concrete,.28,.035,0);bx2(.12,.2,.1,porchMat,.06,1.95,-.72);bx2(.16,.03,.14,M.black,.07,2.065,-.72);}
 });
 bH=null;dev=null;root=scene;cur=scene;
 for(const H of houses){weldStatic(H.shell);weldStatic(H.inner);}
