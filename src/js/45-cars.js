@@ -29,7 +29,8 @@ function wheel(r,wide,x,z){
   fuse(tmp,w);w.hold=hold;w.r=r;return w;
 }
 function spinWheels(c,v,dt,steer){for(const w of c.wheels){w.rotation.y-=v*dt/w.r;if(w.front)w.hold.rotation.y+=((steer||0)*.45-w.hold.rotation.y)*Math.min(1,dt*10);}}
-const carGlass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:.15,metalness:.6}),carTyre=new THREE.MeshStandardMaterial({color:0x111114,roughness:.9});
+const carGlass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:.15,metalness:.6}),carWin=new THREE.MeshStandardMaterial({color:0x18222c,roughness:.06,metalness:.25,transparent:true,opacity:.6}),carSeat=new THREE.MeshStandardMaterial({color:0x34312f,roughness:.9}),
+  drvSkin=[0xe8b996,0xc9966e,0xd2a27c].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.85})),drvTop=[0x2f6f8a,0xc4553b,0x4a6b3a,0x7a4fd0,0xd9a441,0x3a3f4a].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.85})),drvHair=new THREE.MeshStandardMaterial({color:0x2a1c14,roughness:.9});let drvN=0,carTyre=new THREE.MeshStandardMaterial({color:0x111114,roughness:.9});
 function carMesh(col){                                                   // a saloon car facing +x, built around its own middle
   const g=new THREE.Group();scene.add(g);const tmp=new THREE.Group();cur=tmp;
   const paint=new THREE.MeshStandardMaterial({color:col,roughness:.35,metalness:.4});
@@ -39,7 +40,11 @@ function carMesh(col){                                                   // a sa
   b.quadraticCurveTo(2.04,.38,2.04,.5);b.lineTo(2.02,.72);b.quadraticCurveTo(2.0,.82,1.84,.84);b.lineTo(.95,.93);b.lineTo(-1.5,.95);b.lineTo(-1.92,.92);b.quadraticCurveTo(-2.04,.9,-2.04,.78);b.lineTo(-2.04,.5);b.quadraticCurveTo(-2.04,.38,-2.0,.36);
   ext(b,1.6,.09,paint);
   // the cabin: glass all round, with a painted roof and pillars on top of it
-  const c=new THREE.Shape();c.moveTo(1.0,.9);c.lineTo(.36,1.4);c.lineTo(-.98,1.4);c.lineTo(-1.56,.92);c.lineTo(1.0,.9);ext(c,1.42,.04,carGlass);
+  const c=new THREE.Shape();c.moveTo(1.0,.9);c.lineTo(.36,1.4);c.lineTo(-.98,1.4);c.lineTo(-1.56,.92);c.lineTo(1.0,.9);const win=ext(c,1.42,.04,carWin);tmp.remove(win);win.renderOrder=2;g.add(win);   // see-through, so it is drawn after what is inside
+  // inside: seats with headrests, a dashboard and a steering wheel on the left
+  for(const z of[-.36,.36]){box(.13,.5,.44,carSeat,-.32,1.03,z,{r:.04,rz:-.12});box(.1,.14,.24,carSeat,-.36,1.32,z,{r:.03});}
+  box(.13,.46,1.2,carSeat,-1.12,1.0,0,{r:.04,rz:-.15});box(.5,.08,1.36,carTrim,.72,.93,0,{r:.03});
+  {const sw=new THREE.Mesh(new THREE.TorusGeometry(.15,.018,6,14),carTrim);sw.position.set(.42,1.02,-.36);sw.rotation.y=Math.PI/2;sw.rotation.order='YXZ';sw.rotation.x=-.35;tmp.add(sw);}
   box(1.42,.06,1.52,paint,-.31,1.435,0,{r:.025});
   for(const z of[-.755,.755]){box(.84,.07,.06,paint,.67,1.165,z,{rz:Math.atan2(.5,-.64)});box(.77,.08,.06,paint,-1.27,1.17,z,{rz:Math.atan2(.48,.58)});box(.08,.5,.05,paint,-.28,1.17,z);
     box(.11,.085,.17,paint,.86,1.02,z*1.27,{r:.03});                                                   // door mirror
@@ -53,15 +58,21 @@ function carMesh(col){                                                   // a sa
   const headMat=new THREE.MeshBasicMaterial({color:0x222222}),tailMat=new THREE.MeshBasicMaterial({color:0x330000});
   [-.62,.62].forEach(z=>{box(.09,.13,.36,headMat,2.07,.74,z,{r:.04});box(.07,.12,.42,tailMat,-2.105,.8,z,{r:.03});});
   cur=g;fuse(tmp,g);
+  // the driver: head, shoulders and two arms on the wheel. Hidden until someone is actually driving.
+  const rider=new THREE.Group();g.add(rider);{const t2=new THREE.Group();cur=t2;const k=drvN++,sk=drvSkin[k%3],tp=drvTop[k%6];
+    box(.22,.42,.4,tp,-.17,1.02,-.36,{r:.07});const hd=new THREE.Mesh(new THREE.SphereGeometry(.1,12,10),sk);hd.position.set(-.13,1.285,-.36);hd.scale.set(.95,1.08,.95);t2.add(hd);
+    const hr=new THREE.Mesh(new THREE.SphereGeometry(.105,12,8,0,Math.PI*2,0,1.5),drvHair);hr.position.set(-.14,1.292,-.36);hr.rotation.z=.35;hr.scale.set(1,1.06,1);t2.add(hr);
+    for(const z of[-.5,-.22]){box(.4,.07,.07,tp,.08,1.07,z,{r:.03,rz:-.12});box(.07,.06,.07,sk,.3,1.05,z+(z<-.4?.04:-.04),{r:.025});}
+    cur=g;fuse(t2,rider);}rider.visible=false;
   const wheels=[[-1.35,-.82],[-1.35,.82],[1.35,-.82],[1.35,.82]].map(p=>{const w=wheel(.33,.22,p[0],p[1]);w.front=p[0]>0;return w;});
   const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
   beam.rotation.x=-Math.PI/2;beam.position.set(5.6,.02,0);g.add(beam);                       // pool of light on the road at night
-  cur=scene;return{g,wheels,headMat,tailMat,beam,paint};
+  cur=scene;return{g,wheels,headMat,tailMat,beam,paint,rider};
 }
 function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
   c.headMat.color.setRGB(.82+k*5.4,.84+k*4.8,.86+k*3.4);c.tailMat.color.setRGB(.35+k*3+(braking?3:0),.02,.02);c.beam.material.opacity=k*.55;}
 [0xc4553b,0x1f6a6e,0xe9e2d6,0x3b4a7a,0x7a2c5a,0x2a2c32].forEach((col,i)=>{
-  const m=carMesh(col);m.g.visible=false;const dir=0;
+  const m=carMesh(col);m.g.visible=false;m.rider.visible=true;const dir=0;
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir,z:0,x:0,h:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92}));
 });
@@ -97,12 +108,12 @@ function updateParked(dt){for(const P of parked){if(!P.owner)P.owner=people.find
     if(P.away&&P.t<3){P.t+=dt;const d=Math.min(6.5,P.t*P.t*1.6);P.c.g.position.z=P.m.z+d;spinWheels(P.c,P.t*3,dt,0);if(P.t>=2.1){P.c.g.visible=false;P.col[0]=P.col[1]=1e9;}}   // pulls out toward the road, then it is gone
     if(P.c.g.visible)carLights(P.c,false);}}
 // one taxi: it only comes when you wave for it, stops beside you, and takes you along the main street
-{const m=carMesh(0x2fb89a);m.g.visible=false;const sign=new THREE.Mesh(new THREE.BoxGeometry(.4,.3,.95),new THREE.MeshBasicMaterial({color:new THREE.Color(1.5,.85,.05)}));sign.position.set(-.15,1.62,0);m.g.add(sign);
+{const m=carMesh(0x2fb89a);m.g.visible=false;m.rider.visible=true;const sign=new THREE.Mesh(new THREE.BoxGeometry(.4,.3,.95),new THREE.MeshBasicMaterial({color:new THREE.Color(1.5,.85,.05)}));sign.position.set(-.15,1.62,0);m.g.add(sign);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:1e9,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,taxi:true,busDir:1,stopX:0,served:true,dwell:0,dest:null}));}
 const taxi=cars[cars.length-1];
 // the ice-cream van: by day, when it is dry, it comes along now and then, parks by the park for a bit and plays its tune
-{const m=carMesh(0xffb7d5);m.g.visible=false;const cone=new THREE.Mesh(new THREE.ConeGeometry(.22,.5,10),new THREE.MeshStandardMaterial({color:0xe2b06a,roughness:.8}));cone.rotation.x=Math.PI;cone.position.set(-.15,1.72,0);m.g.add(cone);
+{const m=carMesh(0xffb7d5);m.g.visible=false;m.rider.visible=true;const cone=new THREE.Mesh(new THREE.ConeGeometry(.22,.5,10),new THREE.MeshStandardMaterial({color:0xe2b06a,roughness:.8}));cone.rotation.x=Math.PI;cone.position.set(-.15,1.72,0);m.g.add(cone);
   const sc=new THREE.Mesh(new THREE.SphereGeometry(.26,12,10),new THREE.MeshStandardMaterial({color:0xfff4f8,roughness:.6}));sc.position.set(-.15,2.12,0);m.g.add(sc);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:70,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,van:true,busDir:1,stopX:21.5+2.1,served:false,dwell:0,sold:0,jing:0}));}
