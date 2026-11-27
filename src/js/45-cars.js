@@ -48,6 +48,15 @@ const BUS_STOP={'-1':-25.3,'1':18.5};   // where the front of each bus ends up, 
 [-1,1].forEach((dir,i)=>{const m=busMesh(0xe8a23a);m.g.visible=false;
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir,busDir:dir,z:0,x:0,h:0,v:0,on:false,t:6+i*9,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,home:dir,stopX:BUS_STOP[dir],dwell:0,served:false}));});
+// cars that belong to neighbours: parked at home, gone while their owner is at work
+const parked=marks.parking.map(m=>{const c=carMesh(0x5b86c9);c.g.position.set(m.x,0,m.z);c.g.rotation.y=-Math.PI/2;const col=[m.x-1,m.x+1,m.z-2.2,m.z+2.2];colliders.push(col);
+  return{m,c,col,home:col.slice(),away:false,t:9,owner:null};});
+function updateParked(dt){for(const P of parked){if(!P.owner)P.owner=people.find(n=>n.o.name===P.m.owner);const n=P.owner;if(!n)continue;
+    const away=n.hidden&&!!ACT[n.act]&&!!ACT[n.act].car;
+    if(away&&!P.away){P.away=true;P.t=0;sfxDoor(P.m.x,P.m.z);if(Math.hypot(P.m.x-pos.x,P.m.z-pos.z)<30)say(n.o.name+'開車去上班了。他有自己的車，不用等公車。',true);}
+    if(!away&&P.away){P.away=false;P.t=9;P.c.g.position.set(P.m.x,0,P.m.z);P.c.g.visible=true;for(let i=0;i<4;i++)P.col[i]=P.home[i];sfxDoor(P.m.x,P.m.z);if(Math.hypot(P.m.x-pos.x,P.m.z-pos.z)<30)say(n.o.name+'開車回來了，把車停回自己的車位。',true);}
+    if(P.away&&P.t<3){P.t+=dt;const d=Math.min(6.5,P.t*P.t*1.6);P.c.g.position.z=P.m.z+d;spinWheels(P.c,P.t*3,dt,0);if(P.t>=2.1){P.c.g.visible=false;P.col[0]=P.col[1]=1e9;}}   // pulls out toward the road, then it is gone
+    if(P.c.g.visible)carLights(P.c,false);}}
 // one taxi: it only comes when you wave for it, stops beside you, and takes you along the main street
 {const m=carMesh(0x2fb89a);m.g.visible=false;const sign=new THREE.Mesh(new THREE.BoxGeometry(.4,.3,.95),new THREE.MeshBasicMaterial({color:new THREE.Color(1.5,.85,.05)}));sign.position.set(-.15,1.69,0);m.g.add(sign);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);

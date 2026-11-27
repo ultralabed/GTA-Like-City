@@ -33,7 +33,8 @@ const onShift=n=>inSpan(n.o.shift,clock)&&(n.visitor||n.o.job||!isWeekend());
 const mates=n=>people.filter(m=>m!==n&&m.home===n.home&&!m.hidden);
 function freeAct(n,id){                                                 // find a spot of the right kind that nobody else is using
   const type=id==='work'&&n.o.job?'serve':GOALS[id].type;let best=null,bs=-1e9;   // someone with a job on the street works there instead of leaving
-  for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;if(A.market&&!marketOn)continue;                       // the night market stalls only serve when it is open
+  if(type==='exit'){for(const k in ACT)if(ACT[k].only===n.o.name)return k;}                      // someone with a car of their own drives; everyone else takes the bus
+  for(const k in ACT){const A=ACT[k];if(A.type!==type)continue;if(A.only)continue;if(A.market&&!marketOn)continue;                       // the night market stalls only serve when it is open
     if(A.house!=null&&A.house!==n.home&&!A.pub&&type!=='serve')continue;                         // other people's houses are off limits
     if(!A.shared){let taken=!!seat&&seat.k===k;                           // you might be sitting there
       for(const m of people){if(m===n||!m.want)continue;const O=ACT[m.want];

@@ -203,6 +203,8 @@ PREFAB.flag=()=>{                                                          // a 
   f.userData={tip:'點一下：計時賽的起點（要先坐上車、機車或腳踏車）',act:()=>startRace()};interact.push(f);
   return{solid:[[-.08,.08,-.08,.08]]};
 };
+PREFAB.parking=o=>{flat(2.8,5.8,M.concrete,0,-.011,0,1.4);flat(1.2,1.4,M.concrete,0,-.011,3.5,1.2);
+  return{spots:[{type:'exit',ap:[1.75,1.4],yaw:-Math.PI/2,pose:'idle',hide:true,only:o.owner,car:true,label:'開車去上班'}],marks:[{kind:'parking',x:0,z:0,owner:o.owner}]};};
 PREFAB.pump=()=>{
   box(.9,.12,.6,M.concrete,0,.06,0);box(.6,1.5,.4,M.teal,0,.87,0,{r:.04});box(.66,.2,.46,M.ceramic,0,1.7,0,{r:.04});
   const scr=new THREE.Mesh(new THREE.PlaneGeometry(.4,.3),new THREE.MeshBasicMaterial({color:0xfff0c0}));scr.position.set(0,1.25,.205);cur.add(scr);
