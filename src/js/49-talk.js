@@ -156,7 +156,7 @@ $('bGuide').onclick=showGuide;
 // --- the full list of keys, grouped by what you are doing ---
 const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／第三人稱、滑鼠轉頭、Esc 放開滑鼠'],
   ['手上的東西','E 撿起／放下、點畫面 丟出去、1 手電筒、2 雨傘、3 喝飲料、4 滑板、5 風箏（要有風）、M 手機地圖'],
-  ['表情動作','X 揮手（附近的人會回應）、J 跳舞（愛玩的人會跟你一起跳，動一下就停）'],
+  ['表情動作','C 蹲下（走得慢又安靜，小橘不會怕你，蹲著摸牠更快變熟）、X 揮手（附近的人會回應）、J 跳舞（愛玩的人會跟你一起跳，動一下就停）'],
   ['坐和睡','Q 坐下／站起來、Z 躺下睡覺（時間會快轉）'],
   ['車子、機車、腳踏車、小船','F 上下車（船要靠岸才能下）、W 油門、S 煞車倒車、A D 轉彎、H 喇叭、R 收音機（只有車）、空白鍵 手煞車（車和機車，轉彎變急）'],
   ['開車載客','坐在車子裡按 K 接一位客人；開到他附近停好，他上車後載到目的地再停好'],
@@ -189,7 +189,8 @@ function moveSpeed(dt,want){const wd=waterDepth();
     return 1.9*(1-.5*Math.min(1,wd/1.3));}
   if(boarding()){stam=Math.max(0,Math.min(1,stam+.04*dt));return 4.6;}                              // on the skateboard: quick, and your legs get a rest
   const run=(keys.ShiftLeft||keys.ShiftRight||runLock||Math.hypot(joy.x,joy.y)>.93)&&want>.1&&stam>0&&!ride&&!seat;
-  stam=Math.max(0,Math.min(1,stam+(run?-.09:seat?.14:.05)*dt));return run?3.3:1.9;}
+  if(run&&crouch){crouch=false;actKey='';}
+  stam=Math.max(0,Math.min(1,stam+(run?-.09:seat?.14:.05)*dt));return run?3.3:crouch?.95:1.9;}
 function buyDrink(){if(cash<20){say('飲料一罐 $20，你的錢不夠。幫鄰居做事可以賺錢。');return;}
   cash-=20;drinks++;sfxCoin();actKey='';say('你買了一罐飲料（剩 $'+cash+'）。按右下角「喝飲料」補體力，或在聊天時請別人喝。');}
 function drinkUp(){if(!drinks)return;drinks--;stam=1;actKey='';say('咕嚕咕嚕。體力補滿了，可以繼續跑。');}

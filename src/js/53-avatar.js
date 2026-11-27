@@ -27,6 +27,7 @@ function thirdCam(dt,t){
   else if(moving&&boarding()){name='idle';y+=.1;}                              // gliding: stand still on the deck
   else if(moving){name='walk';me.ph+=dt*sp*3.9;}
   pose(P,name,me,t);
+  if(crouchK>.02&&!seat){const k=crouchK;P.hlx-=1.25*k;P.hrx-=1.25*k;P.klx+=2.0*k;P.krx+=2.0*k;P.sx=(P.sx||0)+.28*k;y-=.4*k;hy-=.55*k;}
   if(emote==='wave'){P.arx=-2.7;P.arz=-.25+Math.sin(t*11)*.35;P.erx=-.35;}
   if(held){P.alx=P.arx=-1.15;P.elx=P.erx=-.7;}else if(use.umbrella){P.arx=-1.5;P.erx=-1.1;}else if(use.flashlight){P.arx=-1.2;P.erx=-.3;}
   const kp=1-Math.exp(-dt*(name==='walk'?20:9));JK.forEach(k=>me.cur[k]+=(P[k]-me.cur[k])*kp);

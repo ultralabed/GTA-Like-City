@@ -32,13 +32,13 @@ const cat=(function(){
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
   const c={name:'小橘',g,legs,tail,tag,x:CAT_AT[0][0],z:CAT_AT[0][1],h:0,path:[],at:0,stay:rnd(10,25),think:0,ph:0,mood:CAT_AT[0][2],run:false,trust:0,purr:0};
   hit.userData={tip:'點一下：摸摸小橘',act:()=>{if(Math.hypot(c.x-pos.x,c.z-pos.z)>2.6){say('太遠了，慢慢走近一點才摸得到小橘。');return;}
-    if(c.run){say('小橘正在跑，現在摸不到。');return;}c.trust=Math.min(5,c.trust+1);c.purr=3;c.stay=Math.max(c.stay,6);tone(95,.9,.12,'sawtooth',1.02);
+    if(c.run){say('小橘正在跑，現在摸不到。');return;}c.trust=Math.min(5,c.trust+(crouch?2:1));c.purr=3;c.stay=Math.max(c.stay,6);tone(95,.9,.12,'sawtooth',1.02);
     say(c.trust<3?'小橘讓你摸了一下，尾巴豎起來。（再多摸幾次牠會更信任你）':'小橘呼嚕呼嚕地蹭你的腳。牠很喜歡你。');}};interact.push(hit);
   return c;})();
 function catGo(c,i,run){c.at=i;c.run=!!run;c.path=findPath(c.x,c.z,CAT_AT[i][0],CAT_AT[i][1])||[];c.mood=run?c.mood:'要去別的地方';}
 function updateCat(dt,t){const c=cat,d=pets[0];c.think-=dt;c.purr-=dt;
   if(c.think<=0){c.think=.5;const dd=d?Math.hypot(d.x-c.x,d.z-c.z):99,pd=Math.hypot(pos.x-c.x,pos.z-c.z);
-    const scared=dd<4.5||(pd<2.2&&c.trust<1&&(ride||Math.hypot(vel.x,vel.z)>2.6))||(ride&&pd<5&&Math.abs(ride.v)>3);
+    const scared=dd<4.5||(pd<2.2&&c.trust<1&&!crouch&&(ride||Math.hypot(vel.x,vel.z)>2.6))||(ride&&pd<5&&Math.abs(ride.v)>3);
     if(scared&&!c.run){let best=c.at,bd=-1;CAT_AT.forEach((q,i)=>{const far=Math.min(d?Math.hypot(q[0]-d.x,q[1]-d.z):99,Math.hypot(q[0]-pos.x,q[1]-pos.z));if(i!==c.at&&far>bd&&Math.hypot(q[0]-c.x,q[1]-c.z)<45){bd=far;best=i;}});
       c.mood=dd<4.5?'被小黃嚇到，快跑！':'被嚇到，跑走了';catGo(c,best,true);}
     else if(!c.path.length&&c.purr<=0&&Math.random()<.06){                                  // someone walking by stops to say hello to her
