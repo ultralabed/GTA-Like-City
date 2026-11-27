@@ -373,9 +373,21 @@ function showTalk(n,line,opts){
   else if(quest&&quest.type==='dog'&&quest.from===n)add('小黃在哪裡？',()=>showTalk(n,quest.got?'牠不是跟著你嗎？帶牠過來就好。':'有人說看到牠在'+quest.at[0]+'。'));
   else if(!quest)add('需要幫忙嗎？',()=>{if(n.mood<.35||n.like<=-2){showTalk(n,'現在不用，謝謝。');return;}const q=offer(n);
     showTalk(n,q.ask,[['好，我幫你',()=>{quest=q;if(q.start)q.start();showTalk(n,'謝謝！做完我給你 $'+q.reward+'。');}],['下次吧',()=>showTalk(n,'沒關係。')]]);});
+  {const P=parked.find(q=>q.owner===n&&!q.away);if(P)add('可以載我一程嗎？',()=>liftMenu(n,P));}
   if(drinks&&!(quest&&quest.type==='drink'&&quest.from===n))add('請你喝飲料',()=>{if(!drinks){showTalk(n,'咦，你的飲料呢？');return;}drinks--;actKey='';n.like=Math.min(5,n.like+2);n.mood=Math.min(1,n.mood+.2);n.need.fun=Math.min(1,n.need.fun+.2);addRep(1);showTalk(n,'哇，謝謝！你人真好。');});
   add('再見',closeTalk);
 }
+// --- a lift from a neighbour who owns a car: free, once a day, but only friends get one ---
+let liftDay=-1;
+function liftMenu(n,P){
+  if(n.like<2){showTalk(n,'呃…我們還不太熟耶，下次吧。（多跟他聊天、幫他的忙、請他喝飲料，變成朋友他就會載你）',[['好吧',closeTalk]]);return;}
+  if(liftDay===day){showTalk(n,'今天載過你一次了啦，明天再說。',[['好',closeTalk]]);return;}
+  const ds=TAXI_TO.filter(D=>Math.abs(D[1]-pos.x)>9);
+  showTalk(n,'好啊，朋友嘛！上車，要去哪裡？',ds.map(D=>[D[0],()=>doLift(n,P,D)]).concat([['不用了，謝謝',closeTalk]]));}
+function doLift(n,P,D){liftDay=day;closeTalk();const far=Math.abs(D[1]-pos.x);sfxDoor(pos.x,pos.z);canvas.style.transition='opacity .45s';canvas.style.opacity=0;
+  setTimeout(()=>{let z=5.1;for(const c of[5.1,4.8,14.2,14.6,5.5])if(!blocked(D[1],c,.3)){z=c;break;}
+    pos.x=D[1];pos.z=z;vel.x=vel.z=0;clock=(clock+.04+far*.0015)%24;envDirty=true;n.like=Math.min(5,n.like+.2);stats.lifts=(stats.lifts||0)+1;sfxDoor(pos.x,pos.z);canvas.style.opacity=1;
+    say(n.o.name+'開車把你載到'+D[0]+'，揮揮手就開回家了。不用錢——朋友真好！（一天一次）');},520);}
 function talk(n){
   if(n.lie||ride||n.react&&!n.react.talk){notify(n,'greet');return;}          // asleep, or busy reacting to something: just a wave
   if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)>3.4){say('太遠了，走近一點再跟'+n.o.name+'說話。');return;}
