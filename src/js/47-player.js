@@ -252,6 +252,14 @@ const kite=new THREE.Group();kite.visible=false;scene.add(kite);
   const m=new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshBasicMaterial({color:0xff5a4a,side:THREE.DoubleSide}));kite.add(m);
   const t=new THREE.Mesh(new THREE.PlaneGeometry(.06,1.3),new THREE.MeshBasicMaterial({color:0xffd23d,side:THREE.DoubleSide}));t.position.y=-1.35;kite.add(t);kite.userData.tail=t;}
 const kiteLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xdddddd,transparent:true,opacity:.6}));kiteLine.frustumCulled=false;kiteLine.visible=false;scene.add(kiteLine);
+// two more kites for neighbours who come down to the beach on a windy day
+const npcKites=[0x3aa0e0,0xffc93d].map(col=>{const g=new THREE.Group();g.visible=false;scene.add(g);const sh=new THREE.Shape();sh.moveTo(0,.6);sh.lineTo(.4,0);sh.lineTo(0,-.75);sh.lineTo(-.4,0);sh.closePath();
+  g.add(new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshBasicMaterial({color:col,side:THREE.DoubleSide})));
+  const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xdddddd,transparent:true,opacity:.6}));ln.frustumCulled=false;ln.visible=false;scene.add(ln);return{g,ln,h:0};});
+function npcKiteStep(dt,t){const fl=people.filter(n=>!n.hidden&&n.goal&&n.goal.id==='kite'&&n.phase==='at');
+  npcKites.forEach((K,i)=>{const n=fl[i],want=n&&windS>=2.6?Math.min(13,2.5+windS*1.3):0;K.h+=(want-K.h)*(1-Math.exp(-dt*.9));const on=!!n&&K.h>.4&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<90;K.g.visible=K.ln.visible=on;if(!on){if(!n)K.h=0;return;}
+    const dx=windX/(windS||1),dz=windZ/(windS||1),out=K.h*.9,x=n.pos.x+dx*out+Math.sin(t*1.1+i*2)*.6,y=1.4+K.h+Math.sin(t*1.7+i)*.4,z=n.pos.z+dz*out+Math.cos(t*1.1+i*2)*.6;
+    K.g.position.set(x,y,z);K.g.lookAt(camera.position);K.g.rotation.z+=Math.sin(t*2+i)*.25;const A=K.ln.geometry.attributes.position;A.setXYZ(0,n.pos.x,1.25,n.pos.z);A.setXYZ(1,x,y,z);A.needsUpdate=true;});}
 let kiteH=0,kiteTold=0,kiteTime=0;const kP=new THREE.Vector3();
 function kiteStep(dt,t){const fly=use.kite&&!ride&&!onBus&&!roomAt(pos.x,pos.z)&&waterDepth()<.5;
   if(use.kite&&!fly&&(ride||onBus||roomAt(pos.x,pos.z))){use.kite=false;actKey='';}
