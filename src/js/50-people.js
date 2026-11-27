@@ -60,28 +60,58 @@ function makePerson(o){
   const s=o.h/1.75,root=new THREE.Group(),body=new THREE.Group();body.scale.setScalar(s);root.add(body);dyn.add(root);
   const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85});
   const skin=mat(o.skin),top=mat(o.top),bot=mat(o.bottom),shoe=mat(o.shoe),hair=mat(o.hair),eye=mat(0x1a1210);const mats={skin,top,bot,shoe,hair};
+  // every person is a little different: the name decides build, hairstyle, sleeves and eye colour, so it is the same each time you play
+  let hsh=7;for(const ch of o.name)hsh=(hsh*31+ch.charCodeAt(0))>>>0;const rv=k=>((hsh>>>(k*5))&31)/31;
+  const fem=!!o.long,wide=(fem?.9:1.03)*(.95+rv(1)*.12),hipW=fem?1.1:.97,longSl=rv(3)>.55,hc0=new THREE.Color(o.hair),old=hc0.r+hc0.g+hc0.b>1.5;
+  const eyeW=mat(0xf3efe8),iris=mat([0x3a2616,0x2a1c12,0x4a3524,0x35423a][Math.floor(rv(4)*3.99)]),sole=mat(0x1b1b1e),belt=mat(0x2a2320);
+  const lip=mat(new THREE.Color(o.skin).lerp(new THREE.Color(fem?0xb03a48:0x8a4a44),fem?.7:.5).getHex()),brow=mat(new THREE.Color(o.hair).multiplyScalar(old?.6:.55).getHex());
   const mk=(geo,m,par,x,y,z)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;
     if(o.sep)par.add(me);else(par.userData.parts=par.userData.parts||[]).push(me);return me;};   // sep: keep the shapes separate (your own character, so its clothes can change colour)
   const jt=(par,x,y,z)=>{const g=new THREE.Group();g.position.set(x,y,z);par.add(g);return g;};
-  const cap=(r,l)=>new THREE.CapsuleGeometry(r,l,3,10),sph=r=>new THREE.SphereGeometry(r,14,10),J={};
-  mk(sph(.13),bot,body,0,0,0).scale.set(1.25,.8,.9);
-  J.spine=jt(body,0,0,0);mk(cap(.125,.26),top,J.spine,0,.27,0).scale.set(1.15,1,.8);
-  J.neck=jt(J.spine,0,.52,0);mk(new THREE.CylinderGeometry(.045,.05,.09,12),skin,J.neck,0,.03,0);
-  const head=jt(J.neck,0,.07,0);mk(sph(.105),skin,head,0,.1,0).scale.set(.95,1.1,1);
-  const hc=mk(new THREE.SphereGeometry(.113,18,10,0,Math.PI*2,0,1.35),hair,head,0,.115,-.012);hc.rotation.x=-.42;hc.scale.set(.97,1.1,1.02);
-  if(o.long){mk(sph(1),hair,head,0,.02,-.07).scale.set(.105,.19,.065);mk(sph(.05),hair,head,0,.2,-.07);}
-  [-1,1].forEach(k=>{mk(sph(.012),eye,head,k*.038,.11,.096);});
-  mk(sph(.014),skin,head,0,.085,.105);
+  const cyl=(a,b,l,sg)=>new THREE.CylinderGeometry(a,b,l,sg||10,1),sph=(r,w,h)=>new THREE.SphereGeometry(r,w||12,h||8),bx=(w,h,d)=>new THREE.BoxGeometry(w,h,d),J={};
+  // hips and a torso with a real outline: waist, chest, shoulders, turned on a lathe and then flattened front to back
+  mk(sph(.13,14,10),bot,body,0,-.02,0).scale.set(1.2*hipW,.86,.9);
+  J.spine=jt(body,0,0,0);
+  const prof=fem?[[.119,0],[.124,.06],[.11,.16],[.127,.27],[.149,.36],[.141,.44],[.1,.5],[.05,.535]]:[[.125,0],[.128,.06],[.123,.16],[.142,.27],[.165,.37],[.158,.45],[.108,.505],[.052,.535]];
+  mk(new THREE.LatheGeometry(prof.map(q=>new THREE.Vector2(q[0]*wide,q[1])),16),top,J.spine,0,0,0).scale.set(1.12,1,.72);
+  mk(cyl(.127*wide,.129*wide,.034,16),belt,J.spine,0,.012,0).scale.set(1.13,1,.74);
+  J.neck=jt(J.spine,0,.52,0);mk(cyl(.042,.05,.11,10),skin,J.neck,0,.035,0);
+  // the head: skull and jaw, ears, a nose, eyes with whites and coloured irises, eyebrows, lips
+  const head=jt(J.neck,0,.07,0);
+  mk(sph(.1,16,12),skin,head,0,.108,-.005).scale.set(.93,1.08,1.02);
+  mk(sph(.08,14,10),skin,head,0,.052,.012).scale.set(fem?.86:.96,.95,.98);
+  [-1,1].forEach(k=>{mk(sph(.022,8,6),skin,head,k*.092,.098,-.008).scale.set(.45,1,.7);
+    mk(sph(.0115,10,8),eyeW,head,k*.035,.113,.0855).scale.set(1.3,.72,.7);
+    mk(sph(.0074,8,6),iris,head,k*.035,.113,.0922).scale.set(1,1,.5);
+    mk(sph(.0032,6,4),eye,head,k*.035,.113,.0957).scale.set(1,1,.5);
+    mk(sph(1,8,5),brow,head,k*.036,.131,.092).scale.set(.016,fem?.0028:.004,.005);});
+  mk(sph(.013,8,6),skin,head,0,.094,.097).scale.set(.75,1.7,1);mk(sph(.0135,8,6),skin,head,0,.078,.106).scale.set(1.15,.9,1);
+  mk(sph(.021,10,6),lip,head,0,.0445,.082).scale.set(1,.3,.5);
+  // eyelids: a separate piece so the eyes can blink (and stay shut while asleep)
+  const lids=jt(head,0,0,0);[-1,1].forEach(k=>mk(sph(.0128,10,8),skin,lids,k*.035,.1135,.086).scale.set(1.32,.78,.76));if(!o.sep)weld(lids);lids.visible=false;
+  // hair: a cap over the skull plus a style
+  const cap=(th,x)=>{const hc=mk(new THREE.SphereGeometry(.108,16,10,0,Math.PI*2,0,th),hair,head,0,.112,-.012);hc.rotation.x=x;hc.scale.set(.96,1.1,1.04);};
+  const hs=rv(2);
+  if(fem){cap(1.4,-.55);[-1,1].forEach(k=>mk(sph(1,8,8),hair,head,k*.086,.06,-.012).scale.set(.028,.105,.06));
+    if(hs<.4){mk(sph(1,12,10),hair,head,0,.02,-.07).scale.set(.1,.2,.062);}                                         // long and straight
+    else if(hs<.7){mk(sph(.045,10,8),hair,head,0,.15,-.112);mk(cyl(.03,.012,.2,8),hair,head,0,.04,-.135).rotation.x=.25;}       // ponytail
+    else{mk(sph(1,12,10),hair,head,0,.075,-.04).scale.set(.108,.1,.09);mk(sph(.05,10,8),hair,head,0,.21,-.06);}}     // bob with a bun
+  else if(old&&hs>.5){cap(.85,-.95);[-1,1].forEach(k=>mk(sph(1,8,8),hair,head,k*.088,.1,-.03).scale.set(.022,.055,.07));}   // thinning on top
+  else{cap(hs<.3?1.25:1.38,-.42);if(hs>=.3)mk(sph(1,10,8),hair,head,hs>.75?.025:0,.196,.045).scale.set(.085,.03,.06);}       // short, with or without a fringe
   ['l','r'].forEach((n,i)=>{const k=i?-1:1;
-    const sh=J['a'+n]=jt(J.spine,k*.19,.46,0);mk(cap(.045,.2),top,sh,0,-.14,0);
-    const el=J['e'+n]=jt(sh,0,-.28,0);mk(cap(.038,.19),skin,el,0,-.133,0);mk(sph(.045),skin,el,0,-.28,0);
-    const hip=J['h'+n]=jt(body,k*.09,-.04,0);mk(cap(.07,.3),bot,hip,0,-.22,0);
-    const kn=J['k'+n]=jt(hip,0,-.44,0);mk(cap(.055,.3),o.shorts?skin:bot,kn,0,-.205,0);mk(new THREE.BoxGeometry(.09,.06,.24),shoe,kn,0,-.41,.06);});
+    const sh=J['a'+n]=jt(J.spine,k*(.17*wide+.008),.455,0);mk(sph(.05,10,8),top,sh,0,-.004,0);
+    if(longSl)mk(cyl(.049,.041,.27),top,sh,0,-.145,0);else{mk(cyl(.05,.048,.12),top,sh,0,-.07,0);mk(cyl(.044,.038,.27),skin,sh,0,-.145,0);}
+    const el=J['e'+n]=jt(sh,0,-.28,0);mk(sph(.039,8,6),longSl?top:skin,el,0,0,0);mk(cyl(.038,.029,.24),longSl?top:skin,el,0,-.125,0);
+    mk(sph(.034,8,6),skin,el,0,-.272,.002).scale.set(.55,1.15,1);mk(sph(.03,8,6),skin,el,0,-.318,.006).scale.set(.45,1.1,.9);mk(sph(.014,6,5),skin,el,k*-.008,-.283,.034).scale.set(.9,1.8,.9);
+    const hip=J['h'+n]=jt(body,k*.09*hipW,-.04,0);mk(sph(.078,10,8),bot,hip,0,-.01,0);
+    if(o.shorts){mk(cyl(.082,.07,.24,12),bot,hip,0,-.125,0);mk(cyl(.074,.056,.42,12),skin,hip,0,-.215,0);}else mk(cyl(.078,.058,.42,12),bot,hip,0,-.215,0);
+    const kn=J['k'+n]=jt(hip,0,-.44,0);mk(sph(.057,10,8),o.shorts?skin:bot,kn,0,0,0);mk(cyl(.056,.038,.36),o.shorts?skin:bot,kn,0,-.185,0);
+    mk(sph(.05,10,8),shoe,kn,0,-.393,.005).scale.set(.9,.78,1.1);mk(sph(.05,10,8),shoe,kn,0,-.408,.085).scale.set(.85,.56,1.5);mk(bx(.085,.02,.25),sole,kn,0,-.437,.055);});
   if(!o.sep)[body,J.spine,J.neck,head,J.al,J.ar,J.el,J.er,J.hl,J.hr,J.kl,J.kr].forEach(weld);
   const book=new THREE.Mesh(new THREE.BoxGeometry(.2,.03,.15),mat(o.top===0x1f6a6e?0xb5533a:0x1f5a5e));book.position.set(-.1,-.29,.02);book.castShadow=true;J.el.add(book);book.rotation.x=.4;book.visible=false;
   const hit=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,1.75,8),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=-.02;body.add(hit);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
-  const n={o,root,J,head,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
+  const n={o,root,J,head,body,lids,blinkT:1+Math.random()*4,lookC:0,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
     hidden:false,lie:false,sit:false,ph:0,wait:0,kickCd:0,repath:0,settle:9,cur:{},tagText:'',
     need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6,food:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
@@ -94,6 +124,12 @@ function makePerson(o){
   const stick=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.8,6),eye);stick.position.set(.12,.8,.05);um.add(canopy,stick);um.visible=false;body.add(um);n.um=um;
   return n;
 }
+// --- the little things that make a body look alive: breathing, blinking, hips and shoulders turning as you walk, eyes following someone close by ---
+function liveBody(n,t,dt,walk,look,asleep){const J=n.J,br=Math.sin(t*1.5+n.stand*7),kk=1-Math.exp(-dt*6);
+  J.spine.scale.set(1,1+br*.006,1+br*.02);
+  const tw=walk?Math.sin(n.ph)*.12:0,sw=walk?Math.cos(n.ph)*.035:0;J.spine.rotation.y+=(tw-J.spine.rotation.y)*kk;n.body.rotation.z+=(sw-n.body.rotation.z)*kk;
+  n.lookC+=((look||0)-n.lookC)*(1-Math.exp(-dt*4));J.neck.rotation.y+=n.lookC*.75;
+  n.blinkT-=dt;if(n.blinkT<-.12)n.blinkT=2.2+Math.random()*4;n.lids.visible=!!asleep||n.blinkT<0;}
 const up3=new THREE.Vector3(0,1,0);
 const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home=H.id;return n;}))
   .concat(WORLD.visitors.map((o,i)=>{const n=makePerson(o);n.home=-1;n.visitor=true;n.stay=0;
