@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,REL,album,shells,gifted,iceCreams,fishGot,isleSeen,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,walks,REL,album,shells,gifted,iceCreams,fishGot,isleSeen,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.REL)Object.assign(REL,d.REL);if(d.stats&&d.stats.done&&d.stats.done.citizen)$('title').textContent='夕陽街 · 榮譽市民';if(d.album)Object.assign(album,d.album);shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;walks=d.walks||0;if(d.REL)Object.assign(REL,d.REL);if(d.stats&&d.stats.done&&d.stats.done.citizen)$('title').textContent='夕陽街 · 榮譽市民';if(d.album)Object.assign(album,d.album);shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -29,7 +29,7 @@ const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺'
   ['ice',()=>iceCreams>=1,'吃到冰淇淋車的冰淇淋',5],
   ['isle',()=>isleSeen,'登上燈塔島',30],
   ['home',()=>homeOwned,'有自己的家了',0],
-  ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['photo',()=>Object.keys(album).length>=4,'小小攝影師：相簿收集 4 張',30],['shell',()=>shells>=15,'貝殼收藏家：撿了 15 個貝殼',30],['best',()=>Object.keys(gifted).length>=1,'有了第一個最好的朋友（♥♥♥♥♥）',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
+  ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['photo',()=>Object.keys(album).length>=4,'小小攝影師：相簿收集 4 張',30],['walk3',()=>walks>=3,'好夥伴：跟朋友散步 3 次',30],['shell',()=>shells>=15,'貝殼收藏家：撿了 15 個貝殼',30],['best',()=>Object.keys(gifted).length>=1,'有了第一個最好的朋友（♥♥♥♥♥）',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
 // --- three small goals a day, picked fresh each morning ---
 let waves=0;
 const DAILY=[['fish','釣到 2 條魚',()=>fishCount,2],['walk','走路 400 公尺',()=>stats.walk,400],['drive','開車或騎車 800 公尺',()=>stats.drive,800],['hoop','投進 2 球',()=>baskets,2],
@@ -64,6 +64,25 @@ function citizenStep(){if(citizenT>0){citizenT-=.25;if(citizenT<=0){fwForce=fals
   stats.done.citizen=1;cash+=500;stCash=cash;addRep(5);fwForce=true;citizenT=75;sfxBell();sfxCoin();$('title').textContent='夕陽街 · 榮譽市民';
   for(const n of people){if(n.hidden||n.lie)continue;n.like=Math.min(5,n.like+1);n.mood=1;if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<40)n.react={say:'恭喜你！你是我們的榮譽市民！',t:5,pose:'wave'};}
   say('🎉 你成為「夕陽街榮譽市民」了！九件大事全部完成。大家為你放煙火，還送你 $500。謝謝你讓這條街變得更好。');}
+// --- going for a walk with a friend: they keep you company for a while, talk about what they see, and like you more for it ---
+let buddy=null,buddyT=0,buddySay=0,walks=0;
+function askWalk(n){if(buddy){showTalk(n,'你不是已經跟'+buddy.o.name+'在散步了嗎？');return;}
+  if(n.mood<.4||n.goal.id==='work'||n.goal.id==='sleep'){showTalk(n,'現在不太方便，下次吧。');return;}
+  if(rainOn&&!n.brolly){showTalk(n,'下雨耶，我沒帶傘。等雨停再去好不好？');return;}
+  buddy=n;buddyT=100;buddySay=6;n.resume=null;setGoal(n,'hang');showTalk(n,'好啊！走吧，你帶路。',[['走吧',closeTalk]]);say(n.o.name+'要跟你一起散步。他會跟著你走，大約一分半鐘。走到不同的地方，他會聊不同的事。');}
+function buddyLine(n){const z=pos.z,x=pos.x;
+  if(onPier(x,z))return'站在碼頭上，好像走在海上一樣。';if(z<-6)return['海風好舒服。','你看，海鷗！','沙子跑進鞋子裡了，哈哈。'][Math.floor(Math.random()*3)];
+  if(marketOn&&z<0&&x>20)return'夜市的烤玉米好香，要不要買一根？';if(fwOn)return'煙火好漂亮，跟你一起看真好。';
+  if(Math.hypot(x-21,z-19)<8)return buskOn?'阿樂今天彈得不錯。':'公園的樹又長高了。';if(Math.hypot(x-35,z-17)<7)return'小芳的店什麼都有賣。';
+  if(homeOwned&&Math.hypot(x+33.4,z-17)<7)return'這就是你家啊？門的顏色真好看。';if(dark>.7)return'晚上的街燈好漂亮。';if(wet>.4&&!rainOn)return'雨後的空氣好清新。';
+  return['跟你散步很開心。','今天天氣不錯。','這條街住久了，每個人都認識。','你最近幫了大家好多忙。'][Math.floor(Math.random()*4)];}
+function buddyStep(dt){const n=buddy;if(!n)return;const d=Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z);buddyT-=dt;buddySay-=dt;
+  const end=(line,ok)=>{buddy=null;n.react={say:line,t:3,pose:ok?'wave':null};n.cool={};if(ok){walks++;n.like=Math.min(5,n.like+.4);n.mood=Math.min(1,n.mood+.15);addRep(0);say('散步結束。'+n.o.name+'更喜歡你了。');}};
+  if(n.hidden||n.lie||n.goal.id!=='hang'){buddy=null;return;}
+  if(ride||onBus){end('你要坐車啊？那我先回去了，下次再走。',buddyT<60);return;}if(d>28){end('',false);say(n.o.name+'跟不上你，自己先回去了。');return;}
+  if(rainOn&&!n.brolly){end('下雨了！我先回家，改天再約。',buddyT<60);return;}
+  if(buddyT<=0){end('今天謝謝你陪我，下次再約！',true);return;}
+  if(d<4.5&&!n.react){n.need.fun=Math.min(1,n.need.fun+.012*dt*4);n.need.fit=Math.min(1,n.need.fit+.008*dt*4);if(buddySay<=0){buddySay=rnd(11,17);n.react={say:buddyLine(n),t:3.2,pose:null};n.like=Math.min(5,n.like+.05);}}}
 // --- best friends: when someone likes you as much as they can, they give you something the next time you are close ---
 const gifted={};
 const GIFTS=[['一罐自己醃的梅子',()=>{drinks+=2;},'（背包多了 2 罐飲料）'],['一個紅包',()=>{cash+=120;},'（$120）'],['一張手寫的感謝卡和 $60',()=>{cash+=60;addRep(2);},'（名聲也變好了）'],['親手烤的餅乾',()=>{stam=1;cash+=40;},'（體力全滿，還塞給你 $40）']];
@@ -72,7 +91,7 @@ function giftStep(){if(ride||onBus||talkN||quest&&quest.type==='race')return;
     gifted[n.o.name]=1;const G=GIFTS[Object.keys(gifted).length%GIFTS.length];G[1]();stCash=cash;actKey='';sfxCoin();sfxBell();n.react={say:'這個送你，謝謝你一直這麼照顧我！',t:3.5,pose:'wave'};
     say('🎁 '+n.o.name+'把你當成最好的朋友，送你'+G[0]+G[2]+'。');return;}}
 function trackStats(){
-  dailyStep();giftStep();shellStep(.25);citizenStep();
+  dailyStep();giftStep();shellStep(.25);buddyStep(.25);citizenStep();
   if(stLast){const d=Math.hypot(pos.x-stLast[0],pos.z-stLast[1]);if(d<12){if(ride)stats.drive+=d;else if(!onBus)stats.walk+=d;}}stLast=[pos.x,pos.z];
   if(stCash!=null&&cash>stCash){stats.earned+=cash-stCash;if(stQuest&&!quest)stats.jobs++;}stCash=cash;stQuest=quest;
   for(const B of BADGES)if(!stats.done[B[0]]&&B[1]()){stats.done[B[0]]=1;cash+=B[3];stCash=cash;sfxCoin();say('🏅 成就：'+B[2]+(B[3]?'！獎金 $'+B[3]+'。':'！'));break;}}
@@ -311,6 +330,7 @@ function showTalk(n,line,opts){
   if(rep<=-4){add('好吧…',closeTalk);return;}
   add('嗨！',()=>{n.mood=Math.min(1,n.mood+.03);showTalk(n,n.mood>.6?['嗨！今天天氣不錯。','嗨！很高興看到你。','你好啊！'][Math.floor(Math.random()*3)]:n.mood>.38?'嗯，你好。':'…嗯。');});
   add('你在做什麼？',()=>showTalk(n,describe(n)));
+  if(!n.guard&&!n.visitor&&!n.o.job&&n.home>=0&&n.like>=2&&buddy!==n)add('要不要一起去走走？',()=>askWalk(n));
   if(!n.guard&&!n.visitor&&n.home>=0)add('你跟誰比較好？',()=>{const R2=relOf(n),b=R2.best,w=R2.worst;showTalk(n,(b&&rel(n,b)>=1?'我跟'+b.o.name+'最好'+(b.home===n.home?'，我們住一起嘛。':'，常常一起聊天。'):'我跟大家都還好，沒有特別熟的。')+(w&&rel(n,w)<=-1?'至於'+w.o.name+'…我們不太合，見面常常講沒兩句就不高興。':'街上的人我都不討厭。'));});
   if(quest&&quest.type==='letter'&&quest.to===n)add('這是'+quest.from.o.name+'給你的信',()=>finishQuest(n,'啊，謝謝你特地送來！'));
   else if(quest&&quest.type==='ball'&&quest.from===n){const b=ballFor(quest);

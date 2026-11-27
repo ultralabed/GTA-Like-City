@@ -167,6 +167,7 @@ const WORLD={
     {type:'spot',kind:'patrol',x:-14,z:14,yaw:1.57,pose:'window',shared:true,label:'巡邏'},{type:'spot',kind:'patrol',x:20,z:14.4,yaw:0,pose:'window',shared:true,label:'巡邏'},
     {type:'spot',kind:'catch',chase:true,catch:true,pose:'idle',shared:true,label:'找你談談'},
     {type:'spot',kind:'lift',chase:true,lift:true,pose:'idle',shared:true,label:'等你開車載他'},
+    {type:'spot',kind:'hang',chase:true,hang:true,pose:'idle',shared:true,label:'跟你一起散步'},
     // places to walk to
     {type:'spot',kind:'watch',x:-9,z:-8.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-6,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:-2.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:0.5,z:-9.6,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:4.5,z:-8.7,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:7,z:-9.5,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:10.5,z:-8.8,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},{type:'spot',kind:'watch',x:13.5,z:-9.4,yaw:Math.PI,pose:'window',shared:true,label:'在海邊看煙火'},
     {type:'blanket',x:23.6,z:21.2},{type:'blanket',x:-6.5,z:-8.6,rot:1},{type:'blanket',x:12.5,z:-8.9},

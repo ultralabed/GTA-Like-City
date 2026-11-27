@@ -26,7 +26,8 @@ const GOALS={                                                           // type 
   picnic:{label:'去野餐',type:'picnic',need:'food',gain:1.5,dur:.7,outside:true,also:'fun'},
   patrol:{label:'巡邏',type:'patrol',need:'calm',gain:0,dur:.06},
   catch:{label:'找你談談',type:'catch'},
-  lift:{label:'等你開車載他',type:'lift'}
+  lift:{label:'等你開車載他',type:'lift'},
+  hang:{label:'跟你一起散步',type:'hang'}
 };
 const inSpan=(sp,h)=>!!sp&&(sp[0]<sp[1]?(h>=sp[0]&&h<sp[1]):(h>=sp[0]||h<sp[1]));
 // at work right now? Weekends are free, except for people with a job on the street (the shop stays open) and visitors (their 'shift' is just time away)
@@ -50,7 +51,7 @@ function freeAct(n,id){                                                 // find 
 function utility(n,id){
   const g=GOALS[id];
   if(n.guard)return id==='patrol'?1:-1;                                   // the patrol officer only patrols (and comes after you: see brain)
-  if(id==='patrol'||id==='catch'||id==='lift')return -1;
+  if(id==='patrol'||id==='catch'||id==='lift'||id==='hang')return -1;
   if(id==='work')return onShift(n)?5:-1;
   if(id==='guest'){const r=roomAt(pos.x,pos.z);                           // friends drop in, but only while you are at home, in the daytime
     if(!homeOwned||n.like<3||n.guard||n.o.job||clock<10||clock>20.5||!r||!r.house.lot.forSale||!freeAct(n,id)||n.cool[id]>0)return -1;return 1.3+n.like*.1;}
@@ -96,6 +97,7 @@ function brain(n,dt){
   if(n.react)return;                                                    // finish reacting before deciding anything
   if(quest&&quest.type==='ride'&&quest.from===n&&!quest.in){if(g.id!=='lift'){n.resume=null;setGoal(n,'lift');}return;}   // asked you for a lift: walk to your car and wait
   if(g.id==='lift'){endGoal(n,false);return;}
+  if(g.id==='hang'){if(buddy!==n)endGoal(n,false);return;}                // out for a walk with you: stays with it until the walk is over
   if(n.guard){for(const k in n.need)n.need[k]=.8;n.cool.patrol=0;           // never tired, never bored
     if(heat>0&&g.id!=='catch'){setGoal(n,'catch');return;}if(heat===0&&g.id==='catch'){endGoal(n,false);return;}if(g.id==='catch')return;}
   if(n.visitor&&g.id!=='work'){n.stay-=dh;                                // visitors go home after a while, or when night falls, or when it rains
@@ -210,6 +212,7 @@ function updNPC(n,dt,t){
     label='要去'+A.label;n.atCurb=false;
     if(A.lift){label='走去你的車旁邊';n.repath-=dt;const c=rides[0],cd=Math.hypot(c.x-n.pos.x,c.z-n.pos.z);
       if(cd<2.8){n.path=[];label='在車旁邊等你';}else if(n.repath<=0){n.repath=1;n.path=findPath(n.pos.x,n.pos.z,c.x,c.z)||[];}}
+    else if(A.hang){label='跟你一起散步';n.repath-=dt;if(dP<2.1)n.path=[];else if(n.repath<=0){n.repath=.5;n.path=findPath(n.pos.x,n.pos.z,pos.x,pos.z)||[];}}
     else if(A.catch){label='來找你';n.repath-=dt;                               // the patrol officer walking up to you
       if(dP<1.5){n.path=[];if(heat>0)fine(n);}else if(n.repath<=0){n.repath=.7;n.path=findPath(n.pos.x,n.pos.z,pos.x,pos.z)||[];}}
     else if(A.chase){label=A.label;n.repath-=dt;const basket=houses[n.home].basket;
@@ -225,7 +228,7 @@ function updNPC(n,dt,t){
       else if(dP<.65&&n.wait<1+n.o.patience*3){n.wait+=dt;tyaw=Math.atan2(dpx,dpz);  // you are in the way: patient people wait longer
         if(n.wait>.5&&!n.said){n.said=true;notify(n,'blocked');}}
       else{if(dP>.9){n.wait=0;n.said=false;}
-        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=(rainOn&&!n.brolly&&!roomAt(n.pos.x,n.pos.z)?1.7:1)*(n.o.jog&&!roomAt(n.pos.x,n.pos.z)?2.1:1),stp=1.15*hurry*(n.guard&&heat?1.25+.3*heat:1)*dt;
+        const q=n.path[0],dx=q[0]-n.pos.x,dz=q[1]-n.pos.z,d=Math.hypot(dx,dz),hurry=(n.goal.id==='hang'&&dP>3.2?1.9:1)*(rainOn&&!n.brolly&&!roomAt(n.pos.x,n.pos.z)?1.7:1)*(n.o.jog&&!roomAt(n.pos.x,n.pos.z)?2.1:1),stp=1.15*hurry*(n.guard&&heat?1.25+.3*heat:1)*dt;
         n.atCurb=carDanger(n,q);
         if(n.atCurb){label=n.waitWhy;tyaw=Math.atan2(dx,dz);}                  // a car is coming: wait at the kerb
         else{if(d<=stp){n.pos.x=q[0];n.pos.z=q[1];n.path.shift();}else{n.pos.x+=dx/d*stp;n.pos.z+=dz/d*stp;tyaw=Math.atan2(dx,dz);}
