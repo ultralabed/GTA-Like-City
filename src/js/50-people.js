@@ -59,7 +59,7 @@ function weld(g){const parts=g.userData.parts;if(!parts)return;let n=0;
 function makePerson(o){
   const s=o.h/1.75,root=new THREE.Group(),body=new THREE.Group();body.scale.setScalar(s);root.add(body);dyn.add(root);
   const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85});
-  const skin=mat(o.skin),top=mat(o.top),bot=mat(o.bottom),shoe=mat(o.shoe),hair=mat(o.hair),eye=mat(0x1a1210);const mats={skin,top,bot,shoe,hair};
+  const sm=o.mats||{},skin=sm.skin||mat(o.skin),top=sm.top||mat(o.top),bot=sm.bot||mat(o.bottom),shoe=sm.shoe||mat(o.shoe),hair=sm.hair||mat(o.hair),eye=mat(0x1a1210);const mats={skin,top,bot,shoe,hair};   // o.mats: share someone else's clothes (the you that sits on a bike wears what you wear)
   // every person is a little different: the name decides build, hairstyle, sleeves and eye colour, so it is the same each time you play
   let hsh=7;for(const ch of o.name)hsh=(hsh*31+ch.charCodeAt(0))>>>0;const rv=k=>((hsh>>>(k*5))&31)/31;
   const fem=!!o.long,wide=(fem?.9:1.03)*(.95+rv(1)*.12),hipW=fem?1.1:.97,longSl=rv(3)>.55,hc0=new THREE.Color(o.hair),old=hc0.r+hc0.g+hc0.b>1.5;

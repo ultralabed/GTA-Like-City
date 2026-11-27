@@ -180,9 +180,11 @@ PREFAB.tree=o=>{const s=o.s||1,seed=treeTops.length;
 };
 // street lamp: the arm reaches toward +z
 PREFAB.streetLamp=()=>{
-  cyl(.05,.08,4.3,M.steel,0,2.15,0,10);box(.06,.06,1.0,M.steel,0,4.25,.45);
-  const mat=new THREE.MeshBasicMaterial({color:0x111111});const head=box(.26,.07,.42,mat,0,4.2,.9);head.castShadow=false;
-  return{solid:[[-.1,.1,-.1,.1]],boxes:[[-.07,.07,0,4.3,-.07,.07]],marks:[{kind:'streetLamp',x:0,z:.9,y:4.1,mat}]};
+  cyl(.1,.14,.3,M.steel,0,.15,0,10);cyl(.045,.075,3.75,M.steel,0,2.15,0,10);                                    // a flanged foot and a pole that tapers
+  {const g=new THREE.TorusGeometry(.5,.04,6,8,Math.PI/2);g.rotateZ(Math.PI/2);const m=new THREE.Mesh(g,M.steel);m.rotation.y=-Math.PI/2;m.position.set(0,4.0,.5);add(m);}   // the arm curves over the road
+  box(.07,.07,.3,M.steel,0,4.5,.62);box(.24,.1,.56,M.steel,0,4.47,.98,{r:.04});
+  const mat=new THREE.MeshBasicMaterial({color:0x111111});const head=box(.17,.03,.42,mat,0,4.41,.98);head.castShadow=false;                 // the lens underneath: dark by day, glowing at night
+  return{solid:[[-.1,.1,-.1,.1]],boxes:[[-.07,.07,0,4.3,-.07,.07]],marks:[{kind:'streetLamp',x:0,z:.98,y:4.3,mat}]};
 };
 // park bench for two. You sit facing +z.
 PREFAB.bench=()=>{
@@ -248,9 +250,17 @@ PREFAB.stall=o=>{const mk=o&&o.market;
 };
 // bus stop: a sign, a little shelter and a bench. People wait in front of it (+z, toward the road).
 PREFAB.busStop=o=>{
-  cyl(.04,.05,2.6,M.steel,-1.5,1.3,.3,8);box(.5,.5,.04,M.teal,-1.5,2.4,.3);box(.3,.12,.045,M.trim,-1.5,2.4,.3);
-  [-1,1].forEach(x=>cyl(.04,.04,2.3,M.steel,x,1.15,-.5,8));box(2.5,.06,1.2,M.teal,0,2.32,-.1);box(2.3,1.3,.03,M.glass,0,1.35,-.52,{shadow:false});
-  box(1.8,.06,.4,M.walnut,0,.45,-.3);[-.75,.75].forEach(x=>box(.06,.45,.36,M.steel,x,.225,-.3));
+  const card=(w,h,draw)=>{const c=document.createElement('canvas');c.width=256;c.height=Math.round(256*h/w);const g=c.getContext('2d');draw(g,c.width,c.height);const t=new THREE.CanvasTexture(c);if('colorSpace' in t)t.colorSpace='srgb';else t.encoding=THREE.sRGBEncoding;
+    return new THREE.MeshStandardMaterial({map:t,roughness:.6,side:THREE.DoubleSide,alphaTest:.5});},font='"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+  const plate=(w,h,mat,x,y,z,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);m.position.set(x,y,z);m.rotation.y=ry||0;m.userData.dyn=true;m.castShadow=true;cur.add(m);};
+  cyl(.04,.05,2.75,M.steel,-1.5,1.375,.3,8);                                                                                  // the stop sign on its own pole: a round bus plate and a small timetable
+  plate(.56,.56,card(1,1,(g,W,H)=>{g.fillStyle='#1f6a6e';g.beginPath();g.arc(W/2,H/2,W/2-4,0,7);g.fill();g.strokeStyle='#fff';g.lineWidth=8;g.stroke();g.fillStyle='#fff';g.fillRect(70,84,116,74);g.fillStyle='#1f6a6e';g.fillRect(82,96,40,28);g.fillRect(134,96,40,28);g.fillStyle='#fff';g.beginPath();g.arc(98,166,13,0,7);g.arc(158,166,13,0,7);g.fill();g.font='bold 34px '+font;g.textAlign='center';g.fillText('公車',W/2,66);}),-1.5,2.45,.3);
+  plate(.3,.42,card(.3,.42,(g,W,H)=>{g.fillStyle='#f4efe6';g.fillRect(0,0,W,H);g.fillStyle='#1f6a6e';g.fillRect(0,0,W,54);g.fillStyle='#fff';g.font='bold 36px '+font;g.textAlign='center';g.fillText('時刻表',W/2,40);g.fillStyle='#333';g.font='26px '+font;for(let k=0;k<8;k++)g.fillText((7+k*2)+':'+(k%2?'30':'00')+'　'+(8+k*2)+':'+(k%2?'00':'30'),W/2,96+k*33);}),-1.5,1.55,.3);
+  [-1.2,1.2].forEach(x=>{cyl(.04,.04,2.3,M.steel,x,1.15,-.5,8);cyl(.04,.04,2.3,M.steel,x,1.15,.2,8);box(.03,1.5,.66,M.glass,x,1.3,-.15,{shadow:false});});   // four posts and glass ends
+  box(2.6,.07,1.25,M.teal,0,2.33,-.1,{r:.02});box(2.66,.05,.05,M.steel,0,2.28,.52);box(2.66,.05,.05,M.steel,0,2.28,-.72);box(2.36,1.5,.03,M.glass,0,1.3,-.52,{shadow:false});
+  plate(.9,1.3,card(.9,1.3,(g,W,H)=>{const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#2b2456');gr.addColorStop(.6,'#d9623f');gr.addColorStop(1,'#f2c23d');g.fillStyle=gr;g.fillRect(0,0,W,H);g.fillStyle='#ffe9b8';g.beginPath();g.arc(W/2,H*.58,46,0,7);g.fill();
+    g.fillStyle='#fff';g.textAlign='center';g.font='bold 46px '+font;g.fillText('夕陽夜市',W/2,70);g.font='28px '+font;g.fillText('每週五、六晚上',W/2,H-64);g.fillText('海邊見！',W/2,H-26);}),.62,1.3,-.5);                                   // a poster for the night market behind the bench
+  box(1.6,.06,.4,M.walnut,-.3,.45,-.28,{r:.02});[-1.0,.4].forEach(x=>box(.06,.45,.36,M.steel,x,.225,-.28));
   return{solid:[[-1.05,1.05,-.6,-.1],[-1.6,-1.4,.2,.4]],boxes:[[-.95,.95,0,.5,-.5,-.1],[-1.3,1.3,2.28,2.36,-.7,.5]],
     spots:[{type:'exit',ap:[0,.55],yaw:0,pose:'idle',hide:true,shared:true,bus:o.dir,label:'搭公車'}]};
 };

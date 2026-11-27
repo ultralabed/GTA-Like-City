@@ -3,6 +3,17 @@
 const me=makePerson({name:'你',h:1.72,skin:0xe8b996,hair:0x3a2a1c,top:0xf2c23d,bottom:0x2b3a67,shoe:0xffffff,long:false,sep:true});
 interact.pop();me.tag.remove();me.root.visible=false;                       // not a neighbour: no name tag, nothing to click
 let third=false,meYaw=0;
+// the you that sits on the bicycle, the motorbike and the boat: the same body as on foot, in the same clothes, bent into a riding pose
+const RIDE_POSE={bike:{x:-.25,y:1.07,sx:.5,a:-1.05,e:-.25,h:-1.0,k:1.3,nx:-.38},moto:{x:-.37,y:.99,sx:.3,a:-1.2,e:-.15,h:-1.3,k:1.25,nx:-.22},boat:{x:-.5,y:.64,sx:.02,a:-.35,e:-.6,h:-1.5,k:1.45,nx:0}};
+for(const r of rides){const Q=RIDE_POSE[r.kind];if(!r.rider||!Q)continue;while(r.rider.children.length)r.rider.remove(r.rider.children[0]);
+  const p=makePerson({name:'你',h:1.72,skin:0xe8b996,hair:0x3a2a1c,top:0xf2c23d,bottom:0x2b3a67,shoe:0xffffff,long:false,sep:true,mats:me.mats});interact.pop();p.tag.remove();
+  r.rider.add(p.root);p.root.position.set(Q.x,Q.y,0);p.root.rotation.y=Math.PI/2;p.ph=0;r.rig=p;r.rigQ=Q;
+  const J=p.J;J.spine.rotation.x=Q.sx;J.neck.rotation.x=Q.nx;J.al.rotation.set(Q.a,0,.1);J.ar.rotation.set(Q.a,0,-.1);J.el.rotation.x=J.er.rotation.x=Q.e;J.hl.rotation.x=J.hr.rotation.x=Q.h;J.kl.rotation.x=J.kr.rotation.x=Q.k;}
+function riderStep(dt,t){const r=ride;if(!r||!r.rig)return;const p=r.rig,Q=r.rigQ,J=p.J;
+  if(r.kind==='bike'){p.ph+=r.v*dt*2.4;const w=Math.sin(p.ph),c=Math.cos(p.ph);J.hl.rotation.x=Q.h+w*.32;J.kl.rotation.x=Q.k-w*.3+c*.12;J.hr.rotation.x=Q.h-w*.32;J.kr.rotation.x=Q.k+w*.3-c*.12;}   // pedalling
+  J.neck.rotation.set(Q.nx,0,0);const lean=r.kind==='boat'?0:(r.g.rotation.x||0);J.spine.rotation.set(Q.sx,0,0);
+  p.blinkT-=dt;if(p.blinkT<-.12)p.blinkT=2.2+Math.random()*4;p.lids.visible=p.blinkT<0;}
+
 const meQ=new THREE.Quaternion();
 function camBlocked(x,z){if(!inWorld(x,z,.2))return true;
   for(const c of colliders)if(x>c[0]-.15&&x<c[1]+.15&&z>c[2]-.15&&z<c[3]+.15)return true;
@@ -15,6 +26,7 @@ const deck=new THREE.Group();deck.visible=false;scene.add(deck);
 {const d=new THREE.Mesh(new THREE.BoxGeometry(.8,.03,.22),new THREE.MeshStandardMaterial({color:0xd9623f,roughness:.6}));d.position.y=.09;d.castShadow=true;deck.add(d);
  for(const x of[-.27,.27])for(const z of[-.08,.08]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.04,10),M.black);w.rotation.x=Math.PI/2;w.position.set(x,.04,z);deck.add(w);}}
 function thirdCam(dt,t){
+  riderStep(dt,t);
   deck.visible=third&&boarding();if(deck.visible){deck.position.set(pos.x,jumpY,pos.z);deck.rotation.y=meYaw-Math.PI/2;}
   const on=third&&!ride&&!onBus;me.root.visible=on;hand.visible=!on;
   if(!on)return;
