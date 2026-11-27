@@ -14,7 +14,7 @@ function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stri
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.album)Object.assign(album,d.album);shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.stats&&d.stats.done&&d.stats.done.citizen)$('title').textContent='夕陽街 · 榮譽市民';if(d.album)Object.assign(album,d.album);shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -55,6 +55,15 @@ function shellStep(dt){const I=WORLD.isle;
     if(ride||onBus||Math.hypot(s.m.position.x-pos.x,s.m.position.z-pos.z)>.9)continue;
     s.on=false;s.m.visible=false;s.t=rnd(35,90);shells++;const v=s.pearl?45:3+Math.floor(Math.random()*8);cash+=v;stCash=cash;tone(s.pearl?1568:1046,.12,.14,'triangle');
     say(s.pearl?'你撿到一顆珍珠！很少見，值 $45。':'你撿到一個貝殼（+$'+v+'）。'+(shellTold?'':'海浪會把新的貝殼沖上沙灘，下過雨之後特別多。燈塔島的沙灘上也有。'),!s.pearl);shellTold=true;}}
+// --- the big goal: become an honorary citizen of the street by doing a bit of everything ---
+const CITIZEN=()=>[['做完四個故事任務',['bday','beach','lunch','bottle'].filter(k=>stats.done[k]).length,4],['買下自己的家',homeOwned?1:0,1],['找到星星',Object.keys(starGot).length,8],['釣魚圖鑑',Object.keys(fishGot).length,7],
+  ['相簿',Object.keys(album).length,6],['完成任務',stats.jobs,20],['交到好朋友（♥♥♥）',people.filter(n=>n.like>=3).length,4],['登上燈塔島',isleSeen?1:0,1],['計時賽拿到獎牌（陸上或海上）',(raceBest&&raceBest<=70?1:0)+(seaBest&&seaBest<=60?1:0),1]];
+let citizenT=0;
+function citizenStep(){if(citizenT>0){citizenT-=.25;if(citizenT<=0){fwForce=false;}}
+  if(stats.done.citizen)return;const L=CITIZEN();if(L.some(c=>c[1]<c[2]))return;
+  stats.done.citizen=1;cash+=500;stCash=cash;addRep(5);fwForce=true;citizenT=75;sfxBell();sfxCoin();$('title').textContent='夕陽街 · 榮譽市民';
+  for(const n of people){if(n.hidden||n.lie)continue;n.like=Math.min(5,n.like+1);n.mood=1;if(Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<40)n.react={say:'恭喜你！你是我們的榮譽市民！',t:5,pose:'wave'};}
+  say('🎉 你成為「夕陽街榮譽市民」了！九件大事全部完成。大家為你放煙火，還送你 $500。謝謝你讓這條街變得更好。');}
 // --- best friends: when someone likes you as much as they can, they give you something the next time you are close ---
 const gifted={};
 const GIFTS=[['一罐自己醃的梅子',()=>{drinks+=2;},'（背包多了 2 罐飲料）'],['一個紅包',()=>{cash+=120;},'（$120）'],['一張手寫的感謝卡和 $60',()=>{cash+=60;addRep(2);},'（名聲也變好了）'],['親手烤的餅乾',()=>{stam=1;cash+=40;},'（體力全滿，還塞給你 $40）']];
@@ -63,7 +72,7 @@ function giftStep(){if(ride||onBus||talkN||quest&&quest.type==='race')return;
     gifted[n.o.name]=1;const G=GIFTS[Object.keys(gifted).length%GIFTS.length];G[1]();stCash=cash;actKey='';sfxCoin();sfxBell();n.react={say:'這個送你，謝謝你一直這麼照顧我！',t:3.5,pose:'wave'};
     say('🎁 '+n.o.name+'把你當成最好的朋友，送你'+G[0]+G[2]+'。');return;}}
 function trackStats(){
-  dailyStep();giftStep();shellStep(.25);
+  dailyStep();giftStep();shellStep(.25);citizenStep();
   if(stLast){const d=Math.hypot(pos.x-stLast[0],pos.z-stLast[1]);if(d<12){if(ride)stats.drive+=d;else if(!onBus)stats.walk+=d;}}stLast=[pos.x,pos.z];
   if(stCash!=null&&cash>stCash){stats.earned+=cash-stCash;if(stQuest&&!quest)stats.jobs++;}stCash=cash;stQuest=quest;
   for(const B of BADGES)if(!stats.done[B[0]]&&B[1]()){stats.done[B[0]]=1;cash+=B[3];stCash=cash;sfxCoin();say('🏅 成就：'+B[2]+(B[3]?'！獎金 $'+B[3]+'。':'！'));break;}}
@@ -73,6 +82,8 @@ function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   const km=m=>m<1000?Math.round(m)+' 公尺':(m/1000).toFixed(1)+' 公里',n=BADGES.filter(B=>stats.done[B[0]]).length;
   for(const t of['走路：'+km(stats.walk),'開車和騎車：'+km(stats.drive),'完成任務：'+stats.jobs+' 個','總共賺到：$'+stats.earned,'搭公車 '+busTrips+' 次、計程車 '+taxiTrips+' 次','自己開車載客：'+fares+' 位','撿到的貝殼：'+shells+' 個','釣到 '+fishCount+' 次、投進 '+baskets+' 球','找到的星星：'+Object.keys(starGot).length+' / '+STARS.length,'— 今日挑戰（每個 $40，三個全過再 $60）—'].concat(daily.list.map(d=>{const D=DAILY.find(q=>q[0]===d.id);return(d.done?'✅ ':'⬜ ')+D[1]+(d.done?'':'（'+Math.min(D[3],Math.floor(D[2]()-d.base))+' / '+D[3]+'）');})).concat(['成就：'+n+' / '+BADGES.length])){const p=document.createElement('p');p.textContent=t;p.style.margin='2px 0';box.appendChild(p);}
   for(const B of BADGES){const p=document.createElement('p');p.textContent=(stats.done[B[0]]?'🏅 ':'⬜ ')+B[2];p.style.opacity=stats.done[B[0]]?1:.6;p.style.margin='2px 0';box.appendChild(p);}
+  {const L=CITIZEN(),ok=L.filter(c=>c[1]>=c[2]).length;const p=document.createElement('p');p.textContent='— 榮譽市民之路（'+ok+' / '+L.length+(stats.done.citizen?'，已達成 🎉':'，全部完成有大獎')+'）—';p.style.margin='6px 0 2px';box.appendChild(p);
+    for(const c of L){const q=document.createElement('p');q.textContent=(c[1]>=c[2]?'✅ ':'⬜ ')+c[0]+(c[2]>1?'（'+Math.min(c[1],c[2])+' / '+c[2]+'）':'');q.style.margin='2px 0';q.style.opacity=c[1]>=c[2]?1:.7;box.appendChild(q);}}
   {const p=document.createElement('p');p.textContent='— 相簿（'+Object.keys(album).length+' / '+SHOTS.length+'，按 P 進拍照模式，每張 $25，全部 $250）—';p.style.margin='6px 0 2px';box.appendChild(p);
     const q=document.createElement('p');q.textContent=SHOTS.map(S=>(album[S[0]]?'📸':'⬜')+S[0]).join('　');q.style.margin='2px 0';box.appendChild(q);}
   {const p=document.createElement('p');p.textContent='— 釣魚圖鑑（'+Object.keys(fishGot).length+' / '+FISH.length+'，全部收集 $200）—';p.style.margin='6px 0 2px';box.appendChild(p);}
@@ -106,6 +117,7 @@ const getGuide=()=>[
   [()=>Object.keys(album).length<4,'按 P 進拍照模式，再按 Enter 拍照。把燈塔、碼頭、商店這些景點拍下來可以收進相簿（每張 $25）。'],
   [()=>!bag.kite&&cash>=40,'商店有賣風箏（$40）。風大的時候到外面按 5 放風箏。'],
   [()=>shells<3,'沙灘上有小貝殼，走過去就能撿起來換錢。'],
+  [()=>!stats.done.citizen,(()=>{const L=CITIZEN(),left=L.filter(c=>c[1]<c[2]);return'大目標：成為「榮譽市民」。九件大事還差 '+left.length+' 件'+(left[0]?'，例如：'+left[0][0]+(left[0][2]>1?'（'+left[0][1]+'/'+left[0][2]+'）':''):'')+'。在「我的紀錄」看全部。';})()],
   [()=>people.filter(n=>n.like>=3).length<3,'多跟同一個人聊天、幫他忙、請他喝飲料，他會變成你的好朋友（♥♥♥），之後會來你家作客。']];
 function showGuide(){const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='接下來可以做什麼？';el.appendChild(h);
