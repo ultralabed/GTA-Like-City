@@ -45,6 +45,7 @@ $('bRadar').onclick=()=>{radarOn=!radarOn;$('bRadar').textContent='小地圖：'
 // The same drawing serves two maps: the phone map (the whole town, north up) and the little round radar
 // (30 metres around you, turned so that the way you face is always up).
 function drawMap(radar){
+  if(!radar){const cp=$('mapcap'),tx='🌤 '+forecast();if(cp.textContent!==tx)cp.textContent=tx;}
   const c=$(radar?'radarc':'mapc');if(!radar){const hh=Math.round(c.width*(BB.z1-BB.z0)/(BB.x1-BB.x0));if(c.height!==hh)c.height=hh;}
   const g=c.getContext('2d'),k=radar?c.width/60:c.width/(BB.x1-BB.x0),X=radar?x=>x*k:x=>(x-BB.x0)*k,Y=radar?z=>z*k:z=>(z-BB.z0)*k,S=WORLD.street;
   const W0=radar?X(BB.x0-90):0,WW=radar?k*(BB.x1-BB.x0+180):c.width,T0=radar?Y(BB.z0-90):0,HH=radar?k*(BB.z1-BB.z0+180):c.height;

@@ -149,7 +149,7 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
   <div class="acts"><output id="speed" class="speed" hidden>0 km/h</output><div id="bag" class="bag"></div><div id="acts" class="actcol"></div></div>
   <div id="talk" class="talk" hidden></div>
   <div id="radar" class="map radar"><canvas id="radarc" width="208" height="208" aria-label="小雷達地圖"></canvas></div>
-  <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas></div>
+  <div id="map" class="map" hidden><canvas id="mapc" width="416" height="280" aria-label="街道地圖"></canvas><div id="mapcap" style="line-height:1.35;font-size:11px;padding:5px 8px;background:rgba(10,12,20,.82);color:#e9e4da;max-width:208px"></div></div>
   <div class="hint" id="hint"></div>
 </div>
 <button id="bPhotoEnd" type="button" class="photoend" hidden>結束拍照</button>
@@ -1502,10 +1502,13 @@ function strike(){
 }
 const WX={sun:'晴天',rain:'下雨',storm:'雷雨',fog:'起霧'};
 function setWeather(k){if(k===wx)return;const was=wx;wx=k;storm=k==='storm';fogOn=k==='fog';toldBolt=false;boltT=rnd(3,6);
-  $('bRain').textContent='天氣：'+WX[k];rainT=rnd(120,260);
+  $('bRain').textContent='天氣：'+WX[k];rainT=rnd(120,260);planWx();
   const wet=k==='rain'||k==='storm';
   if(wet!==rainOn){rainOn=wet;if(wet)for(const n of people)if(!n.hidden&&!roomAt(n.pos.x,n.pos.z))notify(n,'rain');}
   say(k==='rain'?'下雨了：在外面的人會嚇一跳，放下手邊的事，跑回家。':k==='storm'?'雷雨來了：雨很大，天空還會閃電打雷。':k==='fog'?'起霧了：空氣裡有很多很小的水滴，遠的東西變得白白的看不清楚。':was==='fog'?'霧散了。':'雨停了。');}
+let nextWx=null;
+function planWx(){const r=Math.random(),early=clock>4&&clock<9;nextWx=wx!=='sun'?(wx==='rain'&&r<.3?'storm':'sun'):r<(early?.45:.12)?'fog':r<.6?'rain':r<.75?'storm':'sun';}
+function forecast(){if(!nextWx)planWx();const m=Math.max(1,Math.round(rainT/60));return'現在'+WX[wx]+'，'+(nextWx===wx?'接下來幾分鐘都一樣':'大約 '+m+' 分鐘後轉'+WX[nextWx])+(windS>5?'；風很大':windS>2.6?'；有風，可以放風箏':'')+'。';}
 function setRain(on){setWeather(on?'rain':'sun');}
 $('bRain').onclick=()=>setWeather({sun:'rain',rain:'storm',storm:'fog',fog:'sun'}[wx]);
 // puddles: they fill while it rains and dry slowly afterwards (water turns into vapour and floats away)
@@ -1579,7 +1582,7 @@ function updateWeather(dt){
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}
-  rainT-=dt;if(rainT<=0){const r=Math.random(),early=clock>4&&clock<9;setWeather(wx!=='sun'?(wx==='rain'&&r<.3?'storm':'sun'):r<(early?.45:.12)?'fog':r<.6?'rain':r<.75?'storm':'sun');}
+  if(!nextWx)planWx();rainT-=dt;if(rainT<=0){const nx=nextWx;if(nx===wx){rainT=rnd(120,260);planWx();}else setWeather(nx);}             // the weather to come is decided ahead of time, so there can be a forecast
   mist+=((fogOn?1:0)-mist)*(1-Math.exp(-dt*.5));
   flash*=Math.exp(-dt*10);if(flash2>0){flash2-=dt;if(flash2<=0)flash=.8;}          // a flash flickers twice
   if(boltShow>0){boltShow-=dt;if(boltShow<=0)bolt.visible=false;}
@@ -1642,6 +1645,7 @@ $('bRadar').onclick=()=>{radarOn=!radarOn;$('bRadar').textContent='小地圖：'
 // The same drawing serves two maps: the phone map (the whole town, north up) and the little round radar
 // (30 metres around you, turned so that the way you face is always up).
 function drawMap(radar){
+  if(!radar){const cp=$('mapcap'),tx='🌤 '+forecast();if(cp.textContent!==tx)cp.textContent=tx;}
   const c=$(radar?'radarc':'mapc');if(!radar){const hh=Math.round(c.width*(BB.z1-BB.z0)/(BB.x1-BB.x0));if(c.height!==hh)c.height=hh;}
   const g=c.getContext('2d'),k=radar?c.width/60:c.width/(BB.x1-BB.x0),X=radar?x=>x*k:x=>(x-BB.x0)*k,Y=radar?z=>z*k:z=>(z-BB.z0)*k,S=WORLD.street;
   const W0=radar?X(BB.x0-90):0,WW=radar?k*(BB.x1-BB.x0+180):c.width,T0=radar?Y(BB.z0-90):0,HH=radar?k*(BB.z1-BB.z0+180):c.height;
@@ -2313,6 +2317,7 @@ function showGuide(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   L.forEach((g,i)=>{const p=document.createElement('p');p.textContent=(i+1)+'. '+g[1];p.style.margin='5px 0';box.appendChild(p);});
   {const d=day%7,now=h=>clock>=h[0]&&clock<h[1],T=[['夕陽商店（小芳顧店）','每天 9:00–20:00',true,[9,20]],['上班的人出門','平日大約 7:00–10:00',d>=1&&d<=5,[7,10]],['冰淇淋車','白天沒下雨時，每幾分鐘來一次',true,[6,18]],
       ['街頭藝人（公園）','週六、週日 14:00–17:30',d===6||d===0,[14,17.5]],['夜市（碼頭東邊）','週五、六、日 18:00–22:00',d===5||d===6||d===0,[18,22]],['煙火（海上）','週六、週日 20:00–21:00',d===6||d===0,[20,21]],['大家睡覺','大約 22:00–7:00',true,[22,31]]];
+    {const w=document.createElement('p');w.textContent='— 天氣預報 — '+forecast();w.style.margin='10px 0 2px';box.appendChild(w);}
     const hd=document.createElement('p');hd.textContent='— 街上的時間表（現在是週'+DOW[d]+' '+$('clk').textContent.replace(/^週. /,'')+'）—';hd.style.margin='10px 0 2px';box.appendChild(hd);
     for(const t of T){const on=t[2]&&(now(t[3])||(t[3][1]>24&&clock<t[3][1]-24));const p=document.createElement('p');p.textContent=(on?'🟢 ':t[2]?'⚪ ':'✖️ ')+t[0]+'：'+t[1]+(on?'（現在）':t[2]?'':'（今天沒有）');p.style.margin='2px 0';p.style.opacity=on?1:.7;box.appendChild(p);}}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
@@ -2999,7 +3004,7 @@ function chatLines(a,b){
 // It starts from who they are (a made-up but fixed mix), and moves a little every time they meet.
 const REL={};const relKey=(a,b)=>a.o.name<b.o.name?a.o.name+'|'+b.o.name:b.o.name+'|'+a.o.name;
 function rel(a,b){const k=relKey(a,b);if(REL[k]==null){let h=7;for(const ch of k)h=(h*31+ch.charCodeAt(0))%9973;const r=h/9973;
-    REL[k]=a.home===b.home?1.6+r:r<.12?-2.2:r<.22?-1.2:r>.88?2.2:r>.7?1.2:.2;}return REL[k];}
+    REL[k]=a.home===b.home?2.4+r*.6:r<.06?-2.2:r<.13?-1.2:r>.9?2.1:r>.7?1.2:.2;}return REL[k];}   // people who share a house are closest; about one pair in eight starts out on the wrong foot
 function relOf(n){let best=null,worst=null;for(const m of people){if(m===n||m.guard||m.visitor||m.home<0)continue;const r=rel(n,m);if(!best||r>rel(n,best))best=m;if(!worst||r<rel(n,worst))worst=m;}return{best,worst};}
 function neighbourChat(){
   const now=performance.now()/1000;
@@ -3444,7 +3449,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,rel,relOf,REL,keys,citizenStep,busker,updateBusker,set buskForce(v){buskForce=v;},get buskOn(){return buskOn;},parked,updateParked,snap,album,SHOTS,photo,npcKites,npcKiteStep,SHELLS,shellStep,get shells(){return shells;},kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,forecast,rel,relOf,REL,keys,citizenStep,busker,updateBusker,set buskForce(v){buskForce=v;},get buskOn(){return buskOn;},parked,updateParked,snap,album,SHOTS,photo,npcKites,npcKiteStep,SHELLS,shellStep,get shells(){return shells;},kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

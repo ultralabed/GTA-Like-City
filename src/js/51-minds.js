@@ -313,7 +313,7 @@ function chatLines(a,b){
 // It starts from who they are (a made-up but fixed mix), and moves a little every time they meet.
 const REL={};const relKey=(a,b)=>a.o.name<b.o.name?a.o.name+'|'+b.o.name:b.o.name+'|'+a.o.name;
 function rel(a,b){const k=relKey(a,b);if(REL[k]==null){let h=7;for(const ch of k)h=(h*31+ch.charCodeAt(0))%9973;const r=h/9973;
-    REL[k]=a.home===b.home?1.6+r:r<.12?-2.2:r<.22?-1.2:r>.88?2.2:r>.7?1.2:.2;}return REL[k];}
+    REL[k]=a.home===b.home?2.4+r*.6:r<.06?-2.2:r<.13?-1.2:r>.9?2.1:r>.7?1.2:.2;}return REL[k];}   // people who share a house are closest; about one pair in eight starts out on the wrong foot
 function relOf(n){let best=null,worst=null;for(const m of people){if(m===n||m.guard||m.visitor||m.home<0)continue;const r=rel(n,m);if(!best||r>rel(n,best))best=m;if(!worst||r<rel(n,worst))worst=m;}return{best,worst};}
 function neighbourChat(){
   const now=performance.now()/1000;

@@ -22,10 +22,13 @@ function strike(){
 }
 const WX={sun:'晴天',rain:'下雨',storm:'雷雨',fog:'起霧'};
 function setWeather(k){if(k===wx)return;const was=wx;wx=k;storm=k==='storm';fogOn=k==='fog';toldBolt=false;boltT=rnd(3,6);
-  $('bRain').textContent='天氣：'+WX[k];rainT=rnd(120,260);
+  $('bRain').textContent='天氣：'+WX[k];rainT=rnd(120,260);planWx();
   const wet=k==='rain'||k==='storm';
   if(wet!==rainOn){rainOn=wet;if(wet)for(const n of people)if(!n.hidden&&!roomAt(n.pos.x,n.pos.z))notify(n,'rain');}
   say(k==='rain'?'下雨了：在外面的人會嚇一跳，放下手邊的事，跑回家。':k==='storm'?'雷雨來了：雨很大，天空還會閃電打雷。':k==='fog'?'起霧了：空氣裡有很多很小的水滴，遠的東西變得白白的看不清楚。':was==='fog'?'霧散了。':'雨停了。');}
+let nextWx=null;
+function planWx(){const r=Math.random(),early=clock>4&&clock<9;nextWx=wx!=='sun'?(wx==='rain'&&r<.3?'storm':'sun'):r<(early?.45:.12)?'fog':r<.6?'rain':r<.75?'storm':'sun';}
+function forecast(){if(!nextWx)planWx();const m=Math.max(1,Math.round(rainT/60));return'現在'+WX[wx]+'，'+(nextWx===wx?'接下來幾分鐘都一樣':'大約 '+m+' 分鐘後轉'+WX[nextWx])+(windS>5?'；風很大':windS>2.6?'；有風，可以放風箏':'')+'。';}
 function setRain(on){setWeather(on?'rain':'sun');}
 $('bRain').onclick=()=>setWeather({sun:'rain',rain:'storm',storm:'fog',fog:'sun'}[wx]);
 // puddles: they fill while it rains and dry slowly afterwards (water turns into vapour and floats away)
@@ -99,7 +102,7 @@ function updateWeather(dt){
   wet+=((rain>.5?1:0)-wet)*(1-Math.exp(-dt*(rain>.5?.05:.012)));
   puddles.visible=wet>.04;puddleMat.opacity=Math.min(.8,wet);if(puddles.visible)puddleMat.emissive.copy(skyU.cHor.value).multiplyScalar(.5);   // a puddle is a little mirror: it shows the colour of the sky
   if(wet>.5)toldDry=false;else if(!toldDry&&wet<.06&&rain<.1){toldDry=true;say('地上的水坑乾了：水變成看不見的水蒸氣，飄到空氣裡去了。');}
-  rainT-=dt;if(rainT<=0){const r=Math.random(),early=clock>4&&clock<9;setWeather(wx!=='sun'?(wx==='rain'&&r<.3?'storm':'sun'):r<(early?.45:.12)?'fog':r<.6?'rain':r<.75?'storm':'sun');}
+  if(!nextWx)planWx();rainT-=dt;if(rainT<=0){const nx=nextWx;if(nx===wx){rainT=rnd(120,260);planWx();}else setWeather(nx);}             // the weather to come is decided ahead of time, so there can be a forecast
   mist+=((fogOn?1:0)-mist)*(1-Math.exp(-dt*.5));
   flash*=Math.exp(-dt*10);if(flash2>0){flash2-=dt;if(flash2<=0)flash=.8;}          // a flash flickers twice
   if(boltShow>0){boltShow-=dt;if(boltShow<=0)bolt.visible=false;}
