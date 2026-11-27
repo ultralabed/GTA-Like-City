@@ -145,6 +145,9 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
   <div class="hint" id="hint"></div>
 </div>
 <button id="bPhotoEnd" type="button" class="photoend" hidden>結束拍照</button>
+<button id="bShot" type="button" class="photoend" style="right:auto;left:50%;transform:translateX(-50%)" hidden>📷 拍一張（Enter）</button>
+<div id="flash" style="position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .35s"></div>
+<div id="shotNote" class="photoend" style="right:auto;left:50%;top:18px;bottom:auto;transform:translateX(-50%);pointer-events:none" hidden></div>
 <div id="err" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>

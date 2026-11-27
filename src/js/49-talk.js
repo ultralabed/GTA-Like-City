@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,shells,gifted,iceCreams,fishGot,isleSeen,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,album,shells,gifted,iceCreams,fishGot,isleSeen,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.album)Object.assign(album,d.album);shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -29,7 +29,7 @@ const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺'
   ['ice',()=>iceCreams>=1,'吃到冰淇淋車的冰淇淋',5],
   ['isle',()=>isleSeen,'登上燈塔島',30],
   ['home',()=>homeOwned,'有自己的家了',0],
-  ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['shell',()=>shells>=15,'貝殼收藏家：撿了 15 個貝殼',30],['best',()=>Object.keys(gifted).length>=1,'有了第一個最好的朋友（♥♥♥♥♥）',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
+  ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['photo',()=>Object.keys(album).length>=4,'小小攝影師：相簿收集 4 張',30],['shell',()=>shells>=15,'貝殼收藏家：撿了 15 個貝殼',30],['best',()=>Object.keys(gifted).length>=1,'有了第一個最好的朋友（♥♥♥♥♥）',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
 // --- three small goals a day, picked fresh each morning ---
 let waves=0;
 const DAILY=[['fish','釣到 2 條魚',()=>fishCount,2],['walk','走路 400 公尺',()=>stats.walk,400],['drive','開車或騎車 800 公尺',()=>stats.drive,800],['hoop','投進 2 球',()=>baskets,2],
@@ -73,6 +73,8 @@ function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   const km=m=>m<1000?Math.round(m)+' 公尺':(m/1000).toFixed(1)+' 公里',n=BADGES.filter(B=>stats.done[B[0]]).length;
   for(const t of['走路：'+km(stats.walk),'開車和騎車：'+km(stats.drive),'完成任務：'+stats.jobs+' 個','總共賺到：$'+stats.earned,'搭公車 '+busTrips+' 次、計程車 '+taxiTrips+' 次','自己開車載客：'+fares+' 位','撿到的貝殼：'+shells+' 個','釣到 '+fishCount+' 次、投進 '+baskets+' 球','找到的星星：'+Object.keys(starGot).length+' / '+STARS.length,'— 今日挑戰（每個 $40，三個全過再 $60）—'].concat(daily.list.map(d=>{const D=DAILY.find(q=>q[0]===d.id);return(d.done?'✅ ':'⬜ ')+D[1]+(d.done?'':'（'+Math.min(D[3],Math.floor(D[2]()-d.base))+' / '+D[3]+'）');})).concat(['成就：'+n+' / '+BADGES.length])){const p=document.createElement('p');p.textContent=t;p.style.margin='2px 0';box.appendChild(p);}
   for(const B of BADGES){const p=document.createElement('p');p.textContent=(stats.done[B[0]]?'🏅 ':'⬜ ')+B[2];p.style.opacity=stats.done[B[0]]?1:.6;p.style.margin='2px 0';box.appendChild(p);}
+  {const p=document.createElement('p');p.textContent='— 相簿（'+Object.keys(album).length+' / '+SHOTS.length+'，按 P 進拍照模式，每張 $25，全部 $250）—';p.style.margin='6px 0 2px';box.appendChild(p);
+    const q=document.createElement('p');q.textContent=SHOTS.map(S=>(album[S[0]]?'📸':'⬜')+S[0]).join('　');q.style.margin='2px 0';box.appendChild(q);}
   {const p=document.createElement('p');p.textContent='— 釣魚圖鑑（'+Object.keys(fishGot).length+' / '+FISH.length+'，全部收集 $200）—';p.style.margin='6px 0 2px';box.appendChild(p);}
   for(const F of FISH){const p=document.createElement('p'),g2=fishGot[F[0]];p.textContent=g2?'🐟 '+F[0].replace(/^一[隻條]/,'')+' ×'+g2+(F[1]?'（$'+F[1]+'）':''):'❔ ？？？（線索：'+FISH_HINT[F[0]]+'）';p.style.opacity=g2?1:.6;p.style.margin='2px 0';box.appendChild(p);}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
@@ -122,7 +124,7 @@ const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／�
   ['公車和計程車','公車停站時 F 上車（$5）、車上 F 按下車鈴或下車；T 招計程車，停在旁邊後 F 上車選目的地'],
   ['海邊','G 釣魚（岸邊，或船停著時）、咬了再按一次 G 拉起來'],
   ['跟人互動','點人 說話、接任務、請喝飲料；點門 開關、點球 踢、點電視和燈 開關、點衣櫃 換衣服、點櫃台 買東西和打工'],
-  ['其他','P 拍照模式；設定裡可以調時間、天氣、重力、聲音、音樂、畫質、小地圖、我的紀錄']];
+  ['其他','P 拍照模式（裡面按 Enter 拍一張，拍到景點會收進相簿）；設定裡可以調時間、天氣、重力、聲音、音樂、畫質、小地圖、我的紀錄']];
 function showKeys(){const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='操作說明'+(isTouch?'（手機：用右下角的按鈕，下面是鍵盤的按法）':'');el.appendChild(h);
   const box=document.createElement('div');box.style.cssText='max-height:42vh;overflow:auto;margin:6px 0;flex:1 1 100%;width:100%';el.appendChild(box);

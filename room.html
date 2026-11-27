@@ -145,6 +145,9 @@ body.photo .hud,body.photo #tags,body.photo #cross,body.photo #tip,body.photo .a
   <div class="hint" id="hint"></div>
 </div>
 <button id="bPhotoEnd" type="button" class="photoend" hidden>結束拍照</button>
+<button id="bShot" type="button" class="photoend" style="right:auto;left:50%;transform:translateX(-50%)" hidden>📷 拍一張（Enter）</button>
+<div id="flash" style="position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .35s"></div>
+<div id="shotNote" class="photoend" style="right:auto;left:50%;top:18px;bottom:auto;transform:translateX(-50%);pointer-events:none" hidden></div>
 <div id="err" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -2163,11 +2166,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,shells,gifted,iceCreams,fishGot,isleSeen,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,album,shells,gifted,iceCreams,fishGot,isleSeen,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.album)Object.assign(album,d.album);shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -2182,7 +2185,7 @@ const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺'
   ['ice',()=>iceCreams>=1,'吃到冰淇淋車的冰淇淋',5],
   ['isle',()=>isleSeen,'登上燈塔島',30],
   ['home',()=>homeOwned,'有自己的家了',0],
-  ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['shell',()=>shells>=15,'貝殼收藏家：撿了 15 個貝殼',30],['best',()=>Object.keys(gifted).length>=1,'有了第一個最好的朋友（♥♥♥♥♥）',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
+  ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['photo',()=>Object.keys(album).length>=4,'小小攝影師：相簿收集 4 張',30],['shell',()=>shells>=15,'貝殼收藏家：撿了 15 個貝殼',30],['best',()=>Object.keys(gifted).length>=1,'有了第一個最好的朋友（♥♥♥♥♥）',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
 // --- three small goals a day, picked fresh each morning ---
 let waves=0;
 const DAILY=[['fish','釣到 2 條魚',()=>fishCount,2],['walk','走路 400 公尺',()=>stats.walk,400],['drive','開車或騎車 800 公尺',()=>stats.drive,800],['hoop','投進 2 球',()=>baskets,2],
@@ -2226,6 +2229,8 @@ function showStats(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   const km=m=>m<1000?Math.round(m)+' 公尺':(m/1000).toFixed(1)+' 公里',n=BADGES.filter(B=>stats.done[B[0]]).length;
   for(const t of['走路：'+km(stats.walk),'開車和騎車：'+km(stats.drive),'完成任務：'+stats.jobs+' 個','總共賺到：$'+stats.earned,'搭公車 '+busTrips+' 次、計程車 '+taxiTrips+' 次','自己開車載客：'+fares+' 位','撿到的貝殼：'+shells+' 個','釣到 '+fishCount+' 次、投進 '+baskets+' 球','找到的星星：'+Object.keys(starGot).length+' / '+STARS.length,'— 今日挑戰（每個 $40，三個全過再 $60）—'].concat(daily.list.map(d=>{const D=DAILY.find(q=>q[0]===d.id);return(d.done?'✅ ':'⬜ ')+D[1]+(d.done?'':'（'+Math.min(D[3],Math.floor(D[2]()-d.base))+' / '+D[3]+'）');})).concat(['成就：'+n+' / '+BADGES.length])){const p=document.createElement('p');p.textContent=t;p.style.margin='2px 0';box.appendChild(p);}
   for(const B of BADGES){const p=document.createElement('p');p.textContent=(stats.done[B[0]]?'🏅 ':'⬜ ')+B[2];p.style.opacity=stats.done[B[0]]?1:.6;p.style.margin='2px 0';box.appendChild(p);}
+  {const p=document.createElement('p');p.textContent='— 相簿（'+Object.keys(album).length+' / '+SHOTS.length+'，按 P 進拍照模式，每張 $25，全部 $250）—';p.style.margin='6px 0 2px';box.appendChild(p);
+    const q=document.createElement('p');q.textContent=SHOTS.map(S=>(album[S[0]]?'📸':'⬜')+S[0]).join('　');q.style.margin='2px 0';box.appendChild(q);}
   {const p=document.createElement('p');p.textContent='— 釣魚圖鑑（'+Object.keys(fishGot).length+' / '+FISH.length+'，全部收集 $200）—';p.style.margin='6px 0 2px';box.appendChild(p);}
   for(const F of FISH){const p=document.createElement('p'),g2=fishGot[F[0]];p.textContent=g2?'🐟 '+F[0].replace(/^一[隻條]/,'')+' ×'+g2+(F[1]?'（$'+F[1]+'）':''):'❔ ？？？（線索：'+FISH_HINT[F[0]]+'）';p.style.opacity=g2?1:.6;p.style.margin='2px 0';box.appendChild(p);}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
@@ -2275,7 +2280,7 @@ const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／�
   ['公車和計程車','公車停站時 F 上車（$5）、車上 F 按下車鈴或下車；T 招計程車，停在旁邊後 F 上車選目的地'],
   ['海邊','G 釣魚（岸邊，或船停著時）、咬了再按一次 G 拉起來'],
   ['跟人互動','點人 說話、接任務、請喝飲料；點門 開關、點球 踢、點電視和燈 開關、點衣櫃 換衣服、點櫃台 買東西和打工'],
-  ['其他','P 拍照模式；設定裡可以調時間、天氣、重力、聲音、音樂、畫質、小地圖、我的紀錄']];
+  ['其他','P 拍照模式（裡面按 Enter 拍一張，拍到景點會收進相簿）；設定裡可以調時間、天氣、重力、聲音、音樂、畫質、小地圖、我的紀錄']];
 function showKeys(){const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='操作說明'+(isTouch?'（手機：用右下角的按鈕，下面是鍵盤的按法）':'');el.appendChild(h);
   const box=document.createElement('div');box.style.cssText='max-height:42vh;overflow:auto;margin:6px 0;flex:1 1 100%;width:100%';el.appendChild(box);
@@ -3316,9 +3321,24 @@ scene.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.env
 [M.grass,M.asphalt,M.concrete,M.paint,M.sand,M.bark,M.crown,M.crown2,M.steel].concat(houses.flatMap(H=>[H.mats.ext,H.mats.roof,H.mats.doorLeaf])).forEach(m=>{m.envMapIntensity=2.2;});
 M.water.envMapIntensity=1.2;dyn.traverse(o=>{if(o.material&&'envMapIntensity' in o.material)o.material.envMapIntensity=1;});
 // photo mode: everything on screen goes away so you can take a clean picture
-function photo(on){document.body.classList.toggle('photo',on);$('bPhotoEnd').hidden=!on;if(on){$('panel').hidden=true;$('bSet').setAttribute('aria-expanded',false);}}
+function photo(on){document.body.classList.toggle('photo',on);$('bPhotoEnd').hidden=!on;$('bShot').hidden=!on;$('shotNote').hidden=true;if(on){$('panel').hidden=true;$('bSet').setAttribute('aria-expanded',false);}}
 $('bPhoto').onclick=()=>photo(true);$('bPhotoEnd').onclick=()=>photo(false);
-addEventListener('keydown',e=>{if(e.code==='KeyP'&&!e.repeat)photo(!document.body.classList.contains('photo'));});
+addEventListener('keydown',e=>{if(e.code==='KeyP'&&!e.repeat)photo(!document.body.classList.contains('photo'));else if(e.code==='Enter'&&document.body.classList.contains('photo'))snap();});
+// taking pictures: a shot counts when its subject is in the frame, close enough, and (for some) happening right now
+const album={};const sv3=new THREE.Vector3();
+const SHOTS=[['燈塔',()=>[WORLD.isle.x,6,WORLD.isle.z],120],['碼頭',()=>[20.2,.5,-19],40],['夕陽商店',()=>{const H=houses.find(h=>h.lot.tpl==='shop');return[(H.x0+H.x1)/2,1.5,(H.z0+H.z1)/2];},26],
+  ['籃球架',()=>[19.2,2.5,23.4],18],['小橘（貓）',()=>[cat.x,.3,cat.z],9],['小黃（狗）',()=>[pets[0].x,.4,pets[0].z],9],
+  ['夜市的燈籠',()=>[27.3,2,-7.6],28,()=>marketOn],['煙火',()=>{const f=FW.find(q=>q.t<1.6);return f?[f.geo.attributes.position.getX(0),f.geo.attributes.position.getY(0),f.geo.attributes.position.getZ(0)]:null;},400,()=>fwOn],
+  ['彩虹',()=>[bow.position.x,bow.position.y,bow.position.z],900,()=>bow.visible&&bowK>.4],['日落',()=>[pos.x+sunDir.x*200,1.6+sunDir.y*200,pos.z+sunDir.z*200],900,()=>sunDir.y>-.02&&sunDir.y<.16&&clock>12]];
+function snap(){const fl=$('flash');fl.style.transition='none';fl.style.opacity=.85;requestAnimationFrame(()=>{fl.style.transition='opacity .4s';fl.style.opacity=0;});tone(2200,.03,.2,'square');setTimeout(()=>noise(.06,3000,1,.2),40);
+  camera.updateMatrixWorld();let got=null,seen=null;
+  for(const S of SHOTS){if(S[3]&&!S[3]())continue;const p=S[1]();if(!p)continue;const d=Math.hypot(p[0]-camera.position.x,p[2]-camera.position.z);if(d>S[2])continue;sv3.set(p[0],p[1],p[2]).project(camera);
+    if(sv3.z>1||Math.abs(sv3.x)>.75||Math.abs(sv3.y)>.8)continue;seen=S[0];if(!album[S[0]]){got=S[0];break;}}
+  const n=$('shotNote');n.hidden=false;
+  if(got){album[got]=1;const k=Object.keys(album).length;cash+=25;sfxCoin();const all=k===SHOTS.length;if(all)cash+=250;n.textContent='📸 拍到「'+got+'」！相簿 '+k+'/'+SHOTS.length+'，+$25'+(all?'。相簿全部集滿，再加 $250！':'');}
+  else n.textContent=seen?'「'+seen+'」已經在相簿裡了。':'喀嚓。這張沒有拍到相簿裡的主題（要把它放在畫面中間、夠近）。';
+  clearTimeout(snap.t);snap.t=setTimeout(()=>{n.hidden=true;},3200);}
+$('bShot').onclick=snap;
 // picture quality: fewer pixels, a smaller shadow picture and no glow make slow devices run smoother
 const QUAL=[['高',2,2048,true],['中',1.25,1024,true],['低',.8,512,false]];let qIdx=0;
 $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textContent='畫質：'+Q[0];
@@ -3326,7 +3346,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,npcKites,npcKiteStep,SHELLS,shellStep,get shells(){return shells;},kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,snap,album,SHOTS,photo,npcKites,npcKiteStep,SHELLS,shellStep,get shells(){return shells;},kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
