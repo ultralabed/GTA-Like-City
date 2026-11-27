@@ -217,17 +217,25 @@ function rideStep(dt,f,s){
   yaw=Math.atan2(-fx,-fz);
 }
 // --- fishing: stand at the water's edge, cast, wait for a bite, then pull in time ---
-let fish=null,fishBag=0,fishCount=0;
+let fish=null,fishBag=0,fishCount=0;const fishGot={};
+// what bites depends on where you fish and whether it is night: [name, price, how common, places, night-only? (true/false/either)]
+const FISH=[['一隻舊鞋子',0,10,['shore','pier']],['一條小魚',8,40,['shore','pier','deep','isle']],['一條鯛魚',15,26,['shore','pier','deep']],['一條大魚',30,12,['pier','deep','isle']],
+  ['一隻章魚',35,10,['pier']],['一條超大的鮪魚',60,10,['deep']],['一條旗魚',90,4,['deep'],false],['一隻龍蝦',70,12,['isle']],['一隻會發光的烏賊',55,16,['pier','deep','isle'],true],['一隻螃蟹',20,14,['shore','isle'],true]];
+const FISH_HINT={'一隻舊鞋子':'岸邊或碼頭','一條小魚':'到處都有','一條鯛魚':'岸邊、碼頭、海上','一條大魚':'碼頭外面、海上、燈塔島','一隻章魚':'只有碼頭','一條超大的鮪魚':'開船到很遠的海上','一條旗魚':'很遠的海上，白天，很少見','一隻龍蝦':'燈塔島旁邊','一隻會發光的烏賊':'晚上，碼頭或海上','一隻螃蟹':'晚上，岸邊或燈塔島'};
 const bobber=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),new THREE.MeshBasicMaterial({color:0xff5533}));bobber.visible=false;scene.add(bobber);
 const onBoat=()=>!!ride&&!!ride.S.water&&Math.abs(ride.v)<.8;
-const atShore=()=>onBoat()||!ride&&!seat&&(onPier(pos.x,pos.z)&&pos.z<WORLD.shore-1||pos.z<WORLD.shore+2.2&&pos.z>WORLD.shore-3&&inTown(pos.x,pos.z,0));
+const atShore=()=>onBoat()||!ride&&!seat&&(onIsle(pos.x,pos.z,-1)&&!onIsle(pos.x,pos.z,3)||onPier(pos.x,pos.z)&&pos.z<WORLD.shore-1||pos.z<WORLD.shore+2.2&&pos.z>WORLD.shore-3&&inTown(pos.x,pos.z,0));
 function fishing(){
   if(!fish&&onBoat()){const r=ride;fish={x:r.x+Math.sin(r.h)*3.2,z:r.z+Math.cos(r.h)*3.2,t:0,at:rnd(3,8),bite:false,px:pos.x,pz:pos.z,deep:r.z<WORLD.shore-25};
     say('你從船上把釣線甩出去了。'+(fish.deep?'這裡離岸邊很遠，水很深，比較容易釣到大魚。':'')+'船一開走就會收線。');noise(.2,1200,.8,.15);actKey='';return;}
+  if(!fish&&onIsle(pos.x,pos.z,-1)){const I=WORLD.isle,d=Math.hypot(pos.x-I.x,pos.z-I.z)||1,k=(I.r+4)/d;fish={x:I.x+(pos.x-I.x)*k,z:I.z+(pos.z-I.z)*k,t:0,at:rnd(3,9),bite:false,px:pos.x,pz:pos.z,deep:true};say('你從島邊把釣線甩出去了。');noise(.2,1200,.8,.15);actKey='';return;}
   if(!fish){if(!atShore())return;camera.getWorldDirection(camDir);const fx=camDir.x,fz=Math.min(-.3,camDir.z),L=Math.hypot(fx,fz);
     fish={x:pos.x+fx/L*4.5,z:Math.min(WORLD.shore-1.5,pos.z+fz/L*4.5),t:0,at:rnd(4,11),bite:false,px:pos.x,pz:pos.z,deep:pos.z<WORLD.shore-8};if(onPier(pos.x,pos.z)){const P=WORLD.pier;fish.x=pos.x+(fx<0?-1:1)*(Math.abs(fx)>.5?3.6:0);fish.z=Math.abs(fx)>.5?pos.z:pos.z-3.6;if(fish.x>P.x0-1&&fish.x<P.x1+1&&fish.z>P.z0-1)fish.z=P.z0-2.5;}say('你把釣線甩出去了。等浮標沉下去，再按「拉！」。走開就會收線。');noise(.2,1200,.8,.15);return;}
-  if(fish.bite){const r=Math.random()+(fish.deep?.3:0),c=r<.12?['一隻舊鞋子',0]:r<.6?['一條小魚',8]:r<.9?['一條鯛魚',15]:r<1.2?['一條大魚',30]:['一條超大的鮪魚',60];fishBag+=c[1];fishCount++;fish=null;sfxCoin();
-    say('釣到'+c[0]+'了！'+(c[1]?'值 $'+c[1]+'，拿去夕陽商店可以賣掉（現在魚簍裡共值 $'+fishBag+'）。':'沒人要買這個。'));}
+  if(fish.bite){const where=Math.hypot(fish.x-WORLD.isle.x,fish.z-WORLD.isle.z)<WORLD.isle.r+9?'isle':fish.deep&&ride?'deep':fish.deep?'pier':'shore',night=dark>.6;
+    const pool=FISH.filter(F=>F[3].includes(where)&&(F[4]==null||F[4]===night));let tot=0;for(const F of pool)tot+=F[2];let r=Math.random()*tot,F=pool[0];for(const q of pool){r-=q[2];if(r<=0){F=q;break;}}
+    const isNew=!fishGot[F[0]];fishGot[F[0]]=(fishGot[F[0]]||0)+1;fishBag+=F[1];fishCount++;fish=null;sfxCoin();const n=Object.keys(fishGot).length;
+    if(isNew&&n===FISH.length){cash+=200;say('釣到'+F[0]+'了！圖鑑全部收集完成（'+n+'/'+FISH.length+'）！大獎 $200！');}
+    else say('釣到'+F[0]+'了！'+(isNew?'【新的！圖鑑 '+n+'/'+FISH.length+'】':'')+(F[1]?'值 $'+F[1]+'，拿去夕陽商店可以賣掉（魚簍共值 $'+fishBag+'）。':'沒人要買這個。'));}
   else{fish=null;say('太早拉了，魚還沒咬。');}
   actKey='';}
 function fishStep(dt,t){
