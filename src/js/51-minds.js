@@ -57,7 +57,7 @@ function utility(n,id){
   if(id==='eatout'&&marketOn&&!rainOn&&n.need.food<.8&&!n.cool[id]&&freeAct(n,id))return 1.6+Math.random()*.4;   // market night: most people fancy a bite out
   if(id==='kite'){if(windS<4||rainOn||dark>.5||n.cool[id]>0||!freeAct(n,id))return -1;return (.9+n.o.playful*.9)*(1-n.need.fun*.5);}   // a breezy day: the playful ones fancy flying a kite
   if(id==='picnic'){if(!isWeekend()||clock<10.5||clock>15.5||rainOn||windS>7||n.cool[id]>0||!freeAct(n,id))return -1;   // a weekend lunchtime outing; more tempting when someone from home is already going
-    return .9+(1-n.need.food)*.6+(mates(n).some(m=>m.goal&&m.goal.id==='picnic')?1.2:0);}
+    return .9+(1-n.need.food)*.6+(people.some(m=>m!==n&&m.goal&&m.goal.id==='picnic'&&rel(n,m)>=1.5)?1.2:0)-(people.some(m=>m!==n&&m.goal&&m.goal.id==='picnic'&&rel(n,m)<=-1)?.5:0);}   // friends draw you along; someone you cannot stand puts you off
   if(id==='watch'&&(!fwOn||rainOn))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
   const nd=n.need[g.need];let u=(1-nd)*(n.o.w[g.need]||1);
@@ -309,6 +309,12 @@ function chatLines(a,b){
     ['那個開'+(typeof PAINTS!=='undefined'?PAINTS[paintIdx][1]:'黃色')+'車的人你認識嗎？',rep>2?'認識，人很好。':rep<-2?'小心點，他很愛亂來。':'不太熟。']];
   return sets[Math.floor(Math.random()*sets.length)];
 }
+// --- how the neighbours get on with each other: every pair has a number, from -3 (cannot stand each other) to +3 (the best of friends).
+// It starts from who they are (a made-up but fixed mix), and moves a little every time they meet.
+const REL={};const relKey=(a,b)=>a.o.name<b.o.name?a.o.name+'|'+b.o.name:b.o.name+'|'+a.o.name;
+function rel(a,b){const k=relKey(a,b);if(REL[k]==null){let h=7;for(const ch of k)h=(h*31+ch.charCodeAt(0))%9973;const r=h/9973;
+    REL[k]=a.home===b.home?1.6+r:r<.12?-2.2:r<.22?-1.2:r>.88?2.2:r>.7?1.2:.2;}return REL[k];}
+function relOf(n){let best=null,worst=null;for(const m of people){if(m===n||m.guard||m.visitor||m.home<0)continue;const r=rel(n,m);if(!best||r>rel(n,best))best=m;if(!worst||r<rel(n,worst))worst=m;}return{best,worst};}
 function neighbourChat(){
   const now=performance.now()/1000;
   for(let i=0;i<people.length;i++){const a=people[i];if(a.hidden||a.lie||a.react||a.riding||(a.chatAt||0)>now||talkN===a)continue;
@@ -317,9 +323,16 @@ function neighbourChat(){
       if(Math.hypot(a.pos.x-b.pos.x,a.pos.z-b.pos.z)>1.9)continue;
       const ra=roomAt(a.pos.x,a.pos.z),rb=roomAt(b.pos.x,b.pos.z);if((ra&&ra.house)!==(rb&&rb.house))continue;   // not through a wall
       if(Math.min(a.mood,b.mood)<.35)continue;                              // nobody chats with a grump
-      const L=chatLines(a,b);a.chatAt=now+rnd(70,140);b.chatAt=now+rnd(70,140);
-      a.react={say:L[0],t:3.4,pose:'wave',at:b};b.react={say:L[1],t:3.6,pose:null,at:a};
-      a.mood=Math.min(1,a.mood+.04);b.mood=Math.min(1,b.mood+.04);a.need.fun=Math.min(1,a.need.fun+.05);b.need.fun=Math.min(1,b.need.fun+.05);
+      a.chatAt=now+rnd(70,140);b.chatAt=now+rnd(70,140);const k=relKey(a,b),r=rel(a,b),plain=a.guard||b.guard||a.visitor||b.visitor;
+      if(!plain&&r<=-1){                                                    // two who do not get on: a cold word, and both walk off a bit crosser, unless today they make it up
+        if(Math.random()<.22){REL[k]=r+1.6;a.react={say:'…上次的事，是我不對。',t:3.6,pose:null,at:b};b.react={say:'算了，我也有錯。沒事了。',t:3.8,pose:'wave',at:a};a.mood=Math.min(1,a.mood+.1);b.mood=Math.min(1,b.mood+.1);}
+        else{const L=[['哼，又是你。','彼此彼此。'],['你家的音樂昨天很吵。','你家的狗才吵！'],['借過。','路又不是你的。']][Math.floor(Math.random()*3)];REL[k]=Math.max(-3,r-.1);
+          a.react={say:L[0],t:3,pose:'glare',at:b};b.react={say:L[1],t:3.2,pose:'glare',at:a};a.mood-=.06;b.mood-=.06;}
+        break;}
+      const L=!plain&&r>=1.5&&Math.random()<.6?[['嗨！正想找你呢。','我也是！等一下一起去走走？'],['你今天看起來氣色很好。','看到你就開心啊。'],['上次謝謝你幫忙。','朋友嘛，應該的。']][Math.floor(Math.random()*3)]:chatLines(a,b);
+      if(!plain)REL[k]=Math.min(3,r+(r>=1.5?.05:.15));const warm=!plain&&r>=1.5?.08:.04;
+      a.react={say:L[0],t:3.4,pose:'wave',at:b};b.react={say:L[1],t:3.6,pose:r>=1.5?'wave':null,at:a};
+      a.mood=Math.min(1,a.mood+warm);b.mood=Math.min(1,b.mood+warm);a.need.fun=Math.min(1,a.need.fun+.05);b.need.fun=Math.min(1,b.need.fun+.05);
       break;}}
 }
 
