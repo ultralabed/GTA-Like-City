@@ -294,6 +294,17 @@ function refuel(){const r=ride||rides.find(q=>q.S.tank&&Math.hypot(q.x-PUMP.x,q.
   if(cash<1){say('你沒有錢加油。先去做任務賺錢吧。');return;}
   const pay=Math.min(cost,cash);r.fuel=Math.min(1,r.fuel+pay/r.S.full);cash-=pay;sfxCoin();actKey='';
   say(pay<cost?'你的錢只夠加一部分：花了 $'+pay+'，'+r.S.name+'的油現在 '+Math.round(r.fuel*100)+'%。':'加滿了！花了 $'+pay+'。');}
+// --- tuning your car at the pump: a stronger engine (two steps) and a thriftier one ---
+const carUp={eng:0,eco:0};
+function applyTune(){const r=rides[0],B=SPEC.car;r.S=Object.assign({},B,{max:B.max*(1+.16*carUp.eng),acc:B.acc*(1+.2*carUp.eng),tank:B.tank*(1+.6*carUp.eco)});}
+function tuneMenu(line){const r=rides[0];if(Math.hypot(r.x-PUMP.x,r.z-PUMP.z)>=5){say('要把車子停在加油機旁邊才能改裝。');return;}
+  const el=$('talk');el.hidden=false;el.textContent='';talkN=null;const h=document.createElement('strong');h.textContent='車子改裝';const p=document.createElement('p');
+  p.textContent=line||'引擎：第 '+carUp.eng+' 級（最多 2 級）。省油裝置：'+(carUp.eco?'已安裝':'還沒裝')+'。你有 $'+cash+'。';el.append(h,p);
+  const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
+  const buy=(cost,fn,msg)=>{if(cash<cost){tuneMenu('錢不夠，這個要 $'+cost+'，你只有 $'+cash+'。');return;}cash-=cost;fn();applyTune();sfxCoin();noise(.5,300,.8,.2);tuneMenu(msg+' 你還有 $'+cash+'。');};
+  if(carUp.eng<2){const c=carUp.eng?260:160;add('升級引擎（第 '+(carUp.eng+1)+' 級）$'+c,()=>buy(c,()=>{carUp.eng++;},'引擎換好了！車子加速更快、最高速度更高（大約 '+Math.round(SPEC.car.max*(1+.16*(carUp.eng+1))*3.6)+' km/h）。'));}
+  if(!carUp.eco)add('省油裝置 $120',()=>buy(120,()=>{carUp.eco=1;},'裝好了！同樣一箱油可以多開六成的路。'));
+  add('關閉',()=>{el.hidden=true;});}
 // --- the time trial: from the flag, through the glowing gates in order, as fast as you can ---
 const FLAG=WORLD.outdoor.find(o=>o.type==='flag');
 const RACE=[[-8,11.3],[20,11.3],[42,11.3],[52.6,24],[52.6,46],[52.6,24],[42,7.8],[10,7.8],[-28,7.8]];
@@ -344,12 +355,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T',fuel:'C',paint:'N',race:'B',fare:'K',wave:'X',dance:'J'};
+const KEY={fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T',fuel:'C',paint:'N',race:'B',fare:'K',tune:'U',wave:'X',dance:'J'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],fuel:['加油',refuel],paint:['噴漆換顏色 $30',repaint],race:['開始計時賽',startRace],fare:['接載客工作',startFare],wave:['揮手',wave],dance:['跳舞',dance],off:['',leaveBus]};
+const ACTS={fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],fuel:['加油',refuel],paint:['噴漆換顏色 $30',repaint],race:['開始計時賽',startRace],fare:['接載客工作',startFare],tune:['改裝車子',()=>tuneMenu()],wave:['揮手',wave],dance:['跳舞',dance],off:['',leaveBus]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -358,7 +369,7 @@ function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
   const nbus=nearBus();
   if(onBus)list.push('off');
-  else if(ride){list.push('out','horn');if(fish||onBoat())list.push('fish');if(atPump()&&ride.fuel<.98)list.push('fuel');if(atPump()&&ride.kind==='car')list.push('paint');if(atFlag())list.push('race');if(ride.kind==='car'&&!quest)list.push('fare');if(ride.kind==='car')list.push('radio');}
+  else if(ride){list.push('out','horn');if(fish||onBoat())list.push('fish');if(atPump()&&ride.fuel<.98)list.push('fuel');if(atPump()&&ride.kind==='car')list.push('paint','tune');if(atFlag())list.push('race');if(ride.kind==='car'&&!quest)list.push('fare');if(ride.kind==='car')list.push('radio');}
   else{if(nbus)list.push('bus');else if(canHail())list.push('taxi');if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
@@ -391,6 +402,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyJ')dance();
   else if(e.code==='KeyC'){if(atPump())refuel();}
   else if(e.code==='KeyB'){if(atFlag())startRace();}
+  else if(e.code==='KeyU'){if(atPump()&&ride.kind==='car')tuneMenu();}
   else if(e.code==='KeyK'){if(ride&&ride.kind==='car')startFare();}
   else if(e.code==='KeyN'){if(atPump()&&ride.kind==='car')repaint();}
   else if(e.code==='KeyT'){if(!ride&&!onBus)hail();}
