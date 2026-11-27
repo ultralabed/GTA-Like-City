@@ -361,9 +361,10 @@ function smokeStep(dt){const r=rides[0];if(carDmg>=.6&&Math.hypot(r.x-pos.x,r.z-
   for(const s of smoke){if(s.t>1.6)continue;s.t+=dt;s.m.position.y+=dt*1.1;s.m.position.x+=windX*dt*.15;s.m.position.z+=windZ*dt*.15;{const k=s.t/1.6;s.m.scale.setScalar(Math.max(.02,(.5+k*1.6)*(1-k*k)));}if(s.t>1.6)s.m.visible=false;}}
 function tuneMenu(line){const r=rides[0];if(Math.hypot(r.x-PUMP.x,r.z-PUMP.z)>=5){say('要把車子停在加油機旁邊才能改裝。');return;}
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;const h=document.createElement('strong');h.textContent='車子改裝';const p=document.createElement('p');
-  p.textContent=line||'車況 '+Math.round((1-carDmg)*100)+'%。引擎：第 '+carUp.eng+' 級（最多 2 級）。省油裝置：'+(carUp.eco?'已安裝':'還沒裝')+'。你有 $'+cash+'。';el.append(h,p);
+  p.textContent=line||'車況 '+Math.round((1-carDmg)*100)+'%。'+(carDirt>.7?'車子很髒。':carDirt>.3?'車子有點髒。':'車子很乾淨。')+'引擎：第 '+carUp.eng+' 級（最多 2 級）。省油裝置：'+(carUp.eco?'已安裝':'還沒裝')+'。你有 $'+cash+'。';el.append(h,p);
   const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
   const buy=(cost,fn,msg)=>{if(cash<cost){tuneMenu('錢不夠，這個要 $'+cost+'，你只有 $'+cash+'。');return;}cash-=cost;fn();applyTune();sfxCoin();noise(.5,300,.8,.2);tuneMenu(msg+' 你還有 $'+cash+'。');};
+  if(carDirt>.1)add('洗車 $8',()=>buy(8,()=>{carDirt=0;showDirt();noise(1.2,1800,.5,.1);},'嘩啦啦——洗好了！車子亮晶晶，載客人的時候他們會多給小費。'));
   if(carDmg>.02){const c=Math.max(5,Math.ceil(carDmg*90));add('修車（恢復到 100%）$'+c,()=>buy(c,()=>{carDmg=0;},'修好了！鈑金敲平、引擎也檢查過，跟新的一樣。'));}
   if(carUp.eng<2){const c=carUp.eng?260:160;add('升級引擎（第 '+(carUp.eng+1)+' 級）$'+c,()=>buy(c,()=>{carUp.eng++;},'引擎換好了！車子加速更快、最高速度更高（大約 '+Math.round(SPEC.car.max*(1+.16*(carUp.eng+1))*3.6)+' km/h）。'));}
   if(!carUp.eco)add('省油裝置 $120',()=>buy(120,()=>{carUp.eco=1;},'裝好了！同樣一箱油可以多開六成的路。'));
@@ -399,7 +400,13 @@ function raceStep(){const q=quest,on=!!q&&q.type==='race';gate.visible=on;if(!on
   say('到終點！'+secs.toFixed(1)+' 秒'+(m?'，拿到'+m[1]:'，這次沒有獎牌')+(pay?'，獎金 $'+pay:'')+(better?'。新紀錄！':'。最佳紀錄還是 '+(q.sea?seaBest:raceBest).toFixed(1)+' 秒。'));}
 // --- a new coat of paint for your car, at the pump ---
 const PAINTS=[[0xf2c23d,'黃色'],[0xd9463b,'紅色'],[0x2f6fd0,'藍色'],[0x2a2c32,'黑色'],[0xf4f0e8,'白色'],[0xff7ac0,'粉紅色'],[0x7a4fd0,'紫色'],[0xf08a2e,'橘色']];let paintIdx=0;
-function setPaint(i){paintIdx=((i%PAINTS.length)+PAINTS.length)%PAINTS.length;rides[0].paint.color.setHex(PAINTS[paintIdx][0]);}
+// --- dirt: the car gets grubby as you drive (faster on wet roads); rain rinses it a little; a wash at the pump makes it shine ---
+let carDirt=0,dirtShown=-1;const DIRT=new THREE.Color(0x6e5c44);
+function showDirt(){dirtShown=carDirt;rides[0].paint.color.setHex(PAINTS[paintIdx][0]).lerp(DIRT,.62*carDirt);}
+function dirtStep(dt){const r=rides[0];if(ride===r&&Math.abs(r.v)>1){const d0=carDirt;carDirt=Math.min(1,carDirt+Math.abs(r.v)*dt/(wet>.25?700:2000));if(d0<.7&&carDirt>=.7)say('車子好髒了，都是泥巴。到加油機旁邊按 U 可以洗車。');}
+  if(rain>.3&&!roomAt(r.x,r.z))carDirt=Math.max(.3*Math.min(1,carDirt/.3),carDirt-dt*.012);              // rain rinses the worst off, but never makes it properly clean
+  if(Math.abs(carDirt-dirtShown)>.03)showDirt();}
+function setPaint(i){paintIdx=((i%PAINTS.length)+PAINTS.length)%PAINTS.length;showDirt();}
 function repaint(){const r=rides[0];if(Math.hypot(r.x-PUMP.x,r.z-PUMP.z)>=5){say('要把車子停在加油機旁邊才能噴漆。');return;}
   if(cash<30){say('噴漆要 $30，你的錢不夠。');return;}cash-=30;setPaint(paintIdx+1);sfxCoin();noise(.6,2600,.4,.12);actKey='';
   say('嘶——噴好了！你的車現在是'+PAINTS[paintIdx][1]+'（花了 $30）。再按一次換下一種顏色。');}
