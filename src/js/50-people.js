@@ -84,9 +84,17 @@ function makePerson(o){
     mk(sph(.0115,10,8),eyeW,head,k*.035,.113,.0855).scale.set(1.3,.72,.7);
     mk(sph(.0074,8,6),iris,head,k*.035,.113,.0922).scale.set(1,1,.5);
     mk(sph(.0032,6,4),eye,head,k*.035,.113,.0957).scale.set(1,1,.5);
-    mk(sph(1,8,5),brow,head,k*.036,.131,.092).scale.set(.016,fem?.0028:.004,.005);});
+});
   mk(sph(.013,8,6),skin,head,0,.094,.097).scale.set(.75,1.7,1);mk(sph(.0135,8,6),skin,head,0,.078,.106).scale.set(1.15,.9,1);
-  mk(sph(.021,10,6),lip,head,0,.0445,.082).scale.set(1,.3,.5);
+  // four faces, one shown at a time: neutral, happy (a smile), upset (a frown and lowered brows), and mouth open for talking
+  const faces={};{const dark=mat(0x3a1a1c),arc=Math.PI*.62,bw=fem?.0028:.004;
+    const brows=(g,tilt,dy)=>[-1,1].forEach(k=>{const b=mk(sph(1,8,5),brow,g,k*.036,.131+dy,.092);b.scale.set(.016,bw,.005);b.rotation.z=k*tilt;});
+    const curve=(g,up)=>{const m=mk(new THREE.TorusGeometry(.021,.0042,5,10,arc),lip,g,0,up?.0605:.0275,.0855);m.rotation.z=(up?-Math.PI/2:Math.PI/2)-arc/2;m.scale.z=.6;};
+    let g=faces.n=jt(head,0,0,0);brows(g,0,0);mk(sph(.021,10,6),lip,g,0,.0445,.082).scale.set(1,.3,.5);
+    g=faces.h=jt(head,0,0,0);brows(g,-.06,.002);curve(g,true);
+    g=faces.u=jt(head,0,0,0);brows(g,.3,-.003);curve(g,false);
+    g=faces.o=jt(head,0,0,0);brows(g,-.05,.002);mk(sph(.021,10,6),lip,g,0,.044,.082).scale.set(.85,.5,.5);mk(sph(.015,8,6),dark,g,0,.044,.0875).scale.set(.85,.5,.3);
+    for(const k in faces){if(!o.sep)weld(faces[k]);faces[k].visible=k==='n';}}
   // eyelids: a separate piece so the eyes can blink (and stay shut while asleep)
   const lids=jt(head,0,0,0);[-1,1].forEach(k=>mk(sph(.0128,10,8),skin,lids,k*.035,.1135,.086).scale.set(1.32,.78,.76));if(!o.sep)weld(lids);lids.visible=false;
   // hair: a cap over the skull plus a style
@@ -111,7 +119,7 @@ function makePerson(o){
   const book=new THREE.Mesh(new THREE.BoxGeometry(.2,.03,.15),mat(o.top===0x1f6a6e?0xb5533a:0x1f5a5e));book.position.set(-.1,-.29,.02);book.castShadow=true;J.el.add(book);book.rotation.x=.4;book.visible=false;
   const hit=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,1.75,8),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=-.02;body.add(hit);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
-  const n={o,root,J,head,body,lids,blinkT:1+Math.random()*4,lookC:0,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
+  const n={o,root,J,head,body,lids,faces,face:'n',blinkT:1+Math.random()*4,lookC:0,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
     hidden:false,lie:false,sit:false,ph:0,wait:0,kickCd:0,repath:0,settle:9,cur:{},tagText:'',
     need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6,food:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
@@ -125,11 +133,12 @@ function makePerson(o){
   return n;
 }
 // --- the little things that make a body look alive: breathing, blinking, hips and shoulders turning as you walk, eyes following someone close by ---
-function liveBody(n,t,dt,walk,look,asleep){const J=n.J,br=Math.sin(t*1.5+n.stand*7),kk=1-Math.exp(-dt*6);
+function liveBody(n,t,dt,walk,look,asleep,face){const J=n.J,br=Math.sin(t*1.5+n.stand*7),kk=1-Math.exp(-dt*6);
   J.spine.scale.set(1,1+br*.006,1+br*.02);
   const tw=walk?Math.sin(n.ph)*.12:0,sw=walk?Math.cos(n.ph)*.035:0;J.spine.rotation.y+=(tw-J.spine.rotation.y)*kk;n.body.rotation.z+=(sw-n.body.rotation.z)*kk;
   n.lookC+=((look||0)-n.lookC)*(1-Math.exp(-dt*4));J.neck.rotation.y+=n.lookC*.75;
-  n.blinkT-=dt;if(n.blinkT<-.12)n.blinkT=2.2+Math.random()*4;n.lids.visible=!!asleep||n.blinkT<0;}
+  n.blinkT-=dt;if(n.blinkT<-.12)n.blinkT=2.2+Math.random()*4;n.lids.visible=!!asleep||n.blinkT<0;
+  face=asleep?'n':face||'n';if(face!==n.face){n.faces[n.face].visible=false;n.faces[face].visible=true;n.face=face;}}
 const up3=new THREE.Vector3(0,1,0);
 const people=houses.flatMap(H=>H.lot.people.map(o=>{const n=makePerson(o);n.home=H.id;return n;}))
   .concat(WORLD.visitors.map((o,i)=>{const n=makePerson(o);n.home=-1;n.visitor=true;n.stay=0;

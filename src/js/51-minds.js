@@ -262,7 +262,9 @@ function updNPC(n,dt,t){
   J.al.rotation.set(c.alx,0,c.alz);J.ar.rotation.set(c.arx,0,c.arz);J.el.rotation.x=c.elx;J.er.rotation.x=c.erx;
   J.hl.rotation.x=c.hlx;J.hr.rotation.x=c.hrx;J.kl.rotation.x=c.klx;J.kr.rotation.x=c.krx;
   {let lk=0;if(!lie&&dP<5&&name!=='walk'&&!roomAt(n.pos.x,n.pos.z)===!roomAt(pos.x,pos.z)){lk=angDiff(Math.atan2(pos.x-n.pos.x,pos.z-n.pos.z),n.yaw);if(Math.abs(lk)>1.5)lk=0;lk=Math.max(-1.1,Math.min(1.1,lk));}
-    liveBody(n,t,dt,name==='walk',lk,lie&&ACT[n.act]&&ACT[n.act].type==='sleep');}
+    const R2=n.react,speak=(R2&&R2.say||talkN===n)&&Math.sin(t*13+n.stand*5)>0;
+    const fc=speak?'o':R2&&(R2.pose==='glare'||R2.pose==='startle')?'u':R2&&R2.pose==='wave'?'h':n.mood<.3||n.like<=-2&&dP<5?'u':n.mood>.66||n.like>=3&&dP<5?'h':'n';
+    liveBody(n,t,dt,name==='walk',lk,lie&&ACT[n.act]&&ACT[n.act].type==='sleep',fc);}
   n.book.visible=name==='read';n.um.visible=n.brolly&&rain>.25&&!lie&&!roomAt(n.pos.x,n.pos.z);
   n.root.position.set(n.pos.x,n.y+c.yo,n.pos.z);
   n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));

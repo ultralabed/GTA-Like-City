@@ -35,7 +35,7 @@ function thirdCam(dt,t){
   J.spine.rotation.set(c.sx,0,c.sz);J.neck.rotation.set(c.nx,c.ny,0);
   J.al.rotation.set(c.alx,0,c.alz);J.ar.rotation.set(c.arx,0,c.arz);J.el.rotation.x=c.elx;J.er.rotation.x=c.erx;
   J.hl.rotation.x=c.hlx;J.hr.rotation.x=c.hrx;J.kl.rotation.x=c.klx;J.kr.rotation.x=c.krx;
-  liveBody(me,t,dt,name==='walk',0,!!lieQ2);
+  liveBody(me,t,dt,name==='walk',0,!!lieQ2,emote?'h':heat?'u':'n');
   me.root.position.set(pos.x,y+c.yo,pos.z);me.root.quaternion.slerp(lieQ2||meQ.setFromAxisAngle(up3,meYaw),1-Math.exp(-dt*8));
   me.um.visible=use.umbrella;
   // the camera sits behind and a little above, as far back as it can get without going through a wall
