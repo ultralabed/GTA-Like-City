@@ -400,14 +400,16 @@ function talk(n){
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
 const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],['好釣竿',90,()=>{bag.rod=true;},()=>bag.rod],['風箏',40,()=>{bag.kite=true;},()=>bag.kite],
   ['家裡的盆栽',40,()=>{decorOwn.plant=1;showDecor();},()=>!homeOwned||decorOwn.plant],['家裡的掛畫',60,()=>{decorOwn.art=1;showDecor();},()=>!homeOwned||decorOwn.art],['家裡的金魚缸',90,()=>{decorOwn.tank=1;showDecor();},()=>!homeOwned||decorOwn.tank]];
+// a good name gets you a discount at the counter; a bad one costs you extra
+const shopOff=()=>rep>=10?.8:rep>=5?.9:rep<=-4?1.2:1;
 function shopMenu(line){
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
   const h=document.createElement('strong');h.textContent='夕陽商店';const p=document.createElement('p');el.append(h,p);
   const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
   if(!shopOpen()){p.textContent='店員不在，現在沒辦法結帳。小芳早上 9 點到晚上 8 點顧店。';add('好',()=>{el.hidden=true;});return;}
-  p.textContent=line||'歡迎光臨！你有 $'+cash+'。想買什麼？';
-  for(const G of GOODS){if(G[3]&&G[3]())continue;add(G[0]+' $'+G[1],()=>{if(cash<G[1]){shopMenu('錢不夠喔。'+G[0]+'要 $'+G[1]+'，你只有 $'+cash+'。');return;}
-    cash-=G[1];G[2]();sfxCoin();actKey='';shopMenu('謝謝！'+G[0]+'給你。你還有 $'+cash+'。');});}
+  const off=shopOff();p.textContent=line||'歡迎光臨！你有 $'+cash+'。'+(off<1?'你是街上的好鄰居，全部打 '+(off*10)+' 折！':off>1?'…你最近名聲不太好，東西貴兩成。':'')+'想買什麼？';
+  for(const G of GOODS){if(G[3]&&G[3]())continue;const c=Math.round(G[1]*off);add(G[0]+' $'+c+(off<1?'（原價 $'+G[1]+'）':''),()=>{if(cash<c){shopMenu('錢不夠喔。'+G[0]+'要 $'+c+'，你只有 $'+cash+'。');return;}
+    cash-=c;G[2]();sfxCoin();actKey='';shopMenu('謝謝！'+G[0]+'給你。你還有 $'+cash+'。');});}
   for(const S of STORIES){if(quest||stats.done[S.id])continue;const who=S.who();if(!who)continue;add(S.menu,()=>{
     shopMenu(S.intro(who));const el2=$('talk');[...el2.querySelectorAll('button')].forEach(b=>b.remove());
     const mk=(t,f)=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=f;el2.appendChild(b);};
