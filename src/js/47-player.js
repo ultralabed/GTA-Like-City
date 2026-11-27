@@ -11,8 +11,8 @@ function waterDepth(){return ride||onPier(pos.x,pos.z)||onIsle(pos.x,pos.z,-1)?0
 
 // --- things you keep in your bag and use ---
 // flashlight and umbrella go in your hand (one at a time); the phone shows a map.
-const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'},board:{name:'滑板',key:'4'}};
-const bag={phone:true},use={flashlight:false,umbrella:false,phone:false,board:false};
+const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'},board:{name:'滑板',key:'4'},kite:{name:'風箏',key:'5'}};
+const bag={phone:true},use={flashlight:false,umbrella:false,phone:false,board:false,kite:false};
 const boarding=()=>use.board&&!ride&&!onBus&&!seat&&!roomAt(pos.x,pos.z)&&waterDepth()<.05;   // actually rolling: outdoors, on dry ground
 const hand=new THREE.Group();camera.add(hand);
 const torch=new THREE.SpotLight(0xfff0d0,0,22,.5,.55,1.2);torch.position.set(.25,-.2,0);camera.add(torch);torch.target.position.set(0,-.08,-1);camera.add(torch.target);
@@ -29,6 +29,7 @@ const handTorch=new THREE.Group(),handBrolly=new THREE.Group();hand.add(handTorc
 function showItems(){torch.intensity=use.flashlight&&!ride?1.7:0;handTorch.visible=use.flashlight&&!ride;handBrolly.visible=use.umbrella&&!ride;$('map').hidden=!use.phone;actKey='';}
 function toggleItem(k){if(!bag[k])return;
   if(k==='phone')use.phone=!use.phone;
+  else if(k==='kite'){use.kite=!use.kite;if(use.kite){if(roomAt(pos.x,pos.z)){use.kite=false;say('風箏要到外面才能放。');}else say(windS<2.6?'你拿出風箏，可是現在風太小，它飛不起來。等風大一點（下雨前後、暴風雨時風最大）。':'你把風箏放出去了！風推著它往上飛。風越大，飛得越高。');}else say('你把風箏收起來了。');}
   else if(k==='board'){use.board=!use.board;say(use.board?(roomAt(pos.x,pos.z)?'滑板準備好了。走到外面就會踩上去（在屋子裡不能溜）。':'你踩上滑板了！輪子會滾，所以比跑步快，也不太費力。'):'你把滑板收起來了。');}
   else{const on=!use[k];use.flashlight=use.umbrella=false;use[k]=on;if(on&&held)putDown();
     if(on)say(k==='umbrella'?'你撐開了雨傘：雨不會落在你身上。':'你打開了手電筒。');}
@@ -245,6 +246,21 @@ function fishStep(dt,t){
   if(fish.bite&&!was){actKey='';noise(.25,700,.7,.3);say('有魚咬了！快按「拉！」');}
   if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10)*(bag.rod?.5:1);say('魚跑掉了。再等一下。');}
   bobber.position.set(fish.x,fish.bite?-.06:.04+Math.sin(t*3)*.02,fish.z);}
+// --- the kite: it only flies when there is enough wind, and it sits downwind of you, higher the harder it blows ---
+const kite=new THREE.Group();kite.visible=false;scene.add(kite);
+{const sh=new THREE.Shape();sh.moveTo(0,.6);sh.lineTo(.4,0);sh.lineTo(0,-.75);sh.lineTo(-.4,0);sh.closePath();
+  const m=new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshBasicMaterial({color:0xff5a4a,side:THREE.DoubleSide}));kite.add(m);
+  const t=new THREE.Mesh(new THREE.PlaneGeometry(.06,1.3),new THREE.MeshBasicMaterial({color:0xffd23d,side:THREE.DoubleSide}));t.position.y=-1.35;kite.add(t);kite.userData.tail=t;}
+const kiteLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xdddddd,transparent:true,opacity:.6}));kiteLine.frustumCulled=false;kiteLine.visible=false;scene.add(kiteLine);
+let kiteH=0,kiteTold=0,kiteTime=0;const kP=new THREE.Vector3();
+function kiteStep(dt,t){const fly=use.kite&&!ride&&!onBus&&!roomAt(pos.x,pos.z)&&waterDepth()<.5;
+  if(use.kite&&!fly&&(ride||onBus||roomAt(pos.x,pos.z))){use.kite=false;actKey='';}
+  const want=fly&&windS>=2.6?Math.min(16,3+windS*1.5):0;kiteH+=(want-kiteH)*(1-Math.exp(-dt*.9));kite.visible=kiteLine.visible=fly&&kiteH>.4;if(!kite.visible)return;
+  const dx=windX/(windS||1),dz=windZ/(windS||1),out=kiteH*.9+Math.sin(t*.7)*.6;kP.set(pos.x+dx*out+Math.sin(t*1.3)*.5*dz,1.4+kiteH+Math.sin(t*1.9)*.35,pos.z+dz*out-Math.sin(t*1.3)*.5*dx);
+  kite.position.copy(kP);kite.lookAt(camera.position);kite.rotation.z+=Math.sin(t*2.3)*.25;kite.userData.tail.rotation.z=Math.sin(t*5)*.4;
+  const A=kiteLine.geometry.attributes.position;A.setXYZ(0,pos.x,1.2,pos.z);A.setXYZ(1,kP.x,kP.y,kP.z);A.needsUpdate=true;
+  kiteTime+=dt;kiteTold-=dt;if(kiteTold<=0&&kiteH>5){kiteTold=14;const n=people.find(m=>!m.hidden&&!m.react&&!m.lie&&!roomAt(m.pos.x,m.pos.z)&&Math.hypot(m.pos.x-pos.x,m.pos.z-pos.z)<14);
+    if(n){react(n,n.o.playful>.5?'哇，風箏飛好高！':'今天風大，很適合放風箏。',2.2,n.o.playful>.5?'wave':null);n.mood=Math.min(1,n.mood+.04);}}}
 // --- things you can do with your body: wave at people, or dance (some of them join in) ---
 let emote='',emoteT=0,danceTick=0;
 const nearFolk=r=>people.filter(n=>!n.hidden&&!n.lie&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<r);
@@ -416,6 +432,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
   else if(e.code==='Digit4')toggleItem('board');
+  else if(e.code==='Digit5')toggleItem('kite');
   else if(e.code==='KeyH')horn();
   else if(e.code==='KeyX')wave();
   else if(e.code==='KeyJ')dance();

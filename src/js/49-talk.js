@@ -97,7 +97,7 @@ function showGuide(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
 $('bGuide').onclick=showGuide;
 // --- the full list of keys, grouped by what you are doing ---
 const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／第三人稱、滑鼠轉頭、Esc 放開滑鼠'],
-  ['手上的東西','E 撿起／放下、點畫面 丟出去、1 手電筒、2 雨傘、3 喝飲料、4 滑板、M 手機地圖'],
+  ['手上的東西','E 撿起／放下、點畫面 丟出去、1 手電筒、2 雨傘、3 喝飲料、4 滑板、5 風箏（要有風）、M 手機地圖'],
   ['表情動作','X 揮手（附近的人會回應）、J 跳舞（愛玩的人會跟你一起跳，動一下就停）'],
   ['坐和睡','Q 坐下／站起來、Z 躺下睡覺（時間會快轉）'],
   ['車子、機車、腳踏車、小船','F 上下車（船要靠岸才能下）、W 油門、S 煞車倒車、A D 轉彎、H 喇叭、R 收音機（只有車）'],
@@ -305,7 +305,7 @@ function talk(n){
 }
 // --- the shop ---
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
-const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],['好釣竿',90,()=>{bag.rod=true;},()=>bag.rod],
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],['好釣竿',90,()=>{bag.rod=true;},()=>bag.rod],['風箏',40,()=>{bag.kite=true;},()=>bag.kite],
   ['家裡的盆栽',40,()=>{decorOwn.plant=1;showDecor();},()=>!homeOwned||decorOwn.plant],['家裡的掛畫',60,()=>{decorOwn.art=1;showDecor();},()=>!homeOwned||decorOwn.art],['家裡的金魚缸',90,()=>{decorOwn.tank=1;showDecor();},()=>!homeOwned||decorOwn.tank]];
 function shopMenu(line){
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;

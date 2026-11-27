@@ -1576,8 +1576,8 @@ function waterDepth(){return ride||onPier(pos.x,pos.z)||onIsle(pos.x,pos.z,-1)?0
 
 // --- things you keep in your bag and use ---
 // flashlight and umbrella go in your hand (one at a time); the phone shows a map.
-const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'},board:{name:'滑板',key:'4'}};
-const bag={phone:true},use={flashlight:false,umbrella:false,phone:false,board:false};
+const ITEM={flashlight:{name:'手電筒',key:'1'},umbrella:{name:'雨傘',key:'2'},phone:{name:'手機地圖',key:'M'},board:{name:'滑板',key:'4'},kite:{name:'風箏',key:'5'}};
+const bag={phone:true},use={flashlight:false,umbrella:false,phone:false,board:false,kite:false};
 const boarding=()=>use.board&&!ride&&!onBus&&!seat&&!roomAt(pos.x,pos.z)&&waterDepth()<.05;   // actually rolling: outdoors, on dry ground
 const hand=new THREE.Group();camera.add(hand);
 const torch=new THREE.SpotLight(0xfff0d0,0,22,.5,.55,1.2);torch.position.set(.25,-.2,0);camera.add(torch);torch.target.position.set(0,-.08,-1);camera.add(torch.target);
@@ -1594,6 +1594,7 @@ const handTorch=new THREE.Group(),handBrolly=new THREE.Group();hand.add(handTorc
 function showItems(){torch.intensity=use.flashlight&&!ride?1.7:0;handTorch.visible=use.flashlight&&!ride;handBrolly.visible=use.umbrella&&!ride;$('map').hidden=!use.phone;actKey='';}
 function toggleItem(k){if(!bag[k])return;
   if(k==='phone')use.phone=!use.phone;
+  else if(k==='kite'){use.kite=!use.kite;if(use.kite){if(roomAt(pos.x,pos.z)){use.kite=false;say('風箏要到外面才能放。');}else say(windS<2.6?'你拿出風箏，可是現在風太小，它飛不起來。等風大一點（下雨前後、暴風雨時風最大）。':'你把風箏放出去了！風推著它往上飛。風越大，飛得越高。');}else say('你把風箏收起來了。');}
   else if(k==='board'){use.board=!use.board;say(use.board?(roomAt(pos.x,pos.z)?'滑板準備好了。走到外面就會踩上去（在屋子裡不能溜）。':'你踩上滑板了！輪子會滾，所以比跑步快，也不太費力。'):'你把滑板收起來了。');}
   else{const on=!use[k];use.flashlight=use.umbrella=false;use[k]=on;if(on&&held)putDown();
     if(on)say(k==='umbrella'?'你撐開了雨傘：雨不會落在你身上。':'你打開了手電筒。');}
@@ -1810,6 +1811,21 @@ function fishStep(dt,t){
   if(fish.bite&&!was){actKey='';noise(.25,700,.7,.3);say('有魚咬了！快按「拉！」');}
   if(was&&!fish.bite){actKey='';fish.at=fish.t+rnd(4,10)*(bag.rod?.5:1);say('魚跑掉了。再等一下。');}
   bobber.position.set(fish.x,fish.bite?-.06:.04+Math.sin(t*3)*.02,fish.z);}
+// --- the kite: it only flies when there is enough wind, and it sits downwind of you, higher the harder it blows ---
+const kite=new THREE.Group();kite.visible=false;scene.add(kite);
+{const sh=new THREE.Shape();sh.moveTo(0,.6);sh.lineTo(.4,0);sh.lineTo(0,-.75);sh.lineTo(-.4,0);sh.closePath();
+  const m=new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshBasicMaterial({color:0xff5a4a,side:THREE.DoubleSide}));kite.add(m);
+  const t=new THREE.Mesh(new THREE.PlaneGeometry(.06,1.3),new THREE.MeshBasicMaterial({color:0xffd23d,side:THREE.DoubleSide}));t.position.y=-1.35;kite.add(t);kite.userData.tail=t;}
+const kiteLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xdddddd,transparent:true,opacity:.6}));kiteLine.frustumCulled=false;kiteLine.visible=false;scene.add(kiteLine);
+let kiteH=0,kiteTold=0,kiteTime=0;const kP=new THREE.Vector3();
+function kiteStep(dt,t){const fly=use.kite&&!ride&&!onBus&&!roomAt(pos.x,pos.z)&&waterDepth()<.5;
+  if(use.kite&&!fly&&(ride||onBus||roomAt(pos.x,pos.z))){use.kite=false;actKey='';}
+  const want=fly&&windS>=2.6?Math.min(16,3+windS*1.5):0;kiteH+=(want-kiteH)*(1-Math.exp(-dt*.9));kite.visible=kiteLine.visible=fly&&kiteH>.4;if(!kite.visible)return;
+  const dx=windX/(windS||1),dz=windZ/(windS||1),out=kiteH*.9+Math.sin(t*.7)*.6;kP.set(pos.x+dx*out+Math.sin(t*1.3)*.5*dz,1.4+kiteH+Math.sin(t*1.9)*.35,pos.z+dz*out-Math.sin(t*1.3)*.5*dx);
+  kite.position.copy(kP);kite.lookAt(camera.position);kite.rotation.z+=Math.sin(t*2.3)*.25;kite.userData.tail.rotation.z=Math.sin(t*5)*.4;
+  const A=kiteLine.geometry.attributes.position;A.setXYZ(0,pos.x,1.2,pos.z);A.setXYZ(1,kP.x,kP.y,kP.z);A.needsUpdate=true;
+  kiteTime+=dt;kiteTold-=dt;if(kiteTold<=0&&kiteH>5){kiteTold=14;const n=people.find(m=>!m.hidden&&!m.react&&!m.lie&&!roomAt(m.pos.x,m.pos.z)&&Math.hypot(m.pos.x-pos.x,m.pos.z-pos.z)<14);
+    if(n){react(n,n.o.playful>.5?'哇，風箏飛好高！':'今天風大，很適合放風箏。',2.2,n.o.playful>.5?'wave':null);n.mood=Math.min(1,n.mood+.04);}}}
 // --- things you can do with your body: wave at people, or dance (some of them join in) ---
 let emote='',emoteT=0,danceTick=0;
 const nearFolk=r=>people.filter(n=>!n.hidden&&!n.lie&&Math.hypot(n.pos.x-pos.x,n.pos.z-pos.z)<r);
@@ -1981,6 +1997,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyM')toggleItem('phone');
   else if(e.code==='Digit3')drinkUp();
   else if(e.code==='Digit4')toggleItem('board');
+  else if(e.code==='Digit5')toggleItem('kite');
   else if(e.code==='KeyH')horn();
   else if(e.code==='KeyX')wave();
   else if(e.code==='KeyJ')dance();
@@ -2224,7 +2241,7 @@ function showGuide(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
 $('bGuide').onclick=showGuide;
 // --- the full list of keys, grouped by what you are doing ---
 const KEYS=[['走路','W A S D 走、Shift 跑、空白鍵 跳、V 換第一／第三人稱、滑鼠轉頭、Esc 放開滑鼠'],
-  ['手上的東西','E 撿起／放下、點畫面 丟出去、1 手電筒、2 雨傘、3 喝飲料、4 滑板、M 手機地圖'],
+  ['手上的東西','E 撿起／放下、點畫面 丟出去、1 手電筒、2 雨傘、3 喝飲料、4 滑板、5 風箏（要有風）、M 手機地圖'],
   ['表情動作','X 揮手（附近的人會回應）、J 跳舞（愛玩的人會跟你一起跳，動一下就停）'],
   ['坐和睡','Q 坐下／站起來、Z 躺下睡覺（時間會快轉）'],
   ['車子、機車、腳踏車、小船','F 上下車（船要靠岸才能下）、W 油門、S 煞車倒車、A D 轉彎、H 喇叭、R 收音機（只有車）'],
@@ -2432,7 +2449,7 @@ function talk(n){
 }
 // --- the shop ---
 const shopOpen=()=>people.some(n=>!n.hidden&&ACT[n.act]&&ACT[n.act].type==='serve'&&n.phase==='at');
-const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],['好釣竿',90,()=>{bag.rod=true;},()=>bag.rod],
+const GOODS=[['飲料',20,()=>{drinks++;}],['手電筒',60,()=>{bag.flashlight=true;},()=>bag.flashlight],['雨傘',50,()=>{bag.umbrella=true;},()=>bag.umbrella],['滑板',120,()=>{bag.board=true;},()=>bag.board],['好釣竿',90,()=>{bag.rod=true;},()=>bag.rod],['風箏',40,()=>{bag.kite=true;},()=>bag.kite],
   ['家裡的盆栽',40,()=>{decorOwn.plant=1;showDecor();},()=>!homeOwned||decorOwn.plant],['家裡的掛畫',60,()=>{decorOwn.art=1;showDecor();},()=>!homeOwned||decorOwn.art],['家裡的金魚缸',90,()=>{decorOwn.tank=1;showDecor();},()=>!homeOwned||decorOwn.tank]];
 function shopMenu(line){
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;
@@ -3241,7 +3258,7 @@ function tick(now){
   if(v>.6&&jumpY===0){const sn2=Math.floor(bob*2/Math.PI);if(sn2!==stepNo){stepNo=sn2;sfxStep();}}
   camera.position.set(pos.x,pos.y+(reduce?0:Math.sin(bob*2)*.018*Math.min(1,v)),pos.z);
   camera.rotation.set(pitch,yaw,0);camera.position.y+=jumpY-waterDepth()+(waterDepth()>1?Math.sin(t*2.2)*.05:0);}
-  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);fishStep(dt,t);emoteStep(dt);findQuest();raceStep();starStep();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();$('radar').hidden=!radarOn||!!use.phone;if(radarOn&&!use.phone&&frame%3===0)drawMap(true);if(frame%15===0){hudStats();updateAudio();}
+  camera.updateMatrixWorld();carryHeld();thirdCam(dt,t);fishStep(dt,t);emoteStep(dt);kiteStep(dt,t);findQuest();raceStep();starStep();if(frame%8===0)updateActs();if(use.phone&&frame%10===0)drawMap();$('radar').hidden=!radarOn||!!use.phone;if(radarOn&&!use.phone&&frame%3===0)drawMap(true);if(frame%15===0){hudStats();updateAudio();}
   // the people, then the physics in small fixed steps
   const p0=performance.now();
   for(const n of people)updNPC(n,dt,t);
@@ -3282,7 +3299,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();
