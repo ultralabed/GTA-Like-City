@@ -19,6 +19,8 @@ const carTrim=new THREE.MeshStandardMaterial({color:0x1b1c20,roughness:.75}),car
 function wheel(r,wide,x,z){
   const hold=new THREE.Group();hold.position.set(x,r,z);cur.add(hold);
   const w=new THREE.Group();w.rotation.x=Math.PI/2;hold.add(w);const tmp=new THREE.Group(),put=(geo,mat,y)=>{const m=new THREE.Mesh(geo,mat);m.position.y=y||0;tmp.add(m);return m;};
+  if(wide<.08){const ty=new THREE.TorusGeometry(r-.022,.022,6,26);ty.rotateX(Math.PI/2);put(ty,carTyre);const rm=new THREE.TorusGeometry(r-.05,.008,4,26);rm.rotateX(Math.PI/2);put(rm,hubMat);   // a bicycle wheel: thin tyre, rim, wire spokes
+    for(let k=0;k<8;k++){const sp=put(new THREE.BoxGeometry((r-.05)*2,.004,.004),hubMat);sp.rotation.y=k*Math.PI/8;}put(new THREE.CylinderGeometry(.025,.025,.07,8),hubMat);fuse(tmp,w);w.hold=hold;w.r=r;return w;}
   const pr=[[r*.62,-wide/2],[r*.9,-wide/2],[r,-wide*.32],[r,wide*.32],[r*.9,wide/2],[r*.62,wide/2]].map(q=>new THREE.Vector2(q[0],q[1]));
   put(new THREE.LatheGeometry(pr,20),carTyre);                                                    // a tyre with rounded shoulders
   put(new THREE.CylinderGeometry(r*.64,r*.64,wide*.86,18),hubMat);                              // the alloy rim
@@ -95,12 +97,12 @@ function updateParked(dt){for(const P of parked){if(!P.owner)P.owner=people.find
     if(P.away&&P.t<3){P.t+=dt;const d=Math.min(6.5,P.t*P.t*1.6);P.c.g.position.z=P.m.z+d;spinWheels(P.c,P.t*3,dt,0);if(P.t>=2.1){P.c.g.visible=false;P.col[0]=P.col[1]=1e9;}}   // pulls out toward the road, then it is gone
     if(P.c.g.visible)carLights(P.c,false);}}
 // one taxi: it only comes when you wave for it, stops beside you, and takes you along the main street
-{const m=carMesh(0x2fb89a);m.g.visible=false;const sign=new THREE.Mesh(new THREE.BoxGeometry(.4,.3,.95),new THREE.MeshBasicMaterial({color:new THREE.Color(1.5,.85,.05)}));sign.position.set(-.15,1.69,0);m.g.add(sign);
+{const m=carMesh(0x2fb89a);m.g.visible=false;const sign=new THREE.Mesh(new THREE.BoxGeometry(.4,.3,.95),new THREE.MeshBasicMaterial({color:new THREE.Color(1.5,.85,.05)}));sign.position.set(-.15,1.62,0);m.g.add(sign);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:1e9,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,taxi:true,busDir:1,stopX:0,served:true,dwell:0,dest:null}));}
 const taxi=cars[cars.length-1];
 // the ice-cream van: by day, when it is dry, it comes along now and then, parks by the park for a bit and plays its tune
-{const m=carMesh(0xffb7d5);m.g.visible=false;const cone=new THREE.Mesh(new THREE.ConeGeometry(.22,.5,10),new THREE.MeshStandardMaterial({color:0xe2b06a,roughness:.8}));cone.rotation.x=Math.PI;cone.position.set(-.15,1.8,0);m.g.add(cone);
+{const m=carMesh(0xffb7d5);m.g.visible=false;const cone=new THREE.Mesh(new THREE.ConeGeometry(.22,.5,10),new THREE.MeshStandardMaterial({color:0xe2b06a,roughness:.8}));cone.rotation.x=Math.PI;cone.position.set(-.15,1.72,0);m.g.add(cone);
   const sc=new THREE.Mesh(new THREE.SphereGeometry(.26,12,10),new THREE.MeshStandardMaterial({color:0xfff4f8,roughness:.6}));sc.position.set(-.15,2.12,0);m.g.add(sc);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:70,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,van:true,busDir:1,stopX:21.5+2.1,served:false,dwell:0,sold:0,jing:0}));}

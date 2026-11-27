@@ -167,7 +167,7 @@ const icoG=new THREE.IcosahedronGeometry(1,1);
 const lumpG=[2,2,2].map((det,v)=>{const g=new THREE.IcosahedronGeometry(1,det),P=g.attributes.position,N=g.attributes.normal;
   for(let i=0;i<P.count;i++){const x=P.getX(i),y=P.getY(i),z=P.getZ(i),k=1+.13*Math.sin(x*4.1+v*2)*Math.cos(y*3.3+v)+.1*Math.sin(z*5.2+x*3+v*4)+.05*Math.cos(y*8+z*6);P.setXYZ(i,x*k,y*k,z*k);N.setXYZ(i,x,y,z);}
   return g;});
-const leafM=['#4c9644','#63a94c','#3d7f3c'].map(c=>new THREE.MeshStandardMaterial({map:speckle(c,2600,.3),roughness:.95,emissive:0x16300e,emissiveIntensity:.6}));
+const leafM=['#55a04c','#6cb354','#458a43'].map(c=>new THREE.MeshStandardMaterial({map:speckle(c,2600,.3),roughness:.95}));
 PREFAB.tree=o=>{const s=o.s||1,seed=treeTops.length;
   cyl(.13*s,.19*s,2.5*s,M.bark,0,1.25*s,0,10);cyl(.2*s,.36*s,.32*s,M.bark,0,.16*s,0,10);                         // a trunk that widens at the roots
   [[.9,.5],[2.9,.55],[4.9,.45]].forEach((b,i)=>{const m=cyl(.05*s,.09*s,1.3*s,M.bark,Math.cos(b[0]+seed)*.38*s,2.55*s,Math.sin(b[0]+seed)*.38*s,6);m.rotation.set(Math.sin(b[0]+seed)*b[1],0,-Math.cos(b[0]+seed)*b[1]);});   // three boughs reaching up into the leaves

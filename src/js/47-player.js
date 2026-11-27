@@ -132,9 +132,14 @@ const SEA={x0:-95,x1:125,z0:-95};                                          // ho
 function boatMesh(){
   const g=new THREE.Group();scene.add(g);cur=g;
   const hull=new THREE.MeshStandardMaterial({color:0xf4efe4,roughness:.45}),trim=new THREE.MeshStandardMaterial({color:0xd9623f,roughness:.5});
-  box(3.3,.42,1.3,hull,0,.12,0,{r:.16});box(.9,.36,1.05,hull,1.75,.16,0,{r:.16});box(3.36,.08,1.36,trim,0,.34,0,{r:.03});   // hull, bow, a coloured rail
-  box(2.6,.06,.98,M.walnut,-.1,.2,0);box(.3,.1,1,M.walnut,-.5,.42,0);box(.3,.1,1,M.walnut,.6,.42,0);              // floor and two benches
-  box(.26,.5,.3,M.black,-1.75,.38,0,{r:.05});cyl(.03,.03,.5,M.steel,-1.75,-.05,0,8);                                          // the little motor at the back
+  const tmp=new THREE.Group();cur=tmp;
+  const plan=k=>{const p=new THREE.Shape();p.moveTo(-1.7*k,-.62*k);p.lineTo(.9*k,-.66*k);p.quadraticCurveTo(1.9*k,-.55*k,2.35*k,0);p.quadraticCurveTo(1.9*k,.55*k,.9*k,.66*k);p.lineTo(-1.7*k,.62*k);p.closePath();return p;};
+  const slab=(k,h,y,mat,bv)=>{const geo=new THREE.ExtrudeGeometry(plan(k),{depth:h,bevelEnabled:!!bv,bevelThickness:bv||0,bevelSize:bv||0,bevelSegments:2,curveSegments:10});geo.rotateX(-Math.PI/2);const m=new THREE.Mesh(geo,mat);m.position.y=y;tmp.add(m);};
+  slab(.93,.4,-.08,hull,.06);slab(1.0,.07,.33,trim,.02);slab(.88,.02,.405,M.walnut);                               // a hull with a pointed bow, a coloured rail round the top, a wooden deck
+  box(.28,.09,1.0,M.walnut,-.5,.47,0,{r:.02});box(.28,.09,1.0,M.walnut,.6,.47,0,{r:.02});box(.5,.04,.5,hull,1.6,.44,0,{r:.015});   // two benches and a little foredeck
+  box(.3,.34,.28,M.black,-1.82,.55,0,{r:.08});box(.12,.5,.1,M.steel,-1.84,.2,0);box(.2,.04,.05,M.steel,-1.62,.6,.1);cyl(.09,.09,.03,M.steel,-1.84,-.08,0,8).rotation.z=Math.PI/2;   // the outboard motor: cowl, leg, tiller, propeller
+  [-.5,.5].forEach(z=>box(.1,.04,.04,M.steel,1.2,.44,z));cyl(.012,.012,.5,M.steel,2.0,.68,0,6);                          // cleats and a little mast light at the bow
+  cur=g;fuse(tmp,g);
   const rider=new THREE.Group();g.add(rider);cur=rider;                                                                          // you, sitting on the back bench with a hand on the motor
   const skin=new THREE.MeshStandardMaterial({color:0xe8b996,roughness:.85}),top=new THREE.MeshStandardMaterial({color:0x2b3a67,roughness:.85}),leg=new THREE.MeshStandardMaterial({color:0x3a3a3a,roughness:.85});
   const cap=(r,l,m,x,y,z,rz)=>{const me=new THREE.Mesh(new THREE.CapsuleGeometry(r,l,4,10),m);me.position.set(x,y,z);me.rotation.z=rz||0;add(me);return me;};
@@ -146,10 +151,28 @@ function bikeMesh(moto){
   const g=new THREE.Group();scene.add(g);cur=g;
   const paint=new THREE.MeshStandardMaterial({color:moto?0x2a8fb0:0xff5fa8,roughness:.4,metalness:.5});
   const wheels=[-.52,.52].map(x=>{const w=wheel(moto?.3:.34,moto?.14:.045,x*(moto?1.25:1),0);w.front=x>0;return w;});
-  if(moto){box(.75,.3,.26,paint,-.05,.55,0,{r:.08});box(.5,.1,.28,M.black,-.3,.82,0,{r:.04});box(.3,.26,.2,M.steel,.05,.35,0,{r:.04});   // tank, seat, engine
-    const lamp=new THREE.MeshBasicMaterial({color:0x222222});box(.05,.12,.16,lamp,.68,.86,0).castShadow=false;g.userData.lamp=lamp;}
-  box(.95,.045,.045,paint,0,.66,0);box(.045,.5,.045,paint,-.25,.62,0);box(.6,.045,.045,paint,-.05,.42,0,{rz:.5});
-  box(.045,.66,.045,paint,.5,.66,0,{rz:.18});box(.045,.045,.52,M.steel,.44,.98,0);box(.26,.05,.15,M.black,-.27,.9,0,{r:.02});
+  const tmp=new THREE.Group();cur=tmp;
+  const tube=(x1,y1,x2,y2,r,mat,z)=>{const L=Math.hypot(x2-x1,y2-y1),m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,7),mat);m.position.set((x1+x2)/2,(y1+y2)/2,z||0);m.rotation.z=Math.atan2(y2-y1,x2-x1)-Math.PI/2;tmp.add(m);return m;};
+  const across=(x,y,len,r,mat)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,7),mat);m.rotation.x=Math.PI/2;m.position.set(x,y,0);tmp.add(m);return m;};
+  const ball=(x,y,z,sx,sy,sz,mat)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);tmp.add(m);return m;};
+  if(moto){const lamp=new THREE.MeshBasicMaterial({color:0x222222});g.userData.lamp=lamp;
+    ball(.08,.8,0,.34,.15,.17,paint);box(.56,.1,.26,M.black,-.36,.83,0,{r:.045});box(.3,.14,.2,paint,-.68,.78,0,{r:.05});        // tank, seat, tail
+    box(.34,.3,.26,M.steel,.02,.44,0,{r:.04});for(let k=0;k<4;k++)box(.2,.012,.3,carChrome,.06,.5+k*.035,0);                     // engine block with cooling fins
+    tube(.1,.3,-.5,.3,.03,carChrome,.14);tube(-.5,.3,-.92,.4,.05,carChrome,.14);                                             // exhaust and silencer
+    tube(-.1,.6,-.65,.3,.028,M.steel);tube(.2,.62,.02,.3,.028,M.steel);tube(-.1,.62,.42,.9,.03,paint);                        // frame
+    for(const z of[-.09,.09])tube(.46,.98,.65,.3,.024,carChrome,z);                                                          // front forks
+    across(.47,1.02,.62,.016,M.steel);for(const z of[-.31,.31]){box(.1,.045,.045,M.black,.47,1.02,z);box(.02,.09,.1,M.black,.5,1.16,z*.9);tube(.47,1.02,.5,1.14,.006,M.steel,z*.9);}   // handlebar, grips, mirrors
+    ball(.62,.92,0,.07,.09,.09,lamp);ball(.58,.92,0,.1,.1,.1,M.black);box(.05,.07,.12,new THREE.MeshBasicMaterial({color:0x8a1010}),-.84,.8,0);box(.02,.1,.16,carPlate,-.86,.68,0);
+    for(const x of[.65,-.65]){const f=new THREE.Mesh(new THREE.TorusGeometry(.34,.03,5,10,Math.PI*.6),paint);f.position.set(x,.3,0);f.rotation.z=x>0?Math.PI*.25:Math.PI*.3;f.scale.z=2.4;tmp.add(f);}}   // mudguards
+  else{const B=[-.08,.3],S=[-.22,.84],H=[.36,.84],Hb=[.41,.64],R=[-.52,.34],F=[.52,.34];
+    tube(B[0],B[1],S[0],S[1],.02,paint);tube(S[0]+.02,S[1]-.06,H[0],H[1]-.02,.02,paint);tube(B[0],B[1],Hb[0],Hb[1],.022,paint);tube(Hb[0],Hb[1]-.04,H[0]-.01,H[1]+.06,.024,paint);
+    for(const z of[-.035,.035]){tube(B[0],B[1],R[0],R[1],.012,paint,z);tube(S[0]+.02,S[1]-.08,R[0],R[1],.011,paint,z);tube(Hb[0],Hb[1],F[0],F[1],.014,paint,z*1.2);}   // stays and fork blades each side of the wheel
+    tube(S[0],S[1],S[0]-.03,S[1]+.1,.013,M.steel);box(.26,.045,.14,M.black,-.27,.96,0,{r:.02});                                  // seat post and saddle
+    tube(H[0]-.01,H[1]+.06,H[0]-.04,H[1]+.18,.013,M.steel);across(.32,1.02,.52,.012,M.steel);for(const z of[-.23,.23])box(.03,.03,.1,M.black,.32,1.02,z);   // stem, handlebar, grips
+    across(B[0],B[1],.03,.085,M.steel).scale.set(1,.3,1);tube(B[0],B[1],B[0]+.02,B[1]-.17,.01,M.steel,.07);tube(B[0],B[1],B[0]-.02,B[1]+.17,.01,M.steel,-.07);   // chainring and cranks
+    box(.09,.02,.07,M.black,B[0]+.02,B[1]-.17,.11);box(.09,.02,.07,M.black,B[0]-.02,B[1]+.17,-.11);
+    tube(R[0]-.02,R[1]+.36,R[0]+.3,R[1]+.36,.008,M.steel,.04);tube(R[0]-.02,R[1]+.36,R[0]+.3,R[1]+.36,.008,M.steel,-.04);box(.34,.012,.11,M.steel,R[0]+.14,R[1]+.365,0);}   // a small rear rack
+  cur=g;fuse(tmp,g);
   // a simple rider, only shown while you ride
   const rider=new THREE.Group();g.add(rider);cur=rider;
   const skin=new THREE.MeshStandardMaterial({color:0xe8b996,roughness:.85}),top=new THREE.MeshStandardMaterial({color:0x2b3a67,roughness:.85}),leg=new THREE.MeshStandardMaterial({color:0x3a3a3a,roughness:.85});
