@@ -15,6 +15,19 @@
   // the beach behind the north houses, and the sea beyond it
   flat(LEN,7,M.sand,0,-.018,-9.5,3);
   flat(900,400,M.water,0,-.014,WORLD.shore-200);
+  {const I=WORLD.isle,ig=new THREE.Group(),pv=cur,pr=root;ig.position.set(I.x,0,I.z);scene.add(ig);cur=ig;        // the lighthouse island
+    const disc=(r,mat,y)=>{const m=new THREE.Mesh(new THREE.CircleGeometry(r,28),mat);m.rotation.x=-Math.PI/2;m.position.y=y;m.receiveShadow=true;ig.add(m);};
+    disc(I.r+1.2,M.sand,.02);disc(I.r-3,M.grass,.035);
+    const white=new THREE.MeshStandardMaterial({color:0xf2efe8,roughness:.7}),red=new THREE.MeshStandardMaterial({color:0xc8402f,roughness:.6});
+    cyl(1.05,1.5,8,white,0,4,0,16);cyl(1.25,1.32,1.1,red,0,2.6,0,16);cyl(1.12,1.18,1.1,red,0,6,0,16);cyl(1.5,1.5,.14,M.steel,0,8.05,0,16);
+    cyl(.75,.75,1.2,M.glass,0,8.7,0,12);cyl(.05,.95,.9,red,0,9.75,0,12);box(.7,1.5,.08,M.walnut,0,.75,1.5);
+    box(1.6,.07,.45,M.walnut,3.4,.45,3.2);[2.7,4.1].forEach(x=>box(.07,.45,.4,M.steel,x,.225,3.2));                  // a bench facing the town
+    cur=pv;weldStatic(ig);colliders.push([I.x-1.5,I.x+1.5,I.z-1.5,I.z+1.5],[I.x+2.6,I.x+4.2,I.z+3,I.z+3.45]);
+    isleLamp=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),new THREE.MeshBasicMaterial({color:0x554a30}));isleLamp.position.set(I.x,8.7,I.z);scene.add(isleLamp);
+    isleBeam=new THREE.Group();isleBeam.position.copy(isleLamp.position);scene.add(isleBeam);
+    for(const s2 of[1,-1]){const b=new THREE.Mesh(new THREE.CylinderGeometry(.2,1.5,44,12,1,true),new THREE.MeshBasicMaterial({color:0x2a2616,transparent:true,opacity:.13,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+      b.rotation.z=s2*Math.PI/2;b.position.x=-s2*22;isleBeam.add(b);}
+    root=scene;place({type:'tree',x:I.x-4.5,z:I.z+1.5,s:.9},null);place({type:'tree',x:I.x+3,z:I.z-4.5,s:1.1},null);root=pr;}
   {const P=WORLD.pier,cx=(P.x0+P.x1)/2,pg=new THREE.Group(),pv=cur;scene.add(pg);cur=pg;                // the pier: planks on posts
     for(let z=P.z0+.3;z<P.z1+.6;z+=.62)box(P.x1-P.x0,.07,.56,M.walnut,cx,.05,z);
     for(let z=P.z0+.5;z<P.z1;z+=3){cyl(.11,.11,1.5,M.bark,P.x0+.12,-.5,z,8);cyl(.11,.11,1.5,M.bark,P.x1-.12,-.5,z,8);}

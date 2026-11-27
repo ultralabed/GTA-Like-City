@@ -50,6 +50,7 @@ function windStep(dt){windT-=dt;if(windT<=0){windT=rnd(15,40);windGoal=storm?rnd
   windX=Math.cos(windDir)*windS*gust;windZ=Math.sin(windDir)*windS*gust;
   {const amp=Math.min(.16,.006+windS*.014),cx=Math.cos(windDir),sz=Math.sin(windDir),t2=carClock;                 // trees lean a little downwind and rock; more in a blow
     for(const T of treeTops){if(!T.g.parent.visible)continue;const w=Math.sin(t2*(1.1+windS*.12)*T.k+T.ph)*amp+amp*.6;T.g.rotation.z=-cx*w;T.g.rotation.x=sz*w;}}
+  if(isleBeam){const on=dark>.45?1:0;isleBeam.visible=!!on;isleBeam.rotation.y=carClock*.5;isleLamp.material.color.setRGB(.33+on*8,.29+on*7,.19+on*4);}   // the lighthouse turns its beam at night
   if(flagMesh){const k=Math.min(1,windS/6);flagMesh.rotation.y=-windDir+Math.sin(carClock*(3+windS))*(.1+.25*k);flagMesh.rotation.z=-(1-k)*1.1;}   // the flag points downwind, hangs limp in a calm, flaps in a blow
   if(windS>4.2&&!toldWind){toldWind=true;say('起風了！風推東西的力氣跟「面積」有關：又大又輕的海灘球最容易被吹走，小小的網球和很重的保齡球幾乎不動。');}if(windS<2)toldWind=false;}
 // fireworks over the sea: Saturday and Sunday evening from 8 to 9, if it is not raining

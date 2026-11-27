@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,isleSeen,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -25,6 +25,7 @@ const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺'
   ['cab',()=>fares>=3,'小黃司機：載了 3 位客人',40],
   ['bus',()=>busTrips>=1,'搭過公車了',5],['taxi',()=>taxiTrips>=1,'搭過計程車了',5],['fish',()=>fishCount>=5,'釣魚達人：釣到 5 次',30],['hoop',()=>baskets>=3,'神射手：投進 3 球',30],
   ['stars',()=>Object.keys(starGot).length>=5,'小小探險家：找到 5 顆星星',30],
+  ['isle',()=>isleSeen,'登上燈塔島',30],
   ['home',()=>homeOwned,'有自己的家了',0],
   ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
 // --- three small goals a day, picked fresh each morning ---
@@ -162,8 +163,8 @@ const STORIES=[
   {id:'bottle',menu:'小芳：海上好像有東西…',reward:200,who:()=>people.find(n=>n.guard),name:'漂流瓶',
     intro:w=>'今天早上有客人說，碼頭外面的海上漂著一個玻璃瓶，裡面好像有紙條！我好想知道寫什麼，可是我不會開船。你可以開船去撈回來嗎？船停在碼頭旁邊。找到什麼就拿去給'+w.o.name+'看，他最懂海上的事。做完我給你 $200。',
     steps:w=>[
-      {at:[34,-40],r:6,col:0x9fe0c8,big:1.4,text:'漂流瓶 1/3：開船到碼頭東北邊的海上，撈起漂流瓶（靠近發亮的地方，慢下來）',done:'你撈起瓶子，裡面的紙條寫著：「往西邊一直開，海上有一個舊木箱，是我小時候藏的。」'},
-      {at:[-42,-58],r:6,col:0x8a5a34,big:3.2,text:'漂流瓶 2/3：照紙條說的，往西邊的海上開，找漂在水上的舊木箱',done:'找到了！木箱裡有一張發黃的照片，是好多年前的夕陽街，還有一枚舊硬幣。'},
+      {at:[34,-40],r:6,col:0x9fe0c8,big:1.4,text:'漂流瓶 1/3：開船到碼頭東北邊的海上，撈起漂流瓶（靠近發亮的地方，慢下來）',done:'你撈起瓶子，裡面的紙條寫著：「往西北邊開，有一座燈塔島，島上有一個舊木箱，是我小時候藏的。」'},
+      {at:[-52.5,-47],col:0x8a5a34,big:3.2,text:'漂流瓶 2/3：照紙條說的，往西北邊開到燈塔島，把船停在島邊，上島找舊木箱',done:'找到了！木箱裡有一張發黃的照片，是好多年前的夕陽街，還有一枚舊硬幣。'},
       {at:[20.2,-22.6],r:2.4,col:0xd8a93a,big:1.2,text:'漂流瓶 3/3：把船開回碼頭，下船走到碼頭盡頭',done:'你帶著瓶子和木箱回到碼頭。去找'+w.o.name+'，給他看。'}],
     ask:'你看我在海上找到什麼',thanks:'這…這是我小時候跟朋友一起藏的！我都忘了。照片上這個小孩就是我。謝謝你把它找回來，這枚硬幣送你當紀念。',cheer:()=>'哇，是好久以前的夕陽街！',end:w=>w.o.name+'看著老照片，眼睛紅紅的。'}];
 // --- a little story in steps: go to each place in turn, then talk to the person it is all for ---
@@ -173,7 +174,7 @@ function storyQuest(){const q=quest;if(!q||q.type!=='story')return;
   if(ride&&Math.abs(ride.v)>(s.r?4:2)||onBus||Math.hypot(pos.x-s.at[0],pos.z-s.at[1])>(s.r||2.2))return;
   q.i++;sfxCoin();say(s.done);q.text=q.i<q.steps.length?q.steps[q.i].text:q.S.name+'：去找'+q.who.o.name+'，跟他說話';}
 // --- ten hidden stars: tucked away at the edges of the map (two of them out at sea), to reward looking around ---
-const STARS=[[-36,-9.5],[31,-10],[-36.8,3.2],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-58,-38]],starGot={},starM=[];
+const STARS=[[-36,-9.5],[31,-10],[-36.8,3.2],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-50.5,-58.5]],starGot={},starM=[];
 {const geo=new THREE.OctahedronGeometry(.28),mat=new THREE.MeshBasicMaterial({color:new THREE.Color(3.2,2.6,.6)});
   STARS.forEach((p,i)=>{const m=new THREE.Mesh(geo,mat);m.position.set(p[0],1.1,p[1]);m.scale.y=1.5;scene.add(m);starM.push(m);});}
 function starStep(){const t=performance.now()/1000;let n=0;
@@ -181,7 +182,7 @@ function starStep(){const t=performance.now()/1000;let n=0;
     const d=Math.hypot(pos.x-p[0],pos.z-p[1]);m.visible=d<70;if(!m.visible)return;m.rotation.y=t*1.6+i;m.position.y=1.1+Math.sin(t*2+i)*.12;
     if(d<1.7&&!onBus){starGot[i]=1;n++;m.visible=false;cash+=20;sfxCoin();tone(1320,.25,.2,'triangle');
       const all=Object.keys(starGot).length>=STARS.length;if(all){cash+=300;addRep(2);}
-      say('⭐ 你找到一顆藏起來的星星！（'+Object.keys(starGot).length+'/'+STARS.length+'，+$20）'+(all?' 全部找齊了！大獎 $300！':p[1]<-20?' 這顆在海上，要開船才拿得到。':''));}});}
+      say('⭐ 你找到一顆藏起來的星星！（'+Object.keys(starGot).length+'/'+STARS.length+'，+$20）'+(all?' 全部找齊了！大獎 $300！':p[1]<-20?' 這顆要開船才拿得到。':''));}});}
 // --- things for your home, from the shop ---
 const decorOwn={};
 function showDecor(){for(const k in decorG)decorG[k].visible=!!decorOwn[k];}

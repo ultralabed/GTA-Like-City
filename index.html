@@ -391,6 +391,7 @@ const WORLD={
   east:{x0:40.3,x1:67,z0:-8,z1:74},                                 // the strip with the junction and the side street
   side:{x0:49,x1:56},                                              // the side street runs south from the main street between these x
   shore:-12.5,
+  isle:{x:-48,z:-52,r:10},                                            // the lighthouse island, out to the north-west: only a boat gets you there
   pier:{x0:19,x1:21.4,z0:-24.6,z1:-12.2},                           // a wooden pier out over the sea
   zebra2:27.5,                                                       // the z of the zebra crossing on the side street                                                     // the sea starts here (everything with a smaller z is water)
   street:{z0:6,z1:13,walk:2},                                      // the road runs along x between z0 and z1, with a sidewalk on each side
@@ -503,6 +504,7 @@ const houses=WORLD.lots.map((L,i)=>{
   H.z0=Math.min(...H.rooms.map(r=>r.z0))-WALL_T;H.z1=Math.max(...H.rooms.map(r=>r.z1))+WALL_T;
   return H;
 });
+const onIsle=(x,z,m)=>Math.hypot(x-WORLD.isle.x,z-WORLD.isle.z)<WORLD.isle.r-(m||0);
 const onPier=(x,z,m)=>{const P=WORLD.pier;m=m||0;return x>P.x0+m&&x<P.x1-m&&z>P.z0+m&&z<P.z1+1;};
 const rooms=houses.flatMap(H=>H.rooms);
 function roomAt(x,z){for(const r of rooms)if(x>=r.x0-WALL_T&&x<=r.x1+WALL_T&&z>=r.z0-WALL_T&&z<=r.z1+WALL_T)return r;return null;}   // doorways count as inside
@@ -521,7 +523,7 @@ const interact=[];           // things you can click
 const ACT={};                // places a person can do something, by name (tv1, tv2, sleep1, read1 ...)
 let dev=null;                // the lamps, TVs and neon signs of the house being built
 let bH=null;                 // the house being built (null while building the street)
-const decorG={},treeTops=[];const lanternMat=new THREE.MeshBasicMaterial({color:0x5a3a30});let flagMesh=null;
+const decorG={},treeTops=[];const lanternMat=new THREE.MeshBasicMaterial({color:0x5a3a30});let flagMesh=null,isleLamp=null,isleBeam=null;
 let root=scene;              // where new furniture groups go
 const marks={streetLamp:[],item:[],hoop:[]}; // special points furniture reports back, by kind
 const doors=[];              // doors that swing: each knows where it blocks when shut and when open
@@ -962,6 +964,19 @@ function updateDoors(dt){
   // the beach behind the north houses, and the sea beyond it
   flat(LEN,7,M.sand,0,-.018,-9.5,3);
   flat(900,400,M.water,0,-.014,WORLD.shore-200);
+  {const I=WORLD.isle,ig=new THREE.Group(),pv=cur,pr=root;ig.position.set(I.x,0,I.z);scene.add(ig);cur=ig;        // the lighthouse island
+    const disc=(r,mat,y)=>{const m=new THREE.Mesh(new THREE.CircleGeometry(r,28),mat);m.rotation.x=-Math.PI/2;m.position.y=y;m.receiveShadow=true;ig.add(m);};
+    disc(I.r+1.2,M.sand,.02);disc(I.r-3,M.grass,.035);
+    const white=new THREE.MeshStandardMaterial({color:0xf2efe8,roughness:.7}),red=new THREE.MeshStandardMaterial({color:0xc8402f,roughness:.6});
+    cyl(1.05,1.5,8,white,0,4,0,16);cyl(1.25,1.32,1.1,red,0,2.6,0,16);cyl(1.12,1.18,1.1,red,0,6,0,16);cyl(1.5,1.5,.14,M.steel,0,8.05,0,16);
+    cyl(.75,.75,1.2,M.glass,0,8.7,0,12);cyl(.05,.95,.9,red,0,9.75,0,12);box(.7,1.5,.08,M.walnut,0,.75,1.5);
+    box(1.6,.07,.45,M.walnut,3.4,.45,3.2);[2.7,4.1].forEach(x=>box(.07,.45,.4,M.steel,x,.225,3.2));                  // a bench facing the town
+    cur=pv;weldStatic(ig);colliders.push([I.x-1.5,I.x+1.5,I.z-1.5,I.z+1.5],[I.x+2.6,I.x+4.2,I.z+3,I.z+3.45]);
+    isleLamp=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),new THREE.MeshBasicMaterial({color:0x554a30}));isleLamp.position.set(I.x,8.7,I.z);scene.add(isleLamp);
+    isleBeam=new THREE.Group();isleBeam.position.copy(isleLamp.position);scene.add(isleBeam);
+    for(const s2 of[1,-1]){const b=new THREE.Mesh(new THREE.CylinderGeometry(.2,1.5,44,12,1,true),new THREE.MeshBasicMaterial({color:0x2a2616,transparent:true,opacity:.13,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+      b.rotation.z=s2*Math.PI/2;b.position.x=-s2*22;isleBeam.add(b);}
+    root=scene;place({type:'tree',x:I.x-4.5,z:I.z+1.5,s:.9},null);place({type:'tree',x:I.x+3,z:I.z-4.5,s:1.1},null);root=pr;}
   {const P=WORLD.pier,cx=(P.x0+P.x1)/2,pg=new THREE.Group(),pv=cur;scene.add(pg);cur=pg;                // the pier: planks on posts
     for(let z=P.z0+.3;z<P.z1+.6;z+=.62)box(P.x1-P.x0,.07,.56,M.walnut,cx,.05,z);
     for(let z=P.z0+.5;z<P.z1;z+=3){cyl(.11,.11,1.5,M.bark,P.x0+.12,-.5,z,8);cyl(.11,.11,1.5,M.bark,P.x1-.12,-.5,z,8);}
@@ -1469,6 +1484,7 @@ function windStep(dt){windT-=dt;if(windT<=0){windT=rnd(15,40);windGoal=storm?rnd
   windX=Math.cos(windDir)*windS*gust;windZ=Math.sin(windDir)*windS*gust;
   {const amp=Math.min(.16,.006+windS*.014),cx=Math.cos(windDir),sz=Math.sin(windDir),t2=carClock;                 // trees lean a little downwind and rock; more in a blow
     for(const T of treeTops){if(!T.g.parent.visible)continue;const w=Math.sin(t2*(1.1+windS*.12)*T.k+T.ph)*amp+amp*.6;T.g.rotation.z=-cx*w;T.g.rotation.x=sz*w;}}
+  if(isleBeam){const on=dark>.45?1:0;isleBeam.visible=!!on;isleBeam.rotation.y=carClock*.5;isleLamp.material.color.setRGB(.33+on*8,.29+on*7,.19+on*4);}   // the lighthouse turns its beam at night
   if(flagMesh){const k=Math.min(1,windS/6);flagMesh.rotation.y=-windDir+Math.sin(carClock*(3+windS))*(.1+.25*k);flagMesh.rotation.z=-(1-k)*1.1;}   // the flag points downwind, hangs limp in a calm, flaps in a blow
   if(windS>4.2&&!toldWind){toldWind=true;say('起風了！風推東西的力氣跟「面積」有關：又大又輕的海灘球最容易被吹走，小小的網球和很重的保齡球幾乎不動。');}if(windS<2)toldWind=false;}
 // fireworks over the sea: Saturday and Sunday evening from 8 to 9, if it is not raining
@@ -1542,7 +1558,7 @@ const camDir=new THREE.Vector3(),camGoal=new THREE.Vector3();
 function jump(){if(jumpY===0&&!ride&&!seat&&waterDepth()<.5)jumpV=4.2;}
 // --- the sea ---
 // The ground is really flat, so wading is faked: the further out you go, the lower your eyes sink, as if the seabed sloped away.
-function waterDepth(){return ride||onPier(pos.x,pos.z)?0:Math.max(0,Math.min(1.32,(WORLD.shore-pos.z)*.3));}
+function waterDepth(){return ride||onPier(pos.x,pos.z)||onIsle(pos.x,pos.z,-1)?0:Math.max(0,Math.min(1.32,(WORLD.shore-pos.z)*.3));}
 
 // --- things you keep in your bag and use ---
 // flashlight and umbrella go in your hand (one at a time); the phone shows a map.
@@ -1586,6 +1602,7 @@ function drawMap(radar){
   if(radar){g.clearRect(0,0,c.width,c.height);g.save();g.beginPath();g.arc(c.width/2,c.height/2,c.width/2,0,7);g.clip();g.translate(c.width/2,c.height/2);g.rotate(yaw);g.translate(-X(pos.x),-Y(pos.z));}
   g.fillStyle='#3d5a34';g.fillRect(W0,T0,WW,HH);
   g.fillStyle='#2a6f9a';g.fillRect(W0,T0,WW,Y(WORLD.shore)-T0);g.fillStyle='#cdbb92';g.fillRect(W0,Y(WORLD.shore),WW,k*6.5);
+  {const I=WORLD.isle;g.fillStyle='#cdbb92';g.beginPath();g.arc(X(I.x),Y(I.z),k*(I.r+1.2),0,7);g.fill();g.fillStyle='#3d5a34';g.beginPath();g.arc(X(I.x),Y(I.z),k*(I.r-3),0,7);g.fill();g.fillStyle='#f2efe8';g.beginPath();g.arc(X(I.x),Y(I.z),k*1.4,0,7);g.fill();}
   {const P=WORLD.pier;g.fillStyle='#8a6a4a';g.fillRect(X(P.x0),Y(P.z0),k*(P.x1-P.x0),k*(P.z1-P.z0+.6));}
   g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),HH);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),HH);   // the side street
   g.fillStyle='#9b958c';g.fillRect(W0,Y(S.z0-S.walk),WW,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(W0,Y(S.z0),WW,k*(S.z1-S.z0));
@@ -1693,7 +1710,7 @@ const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):o.kind=
   return Object.assign(m,{kind:o.kind,S:SPEC[o.kind],x:o.x,z:o.z,h:o.h,v:0,bumped:0,fuel:o.kind==='car'?.5:.7});});
 function rideHit(r,x,z,h){
   const fx=Math.cos(h),fz=-Math.sin(h),R=r.S.R;
-  if(r.S.water){for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k,P=WORLD.pier;if(cx>P.x0-R&&cx<P.x1+R&&cz>P.z0-R)return true;if(cz>WORLD.shore-1.1||cz<SEA.z0||cx<SEA.x0||cx>SEA.x1)return true;}return false;}   // a boat only minds the beach and the edge of the map
+  if(r.S.water){for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k,P=WORLD.pier;if(cx>P.x0-R&&cx<P.x1+R&&cz>P.z0-R)return true;if(onIsle(cx,cz,-R-.6))return true;if(cz>WORLD.shore-1.1||cz<SEA.z0||cx<SEA.x0||cx>SEA.x1)return true;}return false;}   // a boat only minds the beach and the edge of the map
   for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k;
     if(!inWorld(cx,cz,R)||cz<WORLD.shore+.4)return true;                   // no driving into the sea
     for(const c of colliders)if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;
@@ -1709,7 +1726,9 @@ function getIn(){const r=nearRide();if(!r||ride)return;putDown();standUp();ride=
 function getOut(){const r=ride;if(!r)return;if(Math.abs(r.v)>1.5){say('先停下來再下車。');return;}
   if(r.S.water){const P=WORLD.pier,px=Math.max(P.x0+.5,Math.min(P.x1-.5,r.x)),pz=Math.max(P.z0+.6,Math.min(P.z1,r.z));
     if(Math.hypot(px-r.x,pz-r.z)<3.4){ride=null;r.v=0;pos.x=px;pos.z=pz;yaw=0;pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();say('你把船靠在碼頭邊，踏上碼頭了。');return;}
-    if(r.z<WORLD.shore-4.5){say('這裡水太深了。把船開回沙灘旁邊，或靠到碼頭邊再下船。');return;}ride=null;r.v=0;pos.x=r.x;pos.z=WORLD.shore+.7;yaw=0;pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();say('你下船了，船停在岸邊。');return;}
+    {const I=WORLD.isle,d=Math.hypot(r.x-I.x,r.z-I.z);if(d<I.r+5){const k=(I.r-.6)/d,kb=(I.r+1.7)/d;ride=null;r.v=0;pos.x=I.x+(r.x-I.x)*k;pos.z=I.z+(r.z-I.z)*k;r.x=I.x+(r.x-I.x)*kb;r.z=I.z+(r.z-I.z)*kb;r.g.position.set(r.x,0,r.z);   // nose the boat up to the sand so you can step back inyaw=Math.atan2(r.x-I.x,r.z-I.z);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();
+      say('你把船停在燈塔島的沙灘邊，上島了。'+(isleSeen?'':'這座小島只有開船才到得了。晚上燈塔的光會一圈一圈地轉，提醒船不要撞上來。'));isleSeen=true;return;}}
+    if(r.z<WORLD.shore-4.5){say('這裡水太深了。把船開回沙灘旁邊、靠到碼頭邊，或開到燈塔島旁邊再下船。');return;}ride=null;r.v=0;pos.x=r.x;pos.z=WORLD.shore+.7;yaw=0;pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();say('你下船了，船停在岸邊。');return;}
   const fx=Math.cos(r.h),fz=-Math.sin(r.h);ride=null;                                          // (blocked() treats the vehicle as parked from here on)
   for(const side of[1,-1]){const x=r.x+fz*r.S.exit*side,z=r.z-fx*r.S.exit*side;                 // try the left side, then the right
     if(!blocked(x,z)){r.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();return;}}
@@ -1782,7 +1801,7 @@ function emoteStep(dt){if(!emote)return;emoteT-=dt;if(emoteT<=0||ride||onBus||se
     if(n.o.playful>.5&&n.mood>.4){react(n,'哈哈，一起跳！',3.2,'dance');n.need.fun=Math.min(1,n.need.fun+.08);n.like=Math.min(5,n.like+.15);n.mood=Math.min(1,n.mood+.05);}
     else react(n,n.mood>.5?'你在跳舞？跳得不錯嘛。':'…在路上跳舞？',1.8,n.mood>.5?'wave':null);}}
 // --- taking the bus: get on while it waits at a stop, ring the bell (or wait for the next stop) to get off ---
-let onBus=null,busBell=false;
+let onBus=null,busBell=false,isleSeen=false;
 function nearBus(){if(ride||onBus)return null;for(const c of cars)if((c.bus||c.taxi)&&c.on&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<5.2)return c;return null;}
 function boardBus(){const c=nearBus();if(!c)return;
   if(c.taxi){putDown();standUp();onBus=c;busBell=false;vel.x=vel.z=0;jumpY=jumpV=0;sfxDoor(c.x,c.z);taxiMenu();return;}
@@ -2081,11 +2100,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,isleSeen,carUp,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;isleSeen=!!d.isleSeen;if(d.carUp){Object.assign(carUp,d.carUp);applyTune();}fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -2096,6 +2115,7 @@ const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺'
   ['cab',()=>fares>=3,'小黃司機：載了 3 位客人',40],
   ['bus',()=>busTrips>=1,'搭過公車了',5],['taxi',()=>taxiTrips>=1,'搭過計程車了',5],['fish',()=>fishCount>=5,'釣魚達人：釣到 5 次',30],['hoop',()=>baskets>=3,'神射手：投進 3 球',30],
   ['stars',()=>Object.keys(starGot).length>=5,'小小探險家：找到 5 顆星星',30],
+  ['isle',()=>isleSeen,'登上燈塔島',30],
   ['home',()=>homeOwned,'有自己的家了',0],
   ['rich',()=>cash>=500,'小富翁：身上有 $500',0],['friend',()=>people.filter(n=>n.like>=3).length>=3,'好人緣：有 3 個好朋友（♥♥♥）',40]];
 // --- three small goals a day, picked fresh each morning ---
@@ -2233,8 +2253,8 @@ const STORIES=[
   {id:'bottle',menu:'小芳：海上好像有東西…',reward:200,who:()=>people.find(n=>n.guard),name:'漂流瓶',
     intro:w=>'今天早上有客人說，碼頭外面的海上漂著一個玻璃瓶，裡面好像有紙條！我好想知道寫什麼，可是我不會開船。你可以開船去撈回來嗎？船停在碼頭旁邊。找到什麼就拿去給'+w.o.name+'看，他最懂海上的事。做完我給你 $200。',
     steps:w=>[
-      {at:[34,-40],r:6,col:0x9fe0c8,big:1.4,text:'漂流瓶 1/3：開船到碼頭東北邊的海上，撈起漂流瓶（靠近發亮的地方，慢下來）',done:'你撈起瓶子，裡面的紙條寫著：「往西邊一直開，海上有一個舊木箱，是我小時候藏的。」'},
-      {at:[-42,-58],r:6,col:0x8a5a34,big:3.2,text:'漂流瓶 2/3：照紙條說的，往西邊的海上開，找漂在水上的舊木箱',done:'找到了！木箱裡有一張發黃的照片，是好多年前的夕陽街，還有一枚舊硬幣。'},
+      {at:[34,-40],r:6,col:0x9fe0c8,big:1.4,text:'漂流瓶 1/3：開船到碼頭東北邊的海上，撈起漂流瓶（靠近發亮的地方，慢下來）',done:'你撈起瓶子，裡面的紙條寫著：「往西北邊開，有一座燈塔島，島上有一個舊木箱，是我小時候藏的。」'},
+      {at:[-52.5,-47],col:0x8a5a34,big:3.2,text:'漂流瓶 2/3：照紙條說的，往西北邊開到燈塔島，把船停在島邊，上島找舊木箱',done:'找到了！木箱裡有一張發黃的照片，是好多年前的夕陽街，還有一枚舊硬幣。'},
       {at:[20.2,-22.6],r:2.4,col:0xd8a93a,big:1.2,text:'漂流瓶 3/3：把船開回碼頭，下船走到碼頭盡頭',done:'你帶著瓶子和木箱回到碼頭。去找'+w.o.name+'，給他看。'}],
     ask:'你看我在海上找到什麼',thanks:'這…這是我小時候跟朋友一起藏的！我都忘了。照片上這個小孩就是我。謝謝你把它找回來，這枚硬幣送你當紀念。',cheer:()=>'哇，是好久以前的夕陽街！',end:w=>w.o.name+'看著老照片，眼睛紅紅的。'}];
 // --- a little story in steps: go to each place in turn, then talk to the person it is all for ---
@@ -2244,7 +2264,7 @@ function storyQuest(){const q=quest;if(!q||q.type!=='story')return;
   if(ride&&Math.abs(ride.v)>(s.r?4:2)||onBus||Math.hypot(pos.x-s.at[0],pos.z-s.at[1])>(s.r||2.2))return;
   q.i++;sfxCoin();say(s.done);q.text=q.i<q.steps.length?q.steps[q.i].text:q.S.name+'：去找'+q.who.o.name+'，跟他說話';}
 // --- ten hidden stars: tucked away at the edges of the map (two of them out at sea), to reward looking around ---
-const STARS=[[-36,-9.5],[31,-10],[-36.8,3.2],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-58,-38]],starGot={},starM=[];
+const STARS=[[-36,-9.5],[31,-10],[-36.8,3.2],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-50.5,-58.5]],starGot={},starM=[];
 {const geo=new THREE.OctahedronGeometry(.28),mat=new THREE.MeshBasicMaterial({color:new THREE.Color(3.2,2.6,.6)});
   STARS.forEach((p,i)=>{const m=new THREE.Mesh(geo,mat);m.position.set(p[0],1.1,p[1]);m.scale.y=1.5;scene.add(m);starM.push(m);});}
 function starStep(){const t=performance.now()/1000;let n=0;
@@ -2252,7 +2272,7 @@ function starStep(){const t=performance.now()/1000;let n=0;
     const d=Math.hypot(pos.x-p[0],pos.z-p[1]);m.visible=d<70;if(!m.visible)return;m.rotation.y=t*1.6+i;m.position.y=1.1+Math.sin(t*2+i)*.12;
     if(d<1.7&&!onBus){starGot[i]=1;n++;m.visible=false;cash+=20;sfxCoin();tone(1320,.25,.2,'triangle');
       const all=Object.keys(starGot).length>=STARS.length;if(all){cash+=300;addRep(2);}
-      say('⭐ 你找到一顆藏起來的星星！（'+Object.keys(starGot).length+'/'+STARS.length+'，+$20）'+(all?' 全部找齊了！大獎 $300！':p[1]<-20?' 這顆在海上，要開船才拿得到。':''));}});}
+      say('⭐ 你找到一顆藏起來的星星！（'+Object.keys(starGot).length+'/'+STARS.length+'，+$20）'+(all?' 全部找齊了！大獎 $300！':p[1]<-20?' 這顆要開船才拿得到。':''));}});}
 // --- things for your home, from the shop ---
 const decorOwn={};
 function showDecor(){for(const k in decorG)decorG[k].visible=!!decorOwn[k];}
@@ -3043,7 +3063,7 @@ let down=null,bob=0,locked=false;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PR=.3;
 function blocked(x,z){
-  if(!inWorld(x,z,PR))return true;
+  if(!inWorld(x,z,PR)&&!onIsle(x,z,PR+.3))return true;
   for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
     if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
   for(const c of colliders)if(x>c[0]-PR&&x<c[1]+PR&&z>c[2]-PR&&z<c[3]+PR)return true;
@@ -3181,7 +3201,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

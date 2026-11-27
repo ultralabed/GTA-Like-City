@@ -7,7 +7,7 @@ const camDir=new THREE.Vector3(),camGoal=new THREE.Vector3();
 function jump(){if(jumpY===0&&!ride&&!seat&&waterDepth()<.5)jumpV=4.2;}
 // --- the sea ---
 // The ground is really flat, so wading is faked: the further out you go, the lower your eyes sink, as if the seabed sloped away.
-function waterDepth(){return ride||onPier(pos.x,pos.z)?0:Math.max(0,Math.min(1.32,(WORLD.shore-pos.z)*.3));}
+function waterDepth(){return ride||onPier(pos.x,pos.z)||onIsle(pos.x,pos.z,-1)?0:Math.max(0,Math.min(1.32,(WORLD.shore-pos.z)*.3));}
 
 // --- things you keep in your bag and use ---
 // flashlight and umbrella go in your hand (one at a time); the phone shows a map.
@@ -51,6 +51,7 @@ function drawMap(radar){
   if(radar){g.clearRect(0,0,c.width,c.height);g.save();g.beginPath();g.arc(c.width/2,c.height/2,c.width/2,0,7);g.clip();g.translate(c.width/2,c.height/2);g.rotate(yaw);g.translate(-X(pos.x),-Y(pos.z));}
   g.fillStyle='#3d5a34';g.fillRect(W0,T0,WW,HH);
   g.fillStyle='#2a6f9a';g.fillRect(W0,T0,WW,Y(WORLD.shore)-T0);g.fillStyle='#cdbb92';g.fillRect(W0,Y(WORLD.shore),WW,k*6.5);
+  {const I=WORLD.isle;g.fillStyle='#cdbb92';g.beginPath();g.arc(X(I.x),Y(I.z),k*(I.r+1.2),0,7);g.fill();g.fillStyle='#3d5a34';g.beginPath();g.arc(X(I.x),Y(I.z),k*(I.r-3),0,7);g.fill();g.fillStyle='#f2efe8';g.beginPath();g.arc(X(I.x),Y(I.z),k*1.4,0,7);g.fill();}
   {const P=WORLD.pier;g.fillStyle='#8a6a4a';g.fillRect(X(P.x0),Y(P.z0),k*(P.x1-P.x0),k*(P.z1-P.z0+.6));}
   g.fillStyle='#9b958c';g.fillRect(X(JX0-S.walk),Y(S.z1),k*(JX1-JX0+2*S.walk),HH);g.fillStyle='#34343a';g.fillRect(X(JX0),Y(S.z1),k*(JX1-JX0),HH);   // the side street
   g.fillStyle='#9b958c';g.fillRect(W0,Y(S.z0-S.walk),WW,k*(S.z1-S.z0+2*S.walk));g.fillStyle='#34343a';g.fillRect(W0,Y(S.z0),WW,k*(S.z1-S.z0));
@@ -158,7 +159,7 @@ const rides=WORLD.rides.map(o=>{const m=o.kind==='car'?carMesh(0xf2c23d):o.kind=
   return Object.assign(m,{kind:o.kind,S:SPEC[o.kind],x:o.x,z:o.z,h:o.h,v:0,bumped:0,fuel:o.kind==='car'?.5:.7});});
 function rideHit(r,x,z,h){
   const fx=Math.cos(h),fz=-Math.sin(h),R=r.S.R;
-  if(r.S.water){for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k,P=WORLD.pier;if(cx>P.x0-R&&cx<P.x1+R&&cz>P.z0-R)return true;if(cz>WORLD.shore-1.1||cz<SEA.z0||cx<SEA.x0||cx>SEA.x1)return true;}return false;}   // a boat only minds the beach and the edge of the map
+  if(r.S.water){for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k,P=WORLD.pier;if(cx>P.x0-R&&cx<P.x1+R&&cz>P.z0-R)return true;if(onIsle(cx,cz,-R-.6))return true;if(cz>WORLD.shore-1.1||cz<SEA.z0||cx<SEA.x0||cx>SEA.x1)return true;}return false;}   // a boat only minds the beach and the edge of the map
   for(const k of r.S.pts){const cx=x+fx*k,cz=z+fz*k;
     if(!inWorld(cx,cz,R)||cz<WORLD.shore+.4)return true;                   // no driving into the sea
     for(const c of colliders)if(cx>c[0]-R&&cx<c[1]+R&&cz>c[2]-R&&cz<c[3]+R)return true;
@@ -174,7 +175,9 @@ function getIn(){const r=nearRide();if(!r||ride)return;putDown();standUp();ride=
 function getOut(){const r=ride;if(!r)return;if(Math.abs(r.v)>1.5){say('先停下來再下車。');return;}
   if(r.S.water){const P=WORLD.pier,px=Math.max(P.x0+.5,Math.min(P.x1-.5,r.x)),pz=Math.max(P.z0+.6,Math.min(P.z1,r.z));
     if(Math.hypot(px-r.x,pz-r.z)<3.4){ride=null;r.v=0;pos.x=px;pos.z=pz;yaw=0;pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();say('你把船靠在碼頭邊，踏上碼頭了。');return;}
-    if(r.z<WORLD.shore-4.5){say('這裡水太深了。把船開回沙灘旁邊，或靠到碼頭邊再下船。');return;}ride=null;r.v=0;pos.x=r.x;pos.z=WORLD.shore+.7;yaw=0;pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();say('你下船了，船停在岸邊。');return;}
+    {const I=WORLD.isle,d=Math.hypot(r.x-I.x,r.z-I.z);if(d<I.r+5){const k=(I.r-.6)/d,kb=(I.r+1.7)/d;ride=null;r.v=0;pos.x=I.x+(r.x-I.x)*k;pos.z=I.z+(r.z-I.z)*k;r.x=I.x+(r.x-I.x)*kb;r.z=I.z+(r.z-I.z)*kb;r.g.position.set(r.x,0,r.z);   // nose the boat up to the sand so you can step back inyaw=Math.atan2(r.x-I.x,r.z-I.z);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();
+      say('你把船停在燈塔島的沙灘邊，上島了。'+(isleSeen?'':'這座小島只有開船才到得了。晚上燈塔的光會一圈一圈地轉，提醒船不要撞上來。'));isleSeen=true;return;}}
+    if(r.z<WORLD.shore-4.5){say('這裡水太深了。把船開回沙灘旁邊、靠到碼頭邊，或開到燈塔島旁邊再下船。');return;}ride=null;r.v=0;pos.x=r.x;pos.z=WORLD.shore+.7;yaw=0;pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();say('你下船了，船停在岸邊。');return;}
   const fx=Math.cos(r.h),fz=-Math.sin(r.h);ride=null;                                          // (blocked() treats the vehicle as parked from here on)
   for(const side of[1,-1]){const x=r.x+fz*r.S.exit*side,z=r.z-fx*r.S.exit*side;                 // try the left side, then the right
     if(!blocked(x,z)){r.v=0;pos.x=x;pos.z=z;yaw=Math.atan2(-fx,-fz);pitch=-.05;if(r.rider)r.rider.visible=false;r.g.rotation.x=0;showItems();return;}}
@@ -247,7 +250,7 @@ function emoteStep(dt){if(!emote)return;emoteT-=dt;if(emoteT<=0||ride||onBus||se
     if(n.o.playful>.5&&n.mood>.4){react(n,'哈哈，一起跳！',3.2,'dance');n.need.fun=Math.min(1,n.need.fun+.08);n.like=Math.min(5,n.like+.15);n.mood=Math.min(1,n.mood+.05);}
     else react(n,n.mood>.5?'你在跳舞？跳得不錯嘛。':'…在路上跳舞？',1.8,n.mood>.5?'wave':null);}}
 // --- taking the bus: get on while it waits at a stop, ring the bell (or wait for the next stop) to get off ---
-let onBus=null,busBell=false;
+let onBus=null,busBell=false,isleSeen=false;
 function nearBus(){if(ride||onBus)return null;for(const c of cars)if((c.bus||c.taxi)&&c.on&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<5.2)return c;return null;}
 function boardBus(){const c=nearBus();if(!c)return;
   if(c.taxi){putDown();standUp();onBus=c;busBell=false;vel.x=vel.z=0;jumpY=jumpV=0;sfxDoor(c.x,c.z);taxiMenu();return;}
