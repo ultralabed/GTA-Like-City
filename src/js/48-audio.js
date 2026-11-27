@@ -30,6 +30,7 @@ function sfxCoin(){tone(880,.08,.2,'triangle');setTimeout(()=>tone(1320,.16,.2,'
 function sfxBell(){tone(1568,.5,.18,'sine');setTimeout(()=>tone(1245,.7,.16,'sine'),180);}
 function sfxThunder(k){const v=Math.max(.15,k)*(roomAt(pos.x,pos.z)?.5:1);noise(2.6,110,.6,.7*v);noise(1.2,400,.5,.25*v);tone(48,2.2,.35*v,'sine',.6);}
 function sfxBoom(k){const v=Math.max(.2,k)*(roomAt(pos.x,pos.z)?.4:1);noise(.5,220,.6,.5*v);tone(70,.5,.3*v,'sine',.5);setTimeout(()=>noise(.9,3000,.4,.08*v),180);}
+function sfxJingle(x,z){const v=.13*hear(x,z,40);[659,784,880,784,659,523].forEach((f,i)=>setTimeout(()=>tone(f,.22,v,'triangle'),i*230));}
 function sfxBump(){noise(.18,140,.8,.4);tone(60,.2,.3,'sine',.5);}
 function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
