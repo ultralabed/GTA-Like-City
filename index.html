@@ -1992,7 +1992,7 @@ showItems();
 /* ---------- sound ---------- */
 // Every sound is made on the spot from simple tones and hiss, so there are no sound files to load.
 // Browsers only allow sound after you click or press a key, so it starts then.
-let AC=null,master=null,soundOn=true,noiseBuf=null,rainG=null,engO=null,engG=null,stepNo=0,lastBounce=0;let windG=null,windF=null;
+let AC=null,master=null,soundOn=true,noiseBuf=null,rainG=null,engO=null,engG=null,stepNo=0,lastBounce=0;let windG=null,windF=null,seaG=null,chirpT=2,birdT=3;
 function audioStart(){
   if(AC||!soundOn)return;const A=window.AudioContext||window.webkitAudioContext;if(!A)return;
   try{AC=new A();}catch(e){return;}
@@ -2000,7 +2000,8 @@ function audioStart(){
   noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
   const src=AC.createBufferSource();src.buffer=noiseBuf;src.loop=true;                               // rain: hiss that never stops, turned up when it rains
   const hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=1700;rainG=AC.createGain();rainG.gain.value=0;src.connect(hp);hp.connect(rainG);rainG.connect(master);src.start();
-  const wf=AC.createBiquadFilter();wf.type='bandpass';wf.frequency.value=380;wf.Q.value=.6;windG=AC.createGain();windG.gain.value=0;src.connect(wf);wf.connect(windG);windG.connect(master);windF=wf;   // wind: the same hiss, low and hollow
+  const wf=AC.createBiquadFilter();wf.type='bandpass';wf.frequency.value=380;wf.Q.value=.6;windG=AC.createGain();windG.gain.value=0;src.connect(wf);wf.connect(windG);windG.connect(master);windF=wf;
+  const sf=AC.createBiquadFilter();sf.type='lowpass';sf.frequency.value=520;seaG=AC.createGain();seaG.gain.value=0;src.connect(sf);sf.connect(seaG);seaG.connect(master);   // the sea: the same hiss again, soft and low, rising and falling   // wind: the same hiss, low and hollow
   engO=AC.createOscillator();engO.type='sawtooth';engO.frequency.value=50;                           // engine: a low buzz whose pitch follows the speed
   const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=320;engG=AC.createGain();engG.gain.value=0;engO.connect(lp);lp.connect(engG);engG.connect(master);engO.start();
 }
@@ -2026,6 +2027,11 @@ function sfxBump(){noise(.18,140,.8,.4);tone(60,.2,.3,'sine',.5);}
 function updateAudio(){
   if(!AC)return;const t=AC.currentTime;
   rainG.gain.setTargetAtTime(soundOn?rain*(roomAt(pos.x,pos.z)?.04:.15):0,t,.3);
+  {const inside=!!roomAt(pos.x,pos.z),near=Math.max(0,Math.min(1,(8-(pos.z-WORLD.shore))/14)),swell=.55+.45*Math.sin(t*.55)+.2*Math.sin(t*1.3);         // waves: louder the nearer the water, in slow swells
+    seaG.gain.setTargetAtTime(soundOn?near*near*.16*swell*(inside?.2:1):0,t,.5);
+    if(soundOn&&!inside&&rain<.3){                                                  // crickets after dark, birds in the early morning; both away from the middle of the road noise
+      if(dark>.7){chirpT-=.25;if(chirpT<=0){chirpT=rnd(.6,2.2);const v=.035*(1-near*.6),f=rnd(4100,4700);for(let i=0;i<3;i++)setTimeout(()=>tone(f,.045,v,'sine'),i*70);}}
+      else if(clock>=5.2&&clock<9){birdT-=.25;if(birdT<=0){birdT=rnd(1.2,4);const v=.05,f=rnd(2200,3200);tone(f,.09,v,'sine',1.25);setTimeout(()=>tone(f*1.2,.12,v,'sine',.85),130);if(Math.random()<.5)setTimeout(()=>tone(f*.95,.1,v,'sine',1.2),300);}}}}
   {const wv=Math.hypot(windX,windZ);windG.gain.setTargetAtTime(soundOn?Math.min(.3,Math.max(0,wv-1.5)*.03)*(roomAt(pos.x,pos.z)?.25:1):0,t,.4);windF.frequency.setTargetAtTime(300+wv*35,t,.5);}   // louder and higher as it blows harder                     // quieter indoors
   let ev=0,ef=50;
   if(ride&&ride.kind!=='bike'){const m=ride.kind==='moto'?1.8:1;ev=.04+Math.min(.07,Math.abs(ride.v)*.006);ef=(48+Math.abs(ride.v)*11)*m;}   // a motorbike buzzes higher than a car
