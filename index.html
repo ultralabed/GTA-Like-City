@@ -2289,6 +2289,10 @@ function showGuide(){const el=$('talk');el.hidden=false;el.textContent='';talkN=
   const L=getGuide().filter(g=>{try{return g[0]();}catch(e){return false;}}).slice(0,6);
   if(!L.length){const p=document.createElement('p');p.textContent='你幾乎什麼都做過了！可以挑戰計時賽的金牌，或是到處逛逛，看看居民今天在忙什麼。';box.appendChild(p);}
   L.forEach((g,i)=>{const p=document.createElement('p');p.textContent=(i+1)+'. '+g[1];p.style.margin='5px 0';box.appendChild(p);});
+  {const d=day%7,now=h=>clock>=h[0]&&clock<h[1],T=[['夕陽商店（小芳顧店）','每天 9:00–20:00',true,[9,20]],['上班的人出門','平日大約 7:00–10:00',d>=1&&d<=5,[7,10]],['冰淇淋車','白天沒下雨時，每幾分鐘來一次',true,[6,18]],
+      ['街頭藝人（公園）','週六、週日 14:00–17:30',d===6||d===0,[14,17.5]],['夜市（碼頭東邊）','週五、六、日 18:00–22:00',d===5||d===6||d===0,[18,22]],['煙火（海上）','週六、週日 20:00–21:00',d===6||d===0,[20,21]],['大家睡覺','大約 22:00–7:00',true,[22,31]]];
+    const hd=document.createElement('p');hd.textContent='— 街上的時間表（現在是週'+DOW[d]+' '+$('clk').textContent.replace(/^週. /,'')+'）—';hd.style.margin='10px 0 2px';box.appendChild(hd);
+    for(const t of T){const on=t[2]&&(now(t[3])||(t[3][1]>24&&clock<t[3][1]-24));const p=document.createElement('p');p.textContent=(on?'🟢 ':t[2]?'⚪ ':'✖️ ')+t[0]+'：'+t[1]+(on?'（現在）':t[2]?'':'（今天沒有）');p.style.margin='2px 0';p.style.opacity=on?1:.7;box.appendChild(p);}}
   const b=document.createElement('button');b.type='button';b.textContent='關閉';b.onclick=()=>{el.hidden=true;canvas.focus({preventScroll:true});};el.appendChild(b);}
 $('bGuide').onclick=showGuide;
 // --- the full list of keys, grouped by what you are doing ---
