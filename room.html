@@ -3325,7 +3325,7 @@ function photo(on){document.body.classList.toggle('photo',on);$('bPhotoEnd').hid
 $('bPhoto').onclick=()=>photo(true);$('bPhotoEnd').onclick=()=>photo(false);
 addEventListener('keydown',e=>{if(e.code==='KeyP'&&!e.repeat)photo(!document.body.classList.contains('photo'));else if(e.code==='Enter'&&document.body.classList.contains('photo'))snap();});
 // taking pictures: a shot counts when its subject is in the frame, close enough, and (for some) happening right now
-const album={};const sv3=new THREE.Vector3();
+const album={};const sv3=new THREE.Vector3(),shotRay=new THREE.Raycaster(),shotBlock=houses.map(H=>H.shell);
 const SHOTS=[['燈塔',()=>[WORLD.isle.x,6,WORLD.isle.z],120],['碼頭',()=>[20.2,.5,-19],40],['夕陽商店',()=>{const H=houses.find(h=>h.lot.tpl==='shop');return[(H.x0+H.x1)/2,1.5,(H.z0+H.z1)/2];},26],
   ['籃球架',()=>[19.2,2.5,23.4],18],['小橘（貓）',()=>[cat.x,.3,cat.z],9],['小黃（狗）',()=>[pets[0].x,.4,pets[0].z],9],
   ['夜市的燈籠',()=>[27.3,2,-7.6],28,()=>marketOn],['煙火',()=>{const f=FW.find(q=>q.t<1.6);return f?[f.geo.attributes.position.getX(0),f.geo.attributes.position.getY(0),f.geo.attributes.position.getZ(0)]:null;},400,()=>fwOn],
@@ -3333,8 +3333,20 @@ const SHOTS=[['燈塔',()=>[WORLD.isle.x,6,WORLD.isle.z],120],['碼頭',()=>[20.
 function snap(){const fl=$('flash');fl.style.transition='none';fl.style.opacity=.85;requestAnimationFrame(()=>{fl.style.transition='opacity .4s';fl.style.opacity=0;});tone(2200,.03,.2,'square');setTimeout(()=>noise(.06,3000,1,.2),40);
   camera.updateMatrixWorld();let got=null,seen=null;
   for(const S of SHOTS){if(S[3]&&!S[3]())continue;const p=S[1]();if(!p)continue;const d=Math.hypot(p[0]-camera.position.x,p[2]-camera.position.z);if(d>S[2])continue;sv3.set(p[0],p[1],p[2]).project(camera);
-    if(sv3.z>1||Math.abs(sv3.x)>.75||Math.abs(sv3.y)>.8)continue;seen=S[0];if(!album[S[0]]){got=S[0];break;}}
+    if(sv3.z>1||Math.abs(sv3.x)>.75||Math.abs(sv3.y)>.8)continue;
+    if(S[2]<300){if(roomAt(pos.x,pos.z))continue;                                             // it has to be really in view: not from indoors, and nothing solid in the way
+      sv3.set(p[0]-camera.position.x,p[1]-camera.position.y,p[2]-camera.position.z);const L=sv3.length();shotRay.set(camera.position,sv3.divideScalar(L));shotRay.far=Math.max(.5,L-3.5);
+      if(shotRay.intersectObjects(shotBlock,true).some(h=>h.object.visible&&h.object.material&&!h.object.material.transparent))continue;}
+    seen=S[0];if(!album[S[0]]){got=S[0];break;}}
+  let posed=0,shy=0;const now=performance.now()/1000;                                           // anyone close and in the frame notices the camera
+  for(const m of people){if(m.hidden||m.lie||m.react||(m.shotAt&&m.shotAt>now-20))continue;const d=Math.hypot(m.pos.x-camera.position.x,m.pos.z-camera.position.z);if(d>7)continue;
+    sv3.set(m.pos.x,1.2,m.pos.z).project(camera);if(sv3.z>1||Math.abs(sv3.x)>.8||Math.abs(sv3.y)>.9)continue;m.shotAt=now;m.shots=(m.shots||0)+1;
+    if(m.guard)react(m,'執勤中，不過拍一張沒關係。',2,null);
+    else if(m.o.playful>.55&&m.mood>.4){react(m,m.shots>2?'又要拍？好啦，耶！':'耶！拍好看一點喔！',2.4,'wave');m.like=Math.min(5,m.like+.1);posed++;}
+    else if(m.like>=2){react(m,'是你啊，拍吧拍吧。',2,null);posed++;}
+    else{react(m,m.shots>2?'就說不要拍了！':'欸…不要亂拍我啦。',2.2,m.shots>2?'glare':'startle');m.like=Math.max(-5,m.like-(m.shots>2?.5:.1));m.mood-=.04;shy++;}}
   const n=$('shotNote');n.hidden=false;
+  if(!got&&(posed||shy)){n.textContent=posed&&shy?'喀嚓。有人對鏡頭擺姿勢，也有人不想被拍。':posed?'喀嚓。他對著鏡頭笑了。':'喀嚓。他不太想被拍，一直拍會被討厭。';clearTimeout(snap.t);snap.t=setTimeout(()=>{n.hidden=true;},3200);return;}
   if(got){album[got]=1;const k=Object.keys(album).length;cash+=25;sfxCoin();const all=k===SHOTS.length;if(all)cash+=250;n.textContent='📸 拍到「'+got+'」！相簿 '+k+'/'+SHOTS.length+'，+$25'+(all?'。相簿全部集滿，再加 $250！':'');}
   else n.textContent=seen?'「'+seen+'」已經在相簿裡了。':'喀嚓。這張沒有拍到相簿裡的主題（要把它放在畫面中間、夠近）。';
   clearTimeout(snap.t);snap.t=setTimeout(()=>{n.hidden=true;},3200);}
