@@ -158,12 +158,19 @@ const STORIES=[
       {at:door(7),col:0xf2b25a,big:1.6,text:'愛心便當 2/4：送到 7 號門口（大馬路最西邊）',done:'你把便當放在 7 號門口，按了門鈴。屋裡有人說：「謝謝你！」'},
       {at:door(2),col:0xf2b25a,big:1.6,text:'愛心便當 3/4：送到 2 號門口（大馬路南邊）',done:'2 號的便當送到了。還剩最後一個，在第二條馬路。'},
       {at:door(10),col:0xf2b25a,big:1.6,text:'愛心便當 4/4：送到 10 號門口（第二條馬路上）',done:'三個便當都送完了！回夕陽商店找'+w.o.name+'。'}];},
-    ask:'便當都送到了',thanks:'太謝謝你了！他們剛剛都打電話來說便當好好吃。夕陽街有你真好。',cheer:()=>'謝謝你幫忙送便當！',end:w=>'三位鄰居都吃到熱便當了。'}];
+    ask:'便當都送到了',thanks:'太謝謝你了！他們剛剛都打電話來說便當好好吃。夕陽街有你真好。',cheer:()=>'謝謝你幫忙送便當！',end:w=>'三位鄰居都吃到熱便當了。'},
+  {id:'bottle',menu:'小芳：海上好像有東西…',reward:200,who:()=>people.find(n=>n.guard),name:'漂流瓶',
+    intro:w=>'今天早上有客人說，碼頭外面的海上漂著一個玻璃瓶，裡面好像有紙條！我好想知道寫什麼，可是我不會開船。你可以開船去撈回來嗎？船停在碼頭旁邊。找到什麼就拿去給'+w.o.name+'看，他最懂海上的事。做完我給你 $200。',
+    steps:w=>[
+      {at:[34,-40],r:6,col:0x9fe0c8,big:1.4,text:'漂流瓶 1/3：開船到碼頭東北邊的海上，撈起漂流瓶（靠近發亮的地方，慢下來）',done:'你撈起瓶子，裡面的紙條寫著：「往西邊一直開，海上有一個舊木箱，是我小時候藏的。」'},
+      {at:[-42,-58],r:6,col:0x8a5a34,big:3.2,text:'漂流瓶 2/3：照紙條說的，往西邊的海上開，找漂在水上的舊木箱',done:'找到了！木箱裡有一張發黃的照片，是好多年前的夕陽街，還有一枚舊硬幣。'},
+      {at:[20.2,-22.6],r:2.4,col:0xd8a93a,big:1.2,text:'漂流瓶 3/3：把船開回碼頭，下船走到碼頭盡頭',done:'你帶著瓶子和木箱回到碼頭。去找'+w.o.name+'，給他看。'}],
+    ask:'你看我在海上找到什麼',thanks:'這…這是我小時候跟朋友一起藏的！我都忘了。照片上這個小孩就是我。謝謝你把它找回來，這枚硬幣送你當紀念。',cheer:()=>'哇，是好久以前的夕陽街！',end:w=>w.o.name+'看著老照片，眼睛紅紅的。'}];
 // --- a little story in steps: go to each place in turn, then talk to the person it is all for ---
 function storyQuest(){const q=quest;if(!q||q.type!=='story')return;
   if(q.i>=q.steps.length){q.text=q.S.name+'：去找'+q.who.o.name+'，跟他說話'+(q.who.hidden?'（他現在不在街上，可能去上班了，等他回來）':'');return;}
   const s=q.steps[q.i];
-  if(ride&&Math.abs(ride.v)>2||onBus||Math.hypot(pos.x-s.at[0],pos.z-s.at[1])>2.2)return;
+  if(ride&&Math.abs(ride.v)>(s.r?4:2)||onBus||Math.hypot(pos.x-s.at[0],pos.z-s.at[1])>(s.r||2.2))return;
   q.i++;sfxCoin();say(s.done);q.text=q.i<q.steps.length?q.steps[q.i].text:q.S.name+'：去找'+q.who.o.name+'，跟他說話';}
 // --- ten hidden stars: tucked away at the edges of the map (two of them out at sea), to reward looking around ---
 const STARS=[[-36,-9.5],[31,-10],[-36.8,3.2],[40.5,21],[52.5,70],[21.5,24.5],[-21,3],[8,24],[72,-52],[-58,-38]],starGot={},starM=[];
