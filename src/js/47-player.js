@@ -206,7 +206,8 @@ function rideStep(dt,f,s){
   const hit=r.v?rideHit(r,nx,nz,nh):false;r.bumped-=dt;
   if(!hit){r.x=nx;r.z=nz;r.h=nh;}
   else{if(hit!==true){notify(hit,'car',r);r.v=0;}                                                // a person: stop dead, and they will tell you what they think
-    else{if(Math.abs(r.v)>2.5&&r.bumped<=0){r.bumped=1;sfxBump();say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
+    else{if(Math.abs(r.v)>2.5&&r.bumped<=0){r.bumped=1;sfxBump();const hard=r.kind==='car'&&Math.abs(r.v)>5;if(hard){const d0=carDmg;carDmg=Math.min(1,carDmg+(Math.abs(r.v)-4)/40);applyTune();if(d0<.6&&carDmg>=.6)say('車子撞得太嚴重，引擎蓋開始冒煙了！車子會越來越跑不動。把它開到加油機旁邊按 U 修理。');else say('碰！撞得很大力，車子凹了（車況 '+Math.round((1-carDmg)*100)+'%）。撞得越快，壞得越多。可以到加油機旁邊按 U 修車。');}
+      else say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
   pos.x=r.x;pos.z=r.z;
   if(sigCars==='r'&&onRoad(r.z)&&r.x>ZEBRA[0]&&r.x<ZEBRA[1]&&Math.abs(r.v)>2&&performance.now()/1000-redAt>20){redAt=performance.now()/1000;   // driving through on red
     const g=people.find(n=>n.guard);if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<32){say('你闖紅燈，被巡邏員看到了！');addRep(-1);}else say('你闖紅燈了。這次巡邏員沒看到。');}
@@ -341,13 +342,19 @@ function refuel(){const r=ride||rides.find(q=>q.S.tank&&Math.hypot(q.x-PUMP.x,q.
   const pay=Math.min(cost,cash);r.fuel=Math.min(1,r.fuel+pay/r.S.full);cash-=pay;sfxCoin();actKey='';
   say(pay<cost?'你的錢只夠加一部分：花了 $'+pay+'，'+r.S.name+'的油現在 '+Math.round(r.fuel*100)+'%。':'加滿了！花了 $'+pay+'。');}
 // --- tuning your car at the pump: a stronger engine (two steps) and a thriftier one ---
-const carUp={eng:0,eco:0};
-function applyTune(){const r=rides[0],B=SPEC.car;r.S=Object.assign({},B,{max:B.max*(1+.16*carUp.eng),acc:B.acc*(1+.2*carUp.eng),tank:B.tank*(1+.6*carUp.eco)});}
+const carUp={eng:0,eco:0};let carDmg=0;                                     // carDmg: 0 = as new, 1 = a wreck that barely moves
+function applyTune(){const r=rides[0],B=SPEC.car,k=1-.45*carDmg;r.S=Object.assign({},B,{max:B.max*(1+.16*carUp.eng)*k,acc:B.acc*(1+.2*carUp.eng)*k,tank:B.tank*(1+.6*carUp.eco)});
+  r.paint.roughness=.35+.5*carDmg;r.paint.metalness=.4*(1-carDmg);}
+const smoke=[];for(let i=0;i<6;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),new THREE.MeshBasicMaterial({color:0x555555,transparent:true,opacity:0,depthWrite:false}));m.visible=false;scene.add(m);smoke.push({m,t:9});}
+let smokeT=0;
+function smokeStep(dt){const r=rides[0];if(carDmg>=.6&&Math.hypot(r.x-pos.x,r.z-pos.z)<60){smokeT-=dt;if(smokeT<=0){smokeT=.45-.2*carDmg;const s=smoke.find(q=>q.t>1.6);if(s){s.t=0;s.m.position.set(r.x+Math.cos(r.h)*1.5+rnd(-.15,.15),.95,r.z-Math.sin(r.h)*1.5+rnd(-.15,.15));s.m.visible=true;}}}
+  for(const s of smoke){if(s.t>1.6)continue;s.t+=dt;s.m.position.y+=dt*1.1;s.m.position.x+=windX*dt*.15;s.m.position.z+=windZ*dt*.15;s.m.scale.setScalar(1+s.t*1.6);s.m.material.opacity=.5*(1-s.t/1.6);if(s.t>1.6)s.m.visible=false;}}
 function tuneMenu(line){const r=rides[0];if(Math.hypot(r.x-PUMP.x,r.z-PUMP.z)>=5){say('要把車子停在加油機旁邊才能改裝。');return;}
   const el=$('talk');el.hidden=false;el.textContent='';talkN=null;const h=document.createElement('strong');h.textContent='車子改裝';const p=document.createElement('p');
-  p.textContent=line||'引擎：第 '+carUp.eng+' 級（最多 2 級）。省油裝置：'+(carUp.eco?'已安裝':'還沒裝')+'。你有 $'+cash+'。';el.append(h,p);
+  p.textContent=line||'車況 '+Math.round((1-carDmg)*100)+'%。引擎：第 '+carUp.eng+' 級（最多 2 級）。省油裝置：'+(carUp.eco?'已安裝':'還沒裝')+'。你有 $'+cash+'。';el.append(h,p);
   const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.onclick=()=>{fn();canvas.focus({preventScroll:true});};el.appendChild(b);};
   const buy=(cost,fn,msg)=>{if(cash<cost){tuneMenu('錢不夠，這個要 $'+cost+'，你只有 $'+cash+'。');return;}cash-=cost;fn();applyTune();sfxCoin();noise(.5,300,.8,.2);tuneMenu(msg+' 你還有 $'+cash+'。');};
+  if(carDmg>.02){const c=Math.max(5,Math.ceil(carDmg*90));add('修車（恢復到 100%）$'+c,()=>buy(c,()=>{carDmg=0;},'修好了！鈑金敲平、引擎也檢查過，跟新的一樣。'));}
   if(carUp.eng<2){const c=carUp.eng?260:160;add('升級引擎（第 '+(carUp.eng+1)+' 級）$'+c,()=>buy(c,()=>{carUp.eng++;},'引擎換好了！車子加速更快、最高速度更高（大約 '+Math.round(SPEC.car.max*(1+.16*(carUp.eng+1))*3.6)+' km/h）。'));}
   if(!carUp.eco)add('省油裝置 $120',()=>buy(120,()=>{carUp.eco=1;},'裝好了！同樣一箱油可以多開六成的路。'));
   add('關閉',()=>{el.hidden=true;});}
