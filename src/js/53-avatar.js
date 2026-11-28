@@ -12,6 +12,23 @@ for(const r of rides){const Q=RIDE_POSE[r.kind];if(!r.rider||!Q)continue;while(r
 // the driver you see through your own car's windows is you: same skin, hair and whatever top you are wearing
 function dressDriver(){const r=rides[0];if(!r.rider)return;for(const m of r.rider.children){if(!m.isMesh)continue;m.material=drvSkin.includes(m.material)||m.material===me.mats.skin?me.mats.skin:drvTop.includes(m.material)||m.material===me.mats.top?me.mats.top:me.mats.hair;}}
 dressDriver();
+// --- a neighbour out on her bicycle: she pedals up and down the main street by the kerb, waits at the red light, and rings her bell if you are in the way ---
+const cyclist=(function(){const m=bikeMesh(false),Q=RIDE_POSE.bike;while(m.rider.children.length)m.rider.remove(m.rider.children[0]);
+  const p=makePerson({name:'騎車的阿姨',h:1.62,skin:0xd9a67e,hair:0x2a1c14,top:0xe94f37,bottom:0x35508a,shoe:0xf2f2f2,long:true});interact.pop();p.tag.remove();
+  m.rider.add(p.root);p.root.position.set(Q.x,Q.y-.05,0);p.root.rotation.y=Math.PI/2;m.rider.visible=true;
+  const J=p.J;J.spine.rotation.x=Q.sx*.7;J.neck.rotation.x=Q.nx*.7;J.al.rotation.set(Q.a,0,.1);J.ar.rotation.set(Q.a,0,-.1);J.el.rotation.x=J.er.rotation.x=Q.e;
+  return{m,p,x:-60,dir:1,v:0,ph:0,bell:0,wait:0};})();
+function updateCyclist(dt,t){const c=cyclist,S=WORLD.street,z=c.dir>0?S.z1-.5:S.z0+.5,show=dark<.75&&rain<.3;c.bell-=dt;
+  if(!show&&Math.abs(c.x-pos.x)>60){c.m.g.visible=false;return;}c.m.g.visible=Math.abs(c.x-pos.x)<95;
+  let want=4.2;const ahead=(x2,z2,r)=>{const d=(x2-c.x)*c.dir;return d>0&&d<r&&Math.abs(z2-z)<1.25;};
+  const stopX=c.dir>0?ZEBRA[0]-1.2:ZEBRA[1]+1.2,ds=(stopX-c.x)*c.dir;if((sigCars==='r'||sigCars==='y')&&ds>0&&ds<6)want=Math.min(want,Math.max(0,(ds-.5)*1.4));                 // red light at the crossing
+  for(const n of people)if(!n.hidden&&ahead(n.pos.x,n.pos.z,3))want=0;for(const k of cars)if(k.on&&ahead(k.x,k.z,5.5))want=0;
+  const me2=ride?[ride.x,ride.z]:[pos.x,pos.z];if(!onBus&&!aloft&&ahead(me2[0],me2[1],ride?5:3.2)){want=0;if(c.bell<=0){c.bell=3.5;tone(2093,.25,.12*hear(c.x,z,25),'sine');setTimeout(()=>tone(2093,.3,.1*hear(c.x,z,25),'sine'),170);say('叮鈴叮鈴！騎腳踏車的阿姨在等你讓路。',true);}}
+  c.v+=Math.max(-9*dt,Math.min(2.2*dt,want-c.v));c.x+=c.v*c.dir*dt;if(Math.abs(c.x)>82&&Math.abs(c.x-pos.x)>50){c.dir=-c.dir;c.x=Math.sign(c.x)*82;}else if(Math.abs(c.x)>98){c.dir=-c.dir;}
+  const g=c.m.g;g.position.set(c.x,0,c.dir>0?S.z1-.5:S.z0+.5);g.rotation.y=c.dir>0?0:Math.PI;spinWheels(c.m,c.v,dt,0);
+  c.ph+=c.v*dt*2.4;const w=Math.sin(c.ph),cs=Math.cos(c.ph),Q=RIDE_POSE.bike,J=c.p.J,st=c.v<.3?1:0;                                        // pedalling; one foot down when stopped
+  J.hl.rotation.x=Q.h+w*.32+st*.75;J.kl.rotation.x=Q.k-w*.3+cs*.12-st*1.0;J.hr.rotation.x=Q.h-w*.32;J.kr.rotation.x=Q.k+w*.3-cs*.12;g.rotation.x=0;g.rotation.z=st*-.06;
+  c.p.blinkT-=dt;if(c.p.blinkT<-.12)c.p.blinkT=2.2+Math.random()*4;c.p.lids.visible=c.p.blinkT<0;}
 function riderStep(dt,t){const r=ride;if(!r||!r.rig)return;const p=r.rig,Q=r.rigQ,J=p.J;
   if(r.kind==='bike'){p.ph+=r.v*dt*2.4;const w=Math.sin(p.ph),c=Math.cos(p.ph);J.hl.rotation.x=Q.h+w*.32;J.kl.rotation.x=Q.k-w*.3+c*.12;J.hr.rotation.x=Q.h-w*.32;J.kr.rotation.x=Q.k+w*.3-c*.12;}   // pedalling
   J.neck.rotation.set(Q.nx,0,0);const lean=r.kind==='boat'?0:(r.g.rotation.x||0);J.spine.rotation.set(Q.sx,0,0);
