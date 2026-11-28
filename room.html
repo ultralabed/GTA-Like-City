@@ -1095,6 +1095,7 @@ function updateStreetLamps(){
 }
 
 /* ---------- the small things that make ground look like ground ---------- */
+let groundFx=null;
 // Tufts of grass and little flowers on the lawns (drawn in two batches, however many there are), a kerb line, manhole covers, drain grates and a few stains on the road.
 (function(){
   const S=WORLD.street,SD=WORLD.side;let seed=12345;const rr=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;},r2=(a,b)=>a+(b-a)*rr();
@@ -1118,7 +1119,7 @@ function updateStreetLamps(){
   tufts.receiveShadow=true;tufts.frustumCulled=false;scene.add(tufts);
   const fg=new THREE.SphereGeometry(.035,6,4),flowers=new THREE.InstancedMesh(fg,new THREE.MeshStandardMaterial({roughness:.7}),fl.length),FC=[0xffffff,0xffe066,0xff9ec4,0xb7a3ff];
   fl.forEach((q,i)=>{d.position.set(q[0],r2(.06,.12),q[1]);d.rotation.set(0,0,0);d.scale.set(1,.6,1);d.updateMatrix();flowers.setMatrixAt(i,d.matrix);col.setHex(FC[Math.floor(rr()*4)]);flowers.setColorAt(i,col);});
-  flowers.frustumCulled=false;scene.add(flowers);
+  flowers.frustumCulled=false;scene.add(flowers);groundFx={tufts,flowers,nT:pts.length,nF:fl.length};
   // the road: a kerb line each side, manhole covers, drain grates, darker patches where it was mended
   const prev=cur;cur=scene;
   const kerb=new THREE.MeshStandardMaterial({color:0x8d8a84,roughness:.9,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
@@ -1423,25 +1424,34 @@ function wheel(r,wide,x,z){
 function spinWheels(c,v,dt,steer){for(const w of c.wheels){w.rotation.y-=v*dt/w.r;if(w.front)w.hold.rotation.y+=((steer||0)*.45-w.hold.rotation.y)*Math.min(1,dt*10);}}
 const carGlass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:.15,metalness:.6}),carWin=new THREE.MeshStandardMaterial({color:0x18222c,roughness:.06,metalness:.25,transparent:true,opacity:.6}),carSeat=new THREE.MeshStandardMaterial({color:0x34312f,roughness:.9}),
   drvSkin=[0xe8b996,0xc9966e,0xd2a27c].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.85})),drvTop=[0x2f6f8a,0xc4553b,0x4a6b3a,0x7a4fd0,0xd9a441,0x3a3f4a].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.85})),drvHair=new THREE.MeshStandardMaterial({color:0x2a1c14,roughness:.9});let drvN=0,carTyre=new THREE.MeshStandardMaterial({color:0x111114,roughness:.9});
-function carMesh(col){                                                   // a saloon car facing +x, built around its own middle
+// Four body styles share one recipe. Each is described by where its cabin starts and ends and how tall it is.
+const CAR_KIND={sedan:{f0:1.0,f1:.36,r1:-.98,r0:-1.56,roof:1.4},hatch:{f0:1.0,f1:.4,r1:-1.5,r0:-1.9,roof:1.42},pickup:{f0:1.0,f1:.4,r1:-.36,r0:-.5,roof:1.44,bed:true},van:{f0:1.72,f1:1.34,r1:-1.9,r0:-1.98,roof:1.86,van:true}};
+function carMesh(col,kind){                                              // a car facing +x, built around its own middle
+  const K=CAR_KIND[kind]||CAR_KIND.sedan,belt=K.van?.98:.93,sx=K.f1-.68;   // sx: where the front seats are
   const g=new THREE.Group();scene.add(g);const tmp=new THREE.Group();cur=tmp;
   const paint=new THREE.MeshStandardMaterial({color:col,roughness:.35,metalness:.4});
   const ext=(sh,depth,bv,mat)=>{const geo=new THREE.ExtrudeGeometry(sh,{depth,bevelEnabled:true,bevelThickness:bv,bevelSize:bv*.8,bevelSegments:2,curveSegments:8});geo.translate(0,0,-depth/2);const m=new THREE.Mesh(geo,mat);tmp.add(m);return m;};
   // the lower body: its side outline (bonnet, boot, rounded nose and tail, two wheel arches) pushed across the width of the car
   const b=new THREE.Shape();b.moveTo(-2.0,.36);b.lineTo(-1.81,.36);b.absarc(-1.35,.36,.46,Math.PI,0,true);b.lineTo(.89,.36);b.absarc(1.35,.36,.46,Math.PI,0,true);b.lineTo(1.96,.36);
-  b.quadraticCurveTo(2.04,.38,2.04,.5);b.lineTo(2.02,.72);b.quadraticCurveTo(2.0,.82,1.84,.84);b.lineTo(.95,.93);b.lineTo(-1.5,.95);b.lineTo(-1.92,.92);b.quadraticCurveTo(-2.04,.9,-2.04,.78);b.lineTo(-2.04,.5);b.quadraticCurveTo(-2.04,.38,-2.0,.36);
+  b.quadraticCurveTo(2.04,.38,2.04,.5);
+  if(K.van){b.lineTo(2.03,.8);b.quadraticCurveTo(2.02,.95,1.88,.97);b.lineTo(K.f0-.05,belt);}else{b.lineTo(2.02,.72);b.quadraticCurveTo(2.0,.82,1.84,.84);b.lineTo(K.f0-.05,belt);}
+  b.lineTo(-1.5,belt+.02);b.lineTo(-1.92,belt-.01);b.quadraticCurveTo(-2.04,belt-.03,-2.04,.78);b.lineTo(-2.04,.5);b.quadraticCurveTo(-2.04,.38,-2.0,.36);
   ext(b,1.6,.09,paint);
   // the cabin: glass all round, with a painted roof and pillars on top of it
-  const c=new THREE.Shape();c.moveTo(1.0,.9);c.lineTo(.36,1.4);c.lineTo(-.98,1.4);c.lineTo(-1.56,.92);c.lineTo(1.0,.9);const win=ext(c,1.42,.04,carWin);tmp.remove(win);win.renderOrder=2;g.add(win);   // see-through, so it is drawn after what is inside
+  const c=new THREE.Shape();c.moveTo(K.f0,belt-.03);c.lineTo(K.f1,K.roof);c.lineTo(K.r1,K.roof);c.lineTo(K.r0,belt-.01);c.lineTo(K.f0,belt-.03);const win=ext(c,1.42,.04,carWin);tmp.remove(win);win.renderOrder=2;g.add(win);   // see-through, so it is drawn after what is inside
   // inside: seats with headrests, a dashboard and a steering wheel on the left
-  for(const z of[-.36,.36]){box(.13,.5,.44,carSeat,-.32,1.03,z,{r:.04,rz:-.12});box(.1,.14,.24,carSeat,-.36,1.32,z,{r:.03});}
-  box(.13,.46,1.2,carSeat,-1.12,1.0,0,{r:.04,rz:-.15});box(.5,.08,1.36,carTrim,.72,.93,0,{r:.03});
-  {const sw=new THREE.Mesh(new THREE.TorusGeometry(.15,.018,6,14),carTrim);sw.position.set(.42,1.02,-.36);sw.rotation.y=Math.PI/2;sw.rotation.order='YXZ';sw.rotation.x=-.35;tmp.add(sw);}
-  box(1.42,.06,1.52,paint,-.31,1.435,0,{r:.025});
-  for(const z of[-.755,.755]){box(.84,.07,.06,paint,.67,1.165,z,{rz:Math.atan2(.5,-.64)});box(.77,.08,.06,paint,-1.27,1.17,z,{rz:Math.atan2(.48,.58)});box(.08,.5,.05,paint,-.28,1.17,z);
-    box(.11,.085,.17,paint,.86,1.02,z*1.27,{r:.03});                                                   // door mirror
-    [.93,-.28,-1.22].forEach(x=>box(.014,.5,.012,carTrim,x,.66,z*1.181));                             // the gaps round the doors
-    [.2,-1.0].forEach(x=>box(.15,.03,.02,carChrome,x,.84,z*1.183));}                                   // door handles
+  for(const z of[-.36,.36]){box(.13,.5,.44,carSeat,sx,1.03,z,{r:.04,rz:-.12});box(.1,.14,.24,carSeat,sx-.04,1.32,z,{r:.03});}
+  for(let bx=sx-.8;bx>K.r1+.1;bx-=.85)box(.13,.46,1.2,carSeat,bx,1.0,0,{r:.04,rz:-.15});                 // as many rows of back seats as fit
+  box(.5,.08,1.36,carTrim,sx+1.04,belt,0,{r:.03});
+  {const sw=new THREE.Mesh(new THREE.TorusGeometry(.15,.018,6,14),carTrim);sw.position.set(sx+.74,1.02,-.36);sw.rotation.y=Math.PI/2;sw.rotation.order='YXZ';sw.rotation.x=-.35;tmp.add(sw);}
+  box(K.f1-K.r1+.08,.06,1.52,paint,(K.f1+K.r1)/2,K.roof+.035,0,{r:.025});
+  const pil=(x0,y0,x1,y1,z)=>box(Math.hypot(x1-x0,y1-y0)+.04,.075,.06,paint,(x0+x1)/2,(y0+y1)/2,z,{rz:Math.atan2(y1-y0,x1-x0)});
+  for(const z of[-.755,.755]){pil(K.f0,belt,K.f1,K.roof,z);pil(K.r0,belt,K.r1,K.roof,z);for(let px=sx+.04;px>K.r1+.5;px-=.95)box(.08,K.roof-belt,.05,paint,px,(K.roof+belt)/2,z);
+    box(.11,.085,.17,paint,K.f0-.14,belt+.09,z*1.27,{r:.03});                                           // door mirror
+    [K.f0-.07,sx+.04,Math.max(K.r0+.34,sx-.95)].forEach(x=>box(.014,.5,.012,carTrim,x,.66,z*1.181));    // the gaps round the doors
+    [sx+.52,sx-.68].forEach(x=>{if(x>K.r0+.2)box(.15,.03,.02,carChrome,x,.84,z*1.183);});               // door handles
+    if(K.bed){box(1.52,.13,.07,paint,-1.27,belt+.07,z*1.1,{r:.02});}}
+  if(K.bed){box(1.46,.02,1.5,carTrim,-1.27,belt+.03,0);box(.07,.13,1.74,paint,-2.0,belt+.07,0,{r:.02});}    // a pickup's load bed: dark floor, low sides and a tailgate
   box(3.7,.22,1.5,carTrim,0,.3,0);                                                                    // the dark underside you glimpse through the arches
   box(.1,.15,1.72,carTrim,2.09,.42,0,{r:.04});box(.1,.15,1.72,carTrim,-2.09,.42,0,{r:.04});           // bumper strips
   box(.05,.15,.86,carTrim,2.115,.63,0,{r:.02});for(let k=0;k<3;k++)box(.012,.016,.8,carChrome,2.142,.59+k*.04,0);   // grille and its bright bars
@@ -1452,19 +1462,19 @@ function carMesh(col){                                                   // a sa
   cur=g;fuse(tmp,g);
   // the driver: head, shoulders and two arms on the wheel. Hidden until someone is actually driving.
   const rider=new THREE.Group();g.add(rider);{const t2=new THREE.Group();cur=t2;const k=drvN++,sk=drvSkin[k%3],tp=drvTop[k%6];
-    box(.22,.42,.4,tp,-.17,1.02,-.36,{r:.07});const hd=new THREE.Mesh(new THREE.SphereGeometry(.1,12,10),sk);hd.position.set(-.13,1.285,-.36);hd.scale.set(.95,1.08,.95);t2.add(hd);
-    const hr=new THREE.Mesh(new THREE.SphereGeometry(.105,12,8,0,Math.PI*2,0,1.5),drvHair);hr.position.set(-.14,1.292,-.36);hr.rotation.z=.35;hr.scale.set(1,1.06,1);t2.add(hr);
-    for(const z of[-.5,-.22]){box(.4,.07,.07,tp,.08,1.07,z,{r:.03,rz:-.12});box(.07,.06,.07,sk,.3,1.05,z+(z<-.4?.04:-.04),{r:.025});}
+    box(.22,.42,.4,tp,sx+.15,1.02,-.36,{r:.07});const hd=new THREE.Mesh(new THREE.SphereGeometry(.1,12,10),sk);hd.position.set(sx+.19,1.285,-.36);hd.scale.set(.95,1.08,.95);t2.add(hd);
+    const hr=new THREE.Mesh(new THREE.SphereGeometry(.105,12,8,0,Math.PI*2,0,1.5),drvHair);hr.position.set(sx+.18,1.292,-.36);hr.rotation.z=.35;hr.scale.set(1,1.06,1);t2.add(hr);
+    for(const z of[-.5,-.22]){box(.4,.07,.07,tp,sx+.4,1.07,z,{r:.03,rz:-.12});box(.07,.06,.07,sk,sx+.62,1.05,z+(z<-.4?.04:-.04),{r:.025});}
     cur=g;fuse(t2,rider);}rider.visible=false;
   const wheels=[[-1.35,-.82],[-1.35,.82],[1.35,-.82],[1.35,.82]].map(p=>{const w=wheel(.33,.22,p[0],p[1]);w.front=p[0]>0;return w;});
   const beam=new THREE.Mesh(new THREE.PlaneGeometry(9,5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:0xffe2b0,opacity:0}));
   beam.rotation.x=-Math.PI/2;beam.position.set(5.6,.02,0);g.add(beam);                       // pool of light on the road at night
-  cur=scene;return{g,wheels,headMat,tailMat,beam,paint,rider};
+  cur=scene;return{g,wheels,headMat,tailMat,beam,paint,rider,roofY:K.roof+.065,roofX:(K.f1+K.r1)/2};
 }
 function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
   c.headMat.color.setRGB(.82+k*5.4,.84+k*4.8,.86+k*3.4);c.tailMat.color.setRGB(.35+k*3+(braking?3:0),.02,.02);c.beam.material.opacity=k*.55;}
 [0xc4553b,0x1f6a6e,0xe9e2d6,0x3b4a7a,0x7a2c5a,0x2a2c32].forEach((col,i)=>{
-  const m=carMesh(col);m.g.visible=false;m.rider.visible=true;const dir=0;
+  const m=carMesh(col,['sedan','hatch','sedan','pickup','van','hatch'][i]);m.g.visible=false;m.rider.visible=true;const dir=0;
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir,z:0,x:0,h:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92}));
 });
@@ -1491,7 +1501,7 @@ const BUS_STOP={'-1':-25.3,'1':18.5};   // where the front of each bus ends up, 
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir,busDir:dir,z:0,x:0,h:0,v:0,on:false,t:6+i*9,wait:0,honk:0,tag,box:[0,0,0,0],hl:3.5,hw:1.17,bus:true,home:dir,stopX:BUS_STOP[dir],dwell:0,served:false}));});
 // cars that belong to neighbours: parked at home, gone while their owner is at work
-const parked=marks.parking.map(m=>{const c=carMesh(0x5b86c9);c.g.position.set(m.x,0,m.z);c.g.rotation.y=-Math.PI/2;const col=[m.x-1,m.x+1,m.z-2.2,m.z+2.2];colliders.push(col);
+const parked=marks.parking.map(m=>{const c=carMesh(0x5b86c9,'hatch');c.g.position.set(m.x,0,m.z);c.g.rotation.y=-Math.PI/2;const col=[m.x-1,m.x+1,m.z-2.2,m.z+2.2];colliders.push(col);
   return{m,c,col,home:col.slice(),away:false,t:9,owner:null};});
 function updateParked(dt){for(const P of parked){if(!P.owner)P.owner=people.find(n=>n.o.name===P.m.owner);const n=P.owner;if(!n)continue;
     const away=n.hidden&&!!ACT[n.act]&&!!ACT[n.act].car;
@@ -1505,8 +1515,8 @@ function updateParked(dt){for(const P of parked){if(!P.owner)P.owner=people.find
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:1e9,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,taxi:true,busDir:1,stopX:0,served:true,dwell:0,dest:null}));}
 const taxi=cars[cars.length-1];
 // the ice-cream van: by day, when it is dry, it comes along now and then, parks by the park for a bit and plays its tune
-{const m=carMesh(0xffb7d5);m.g.visible=false;m.rider.visible=true;const cone=new THREE.Mesh(new THREE.ConeGeometry(.22,.5,10),new THREE.MeshStandardMaterial({color:0xe2b06a,roughness:.8}));cone.rotation.x=Math.PI;cone.position.set(-.15,1.72,0);m.g.add(cone);
-  const sc=new THREE.Mesh(new THREE.SphereGeometry(.26,12,10),new THREE.MeshStandardMaterial({color:0xfff4f8,roughness:.6}));sc.position.set(-.15,2.12,0);m.g.add(sc);
+{const m=carMesh(0xffb7d5,'van');m.g.visible=false;m.rider.visible=true;const cone=new THREE.Mesh(new THREE.ConeGeometry(.22,.5,10),new THREE.MeshStandardMaterial({color:0xe2b06a,roughness:.8}));cone.rotation.x=Math.PI;cone.position.set(m.roofX,m.roofY+.25,0);m.g.add(cone);
+  const sc=new THREE.Mesh(new THREE.SphereGeometry(.26,12,10),new THREE.MeshStandardMaterial({color:0xfff4f8,roughness:.6}));sc.position.set(m.roofX,m.roofY+.65,0);m.g.add(sc);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:70,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,van:true,busDir:1,stopX:21.5+2.1,served:false,dwell:0,sold:0,jing:0}));}
 const iceVan=cars[cars.length-1];
@@ -3815,10 +3825,11 @@ $('bShot').onclick=snap;
 const QUAL=[['高',2,2048,true],['中',1.25,1024,true],['低',.8,512,false]];let qIdx=0;
 $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textContent='畫質：'+Q[0];
   pr=Math.min(window.devicePixelRatio||1,Q[1]);sun.shadow.mapSize.set(Q[2],Q[2]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}
+  if(groundFx){const k=[1,.5,.12][qIdx];groundFx.tufts.count=Math.round(groundFx.nT*k);groundFx.flowers.count=Math.round(groundFx.nF*k);}   // fewer tufts of grass on the lower settings
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={makePerson,person,helpStep,set stamSet(v){stam=v;},get drinksN(){return drinks;},talkFn:talk,get wetK(){return wet;},dirtStep,showDirt,get carDirt(){return carDirt;},set carDirtSet(v){carDirt=v;},movePlant,plantSpots,colliders,shopOff,shopMenu,get rep(){return rep;},set repSet(v){rep=v;},get heat(){return heat;},utility,GOALS,lieDown,standUp,nearBed,set carDmgSet(v){carDmg=v;},set homeSet(v){homeOwned=v;},toggleCrouch,get crouch(){return crouch;},get crouchK(){return crouchK;},liftMenu,doLift,meteor,meteorNow,meteorStep,camera,STORIES,GARDEN,gardenBeds,get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,get carDmg(){return carDmg;},smoke,askWalk,buddyStep,buddyLine,get buddy(){return buddy;},forecast,rel,relOf,REL,keys,citizenStep,busker,updateBusker,set buskForce(v){buskForce=v;},get buskOn(){return buskOn;},parked,updateParked,snap,album,SHOTS,photo,npcKites,npcKiteStep,SHELLS,shellStep,get shells(){return shells;},kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={groundFx,makePerson,person,helpStep,set stamSet(v){stam=v;},get drinksN(){return drinks;},talkFn:talk,get wetK(){return wet;},dirtStep,showDirt,get carDirt(){return carDirt;},set carDirtSet(v){carDirt=v;},movePlant,plantSpots,colliders,shopOff,shopMenu,get rep(){return rep;},set repSet(v){rep=v;},get heat(){return heat;},utility,GOALS,lieDown,standUp,nearBed,set carDmgSet(v){carDmg=v;},set homeSet(v){homeOwned=v;},toggleCrouch,get crouch(){return crouch;},get crouchK(){return crouchK;},liftMenu,doLift,meteor,meteorNow,meteorStep,camera,STORIES,GARDEN,gardenBeds,get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,get carDmg(){return carDmg;},smoke,askWalk,buddyStep,buddyLine,get buddy(){return buddy;},forecast,rel,relOf,REL,keys,citizenStep,busker,updateBusker,set buskForce(v){buskForce=v;},get buskOn(){return buskOn;},parked,updateParked,snap,album,SHOTS,photo,npcKites,npcKiteStep,SHELLS,shellStep,get shells(){return shells;},kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

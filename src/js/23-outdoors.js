@@ -52,6 +52,7 @@ function updateStreetLamps(){
 }
 
 /* ---------- the small things that make ground look like ground ---------- */
+let groundFx=null;
 // Tufts of grass and little flowers on the lawns (drawn in two batches, however many there are), a kerb line, manhole covers, drain grates and a few stains on the road.
 (function(){
   const S=WORLD.street,SD=WORLD.side;let seed=12345;const rr=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;},r2=(a,b)=>a+(b-a)*rr();
@@ -75,7 +76,7 @@ function updateStreetLamps(){
   tufts.receiveShadow=true;tufts.frustumCulled=false;scene.add(tufts);
   const fg=new THREE.SphereGeometry(.035,6,4),flowers=new THREE.InstancedMesh(fg,new THREE.MeshStandardMaterial({roughness:.7}),fl.length),FC=[0xffffff,0xffe066,0xff9ec4,0xb7a3ff];
   fl.forEach((q,i)=>{d.position.set(q[0],r2(.06,.12),q[1]);d.rotation.set(0,0,0);d.scale.set(1,.6,1);d.updateMatrix();flowers.setMatrixAt(i,d.matrix);col.setHex(FC[Math.floor(rr()*4)]);flowers.setColorAt(i,col);});
-  flowers.frustumCulled=false;scene.add(flowers);
+  flowers.frustumCulled=false;scene.add(flowers);groundFx={tufts,flowers,nT:pts.length,nF:fl.length};
   // the road: a kerb line each side, manhole covers, drain grates, darker patches where it was mended
   const prev=cur;cur=scene;
   const kerb=new THREE.MeshStandardMaterial({color:0x8d8a84,roughness:.9,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
