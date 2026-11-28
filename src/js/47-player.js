@@ -5,10 +5,11 @@ const camDir=new THREE.Vector3(),camGoal=new THREE.Vector3();
 
 // --- jumping ---
 // --- up the lighthouse: at its door you can climb to the walkway round the lamp, 8 metres up, and look out over the whole street ---
-let aloft=false;const TOWER_Y=8.12;
+let aloft=false;const TOWER_Y=8.12;let scope=false;
+function toggleScope(){if(!aloft)return;scope=!scope;actKey='';say(scope?'你把眼睛湊到望遠鏡上。遠的東西變得好近！轉頭找找看你家。再按 O 放開。':'你放開望遠鏡。');}
 function nearTower(){const I=WORLD.isle;return!ride&&!onBus&&!seat&&!aloft&&Math.hypot(pos.x-I.x,pos.z-(I.z+2.1))<1.5;}
 function climbTower(){const I=WORLD.isle;if(!aloft&&!nearTower())return;const up=!aloft;canvas.style.transition='opacity .4s';canvas.style.opacity=0;sfxDoor(pos.x,pos.z);
-  setTimeout(()=>{aloft=up;vel.x=vel.z=0;jumpY=jumpV=0;crouch=false;pos.x=I.x;pos.z=I.z+(up?1.17:2.5);yaw=up?Math.PI:0;pitch=up?-.18:-.05;actKey='';canvas.style.opacity=1;
+  setTimeout(()=>{aloft=up;scope=false;vel.x=vel.z=0;jumpY=jumpV=0;crouch=false;pos.x=I.x;pos.z=I.z+(up?1.17:2.5);yaw=up?Math.PI:0;pitch=up?-.18:-.05;actKey='';canvas.style.opacity=1;
     if(up){const first=!stats.tower;stats.tower=(stats.tower||0)+1;say(first?'你爬了 42 階樓梯，到燈塔頂了！整條夕陽街都看得到。繞著燈走一圈看看，按 L 下去。':'你又爬上燈塔頂了。按 L 下去。');}else say('你走下燈塔，回到島上。');},450);}
 function jump(){if(jumpY===0&&!ride&&!seat&&!aloft&&waterDepth()<.5)jumpV=4.2;}
 // --- the sea ---
@@ -460,12 +461,12 @@ function playerStep(dt,f,s){
   return false;
 }
 // --- the action buttons ---
-const KEY={climb:'L',crouch:'C',fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T',ice:'F',fuel:'C',paint:'N',race:'B',fare:'K',tune:'U',hb:'空白',wave:'X',dance:'J'};
+const KEY={climb:'L',scope:'O',crouch:'C',fish:'G',horn:'H',run:'Shift',nap:'Z',radio:'R',jump:'空白',pick:'E',drop:'E',throw:'點畫面',sit:'Q',stand:'Q',in:'F',out:'F',bus:'F',off:'F',taxi:'T',ice:'F',fuel:'C',paint:'N',race:'B',fare:'K',tune:'U',hb:'空白',wave:'X',dance:'J'};
 const RADIO=['drive','dusk','day','shop','beach',''];let radioIdx=0;                // the car radio: pick your own tune, or silence
 function nextRadio(){radioIdx=(radioIdx+1)%RADIO.length;wantSince=-9;say('收音機：'+(RADIO[radioIdx]?TRACKS[RADIO[radioIdx]].name:'關掉'));}
 let runLock=false;                                                          // the Run button: stays on until you press it again
 function toggleRun(){runLock=!runLock;say(runLock?'跑步：開。體力用完會自動變回走路。':'跑步：關。');}
-const ACTS={climb:['爬上燈塔',climbTower],crouch:['蹲下',toggleCrouch],fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],ice:['買冰淇淋 $10',buyIce],fuel:['加油',refuel],paint:['噴漆換顏色 $30',repaint],race:['開始計時賽',startRace],fare:['接載客工作',startFare],hb:['手煞車',()=>{hbT=.9;}],tune:['改裝車子',()=>tuneMenu()],wave:['揮手',wave],dance:['跳舞',dance],off:['',leaveBus]};
+const ACTS={climb:['爬上燈塔',climbTower],scope:['看望遠鏡',toggleScope],crouch:['蹲下',toggleCrouch],fish:['釣魚',fishing],horn:['喇叭',horn],run:['跑',toggleRun],nap:['躺下睡覺',lieDown],radio:['收音機',nextRadio],jump:['跳',jump],pick:['撿起',pickUp],drop:['放下',putDown],throw:['丟出去',throwHeld],sit:['坐下',sitDown],stand:['站起來',standUp],in:['',getIn],out:['下來',getOut],bus:['搭公車 $5',boardBus],taxi:['招計程車',hail],ice:['買冰淇淋 $10',buyIce],fuel:['加油',refuel],paint:['噴漆換顏色 $30',repaint],race:['開始計時賽',startRace],fare:['接載客工作',startFare],hb:['手煞車',()=>{hbT=.9;}],tune:['改裝車子',()=>tuneMenu()],wave:['揮手',wave],dance:['跳舞',dance],off:['',leaveBus]};
 let actKey='x';
 function mkBtn(text,key,fn,on){const b=document.createElement('button');b.type='button';b.textContent=text;if(on!=null)b.setAttribute('aria-pressed',on);
   if(!isTouch&&key){const k=document.createElement('kbd');k.textContent=key;b.appendChild(k);}
@@ -474,20 +475,21 @@ function updateActs(){
   const list=[],it=ride?null:nearItem(),nb=ride||held||it?null:nearBall(),nr=ride?null:nearRide();
   const nbus=nearBus();
   if(onBus)list.push('off');
+  else if(aloft){list.push('climb','scope');}                                                   // up the lighthouse there is only the way down and the telescope
   else if(ride){list.push('out','horn');if(isTouch&&ride.kind!=='bike'&&!ride.S.water)list.push('hb');if(fish||onBoat())list.push('fish');if(atPump()&&ride.fuel<.98)list.push('fuel');if(atPump()&&ride.kind==='car')list.push('paint','tune');if(atFlag())list.push('race');if(ride.kind==='car'&&!quest)list.push('fare');if(ride.kind==='car')list.push('radio');}
   else{if(nearVan())list.push('ice');if(nbus)list.push('bus');else if(canHail())list.push('taxi');if(nr)list.push('in');
     if(seat)list.push('stand');else{if(nearSeat())list.push('sit');if(nearBed())list.push('nap');}
     if(held)list.push('throw','drop');else if(it||nb)list.push('pick');
     if(!seat&&waterDepth()<.5)list.push('jump');
-    if(aloft||nearTower())list.push('climb');
+    if(nearTower())list.push('climb');
     if(!seat)list.push('run','crouch');
     if(!seat&&nearFolk(4).length)list.push('wave','dance');
     if(fish||atShore())list.push('fish');}
   const what=it?ITEM[it.item].name:nb?nb.name:held?held.name:'';
-  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+crouch+aloft+emote+(quest?'q':'')+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(nbus&&nbus.taxi?'tx':nbus&&nbus.line?'sl':'')+(fish?fish.bite:'');
+  const key=list.join(',')+what+(nr?nr.kind:'')+Object.keys(bag).join('')+JSON.stringify(use)+drinks+radioIdx+runLock+crouch+aloft+scope+emote+(quest?'q':'')+(onBus?'B'+(onBus.dwell>0)+busBell:'')+(nbus&&nbus.taxi?'tx':nbus&&nbus.line?'sl':'')+(fish?fish.bite:'');
   if(key===actKey)return;actKey=key;
   const el=$('acts');el.textContent='';
-  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='crouch'?(crouch?'站起來（蹲著）':'蹲下'):id==='climb'?(aloft?'下燈塔':'爬上燈塔'):id==='dance'?(emote==='dance'?'停止跳舞':'跳舞'):id==='bus'&&nbus.taxi?'上計程車':id==='bus'&&nbus.line?'搭南線公車 $5':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':nr.kind==='boat'?'上船':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
+  for(const id of list)el.appendChild(mkBtn(id==='fish'?(fish?(fish.bite?'拉！':'收線（還沒咬）'):'釣魚'):id==='run'?(runLock?'跑步中':'跑'):id==='crouch'?(crouch?'站起來（蹲著）':'蹲下'):id==='climb'?(aloft?'下燈塔':'爬上燈塔'):id==='scope'?(scope?'放開望遠鏡':'看望遠鏡'):id==='dance'?(emote==='dance'?'停止跳舞':'跳舞'):id==='bus'&&nbus.taxi?'上計程車':id==='bus'&&nbus.line?'搭南線公車 $5':id==='off'?(onBus.dwell>0?'下車':busBell?'已按鈴，等停車':'下車鈴'):id==='in'?(nr.kind==='car'?'上車':nr.kind==='boat'?'上船':'騎'+nr.S.name):ACTS[id][0]+(id==='pick'||id==='throw'||id==='drop'?what:''),KEY[id],ACTS[id][1]));
   const bg=$('bag');bg.textContent='';
   for(const k in ITEM)if(bag[k])bg.appendChild(mkBtn(ITEM[k].name,ITEM[k].key,()=>toggleItem(k),use[k]));
   if(drinks)bg.appendChild(mkBtn('喝飲料 ×'+drinks,'3',drinkUp));
@@ -510,6 +512,7 @@ addEventListener('keydown',e=>{if(e.repeat)return;
   else if(e.code==='KeyC'){if(atPump())refuel();else toggleCrouch();}
   else if(e.code==='KeyB'){if(atFlag())startRace();}
   else if(e.code==='KeyL')climbTower();
+  else if(e.code==='KeyO')toggleScope();
   else if(e.code==='KeyU'){if(atPump()&&ride.kind==='car')tuneMenu();}
   else if(e.code==='KeyK'){if(ride&&ride.kind==='car')startFare();}
   else if(e.code==='KeyN'){if(atPump()&&ride.kind==='car')repaint();}

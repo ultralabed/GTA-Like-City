@@ -24,6 +24,7 @@
     box(1.6,.07,.45,M.walnut,3.4,.45,3.2);[2.7,4.1].forEach(x=>box(.07,.45,.4,M.steel,x,.225,3.2));                  // a bench facing the town
     for(const y of[8.62,9.08]){const m=new THREE.Mesh(new THREE.TorusGeometry(1.47,.022,6,28),M.steel);m.rotation.x=Math.PI/2;m.position.y=y;add(m);}          // a rail round the walkway at the top
     for(let k=0;k<10;k++)cyl(.02,.02,.98,M.steel,Math.cos(k*.628)*1.47,8.6,Math.sin(k*.628)*1.47,6);box(.5,.9,.06,M.walnut,0,8.57,.78);
+    cyl(.03,.04,1.1,M.steel,0,8.65,1.42,8);{const t=cyl(.06,.075,.42,M.brass,0,9.25,1.42,10);t.rotation.x=Math.PI/2-.12;}                        // a coin telescope on the rail, pointing at the town
     cur=pv;weldStatic(ig);colliders.push([I.x-1.5,I.x+1.5,I.z-1.5,I.z+1.5],[I.x+2.6,I.x+4.2,I.z+3,I.z+3.45]);
     isleLamp=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),new THREE.MeshBasicMaterial({color:0x554a30}));isleLamp.position.set(I.x,8.7,I.z);scene.add(isleLamp);
     isleBeam=new THREE.Group();isleBeam.position.copy(isleLamp.position);scene.add(isleBeam);

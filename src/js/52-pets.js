@@ -87,6 +87,16 @@ const gulls=[];let gullAway=0,gullCry=6;
   for(let i=0;i<7;i++){const g=new THREE.Group(),L=new THREE.Mesh(wg,wm),R=new THREE.Mesh(wg,wm);L.rotation.x=R.rotation.x=-Math.PI/2;R.scale.x=-1;const lp=new THREE.Group(),rp=new THREE.Group();lp.add(L);rp.add(R);g.add(lp,rp);
     const b=new THREE.Mesh(new THREE.BoxGeometry(.1,.07,.3),wm);g.add(b);scene.add(g);
     gulls.push({g,lp,rp,cx:rnd(-25,30),cz:WORLD.shore-rnd(2,18),r:rnd(5,11),y:rnd(7,13),a:rnd(0,6.28),w:rnd(.25,.45)*(i%2?1:-1),ph:rnd(0,6)});}}
+// --- butterflies: on dry days they flutter over the park lawn, and gather at the flower beds once you have planted them ---
+const flies=(function(){const cols=[0xffd24a,0xff8fb1,0xffffff,0x8fd0ff,0xffa64a,0xc9a3ff],out=[];
+  for(let i=0;i<8;i++){const g=new THREE.Group(),mat=new THREE.MeshBasicMaterial({color:cols[i%6],side:THREE.DoubleSide}),wg=new THREE.PlaneGeometry(.09,.11);wg.translate(.045,0,0);
+    const a=new THREE.Mesh(wg,mat),b=new THREE.Mesh(wg,mat);a.rotation.x=b.rotation.x=-Math.PI/2;const pa=new THREE.Group(),pb=new THREE.Group();pa.add(a);pb.add(b);pb.scale.x=-1;g.add(pa,pb);g.visible=false;scene.add(g);
+    out.push({g,pa,pb,hx:17+((i*37)%90)/10,hz:16.5+((i*53)%70)/10,ph:i*1.7,x:20,z:19,y:1});}return out;})();
+function updateFlies(dt,t){const show=dark<.45&&rain<.1&&windS<7&&Math.hypot(pos.x-21,pos.z-20)<45;
+  flies.forEach((f,i)=>{f.g.visible=show;if(!show)return;const bed=stats.done.garden&&i<6?GARDEN[i%3]:null,hx=bed?bed[0]:f.hx,hz=bed?bed[1]:f.hz,rad=bed?.7:1.8;
+    const tx=hx+Math.sin(t*.5+f.ph)*rad+Math.sin(t*1.7+f.ph*2)*.3,tz=hz+Math.cos(t*.4+f.ph*1.3)*rad+Math.cos(t*1.3+f.ph)*.3,ty=(bed?.5:.9)+Math.sin(t*2.1+f.ph)*.25+Math.sin(t*5+f.ph)*.06;
+    const dx=tx-f.x,dz=tz-f.z;f.x+=dx*Math.min(1,dt*2);f.z+=dz*Math.min(1,dt*2);f.y+=(ty-f.y)*Math.min(1,dt*3);f.g.position.set(f.x,f.y,f.z);if(Math.hypot(dx,dz)>.01)f.g.rotation.y=Math.atan2(dx,dz);
+    const w=Math.sin(t*22+f.ph)*.95;f.pa.rotation.z=w;f.pb.rotation.z=-w;});}
 function updateGulls(dt,t){
   gullAway=Math.max(0,gullAway-dt);const show=dark<.6&&rain<.4&&gullAway<=0;
   for(const q of gulls){q.g.visible=show&&Math.hypot(q.cx-pos.x,q.cz-pos.z)<120;if(!q.g.visible)continue;
