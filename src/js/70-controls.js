@@ -22,7 +22,8 @@ addEventListener('keydown',e=>{keys[e.code]=true;if(e.code.startsWith('Arrow')||
 addEventListener('keyup',e=>{keys[e.code]=false;});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===canvas;});
-document.addEventListener('mousemove',e=>{if(locked){yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;clampPitch();}});
+const lookK=()=>scope&&aloft?.3:1;                                     // looking through the telescope: turn slowly, or you could never aim it
+document.addEventListener('mousemove',e=>{if(locked){const q=.0022*lookK();yaw-=e.movementX*q;pitch-=e.movementY*q;clampPitch();}});
 function clampPitch(){pitch=Math.max(-1.35,Math.min(1.35,pitch));}
 const ray=new THREE.Raycaster();ray.far=4.5;const ndc=new THREE.Vector2();let hoverNdc={x:0,y:0};
 function pick(x,y){ndc.set(x,y);ray.setFromCamera(ndc,camera);const h=ray.intersectObjects(interact,false);for(const i of h){const n=i.object.userData.npc;if(!n||!n.hidden)return i.object;}return null;}
@@ -43,7 +44,7 @@ canvas.addEventListener('pointermove',e=>{
   if(e.pointerId===joy.id){let dx=(e.clientX-joy.ox)/48,dy=(e.clientY-joy.oy)/48;const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l;}
     joy.x=dx;joy.y=-dy;$('joy').firstElementChild.style.transform=`translate(${dx*34}px,${dy*34}px)`;}
   else if(e.pointerId===look.id){const k=e.pointerType==='touch'?.005:.004;
-    yaw-=(e.clientX-look.x)*k;pitch-=(e.clientY-look.y)*k;clampPitch();look.x=e.clientX;look.y=e.clientY;}
+    yaw-=(e.clientX-look.x)*k*lookK();pitch-=(e.clientY-look.y)*k*lookK();clampPitch();look.x=e.clientX;look.y=e.clientY;}
 });
 function up(e){
   if(e.pointerId===joy.id){joy.id=null;joy.x=joy.y=0;$('joy').hidden=true;$('joy').firstElementChild.style.transform='';}

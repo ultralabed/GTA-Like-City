@@ -13,7 +13,7 @@ function tick(now){
   // you
   const f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+joy.y;
   const s=(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x;
-  if(keys.ArrowLeft)yaw+=1.9*dt;if(keys.ArrowRight)yaw-=1.9*dt;
+  if(keys.ArrowLeft)yaw+=1.9*dt*lookK();if(keys.ArrowRight)yaw-=1.9*dt*lookK();
   const sp=moveSpeed(dt,Math.abs(f)+Math.abs(s)),sn=Math.sin(yaw),cs=Math.cos(yaw);
   let tx=(-sn*f+cs*s),tz=(-cs*f-sn*s);const tl=Math.hypot(tx,tz);if(tl>1){tx/=tl;tz/=tl;}
   if(!playerStep(dt,f,s)){
@@ -30,7 +30,7 @@ function tick(now){
   const p0=performance.now();
   for(const n of people)updNPC(n,dt,t);
   const p1=performance.now();
-  updateDoors(dt);updateCars(dt);updateParked(dt);updateWeather(dt);updatePets(dt,t);updateCat(dt,t);updateFlies(dt,t);updateVendors(t);updateBusker(dt,t);updateGulls(dt,t);
+  updateDoors(dt);updateCars(dt);updateParked(dt);updateWeather(dt);seaStep(dt,t);updatePets(dt,t);updateCat(dt,t);updateFlies(dt,t);updateVendors(t);updateBusker(dt,t);updateGulls(dt,t);
   autoT+=dt;if(autoT>.5){autoT=0;autoHome();}
   const p2=performance.now();
   acc+=dt;let steps=0;while(acc>=PH&&steps<14){physStep(PH);acc-=PH;steps++;}if(steps===14)acc=0;

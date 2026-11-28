@@ -54,6 +54,16 @@ function updateStreetLamps(){
   streetGlow.forEach((l,i)=>{const m=near[i]&&near[i][1];if(m){l.position.set(m.x,m.y-.15,m.z);l.intensity=k*1.1;}else l.intensity=0;});
 }
 
+/* ---------- the sea moves: ripples drift across it and a line of foam washes up and down the sand ---------- */
+const seaFx=(function(){const N=128,c=cv(N,N),g=c.getContext('2d'),img=g.createImageData(N,N),h=(x,y)=>{const u=x/N*6.2832,v=y/N*6.2832;return Math.sin(u*3+v*2)*.5+Math.sin(u*5-v*4+1.3)*.3+Math.sin(u*9+v*7+.6)*.2+Math.sin(u*2-v*11+2.1)*.15;};
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){const dx=h(x+1,y)-h(x-1,y),dy=h(x,y+1)-h(x,y-1),i=(y*N+x)*4;img.data[i]=128-dx*260;img.data[i+1]=128-dy*260;img.data[i+2]=255;img.data[i+3]=255;}
+  g.putImageData(img,0,0);const nm=new THREE.CanvasTexture(c);nm.wrapS=nm.wrapT=THREE.RepeatWrapping;nm.repeat.set(210,93);M.water.normalMap=nm;M.water.normalScale=new THREE.Vector2(.32,.32);M.water.needsUpdate=true;
+  const fc=cv(256,64),fg=fc.getContext('2d');for(let x=0;x<256;x++){const e=30+Math.sin(x/256*6.2832*3)*7+Math.sin(x/256*6.2832*7+1)*4;const gr=fg.createLinearGradient(0,0,0,64);gr.addColorStop(0,'rgba(255,255,255,0)');gr.addColorStop(Math.max(.05,(e-16)/64),'rgba(255,255,255,.25)');gr.addColorStop(e/64,'rgba(255,255,255,.95)');gr.addColorStop(Math.min(1,(e+5)/64),'rgba(255,255,255,0)');fg.fillStyle=gr;fg.fillRect(x,0,1,64);}
+  const ft=new THREE.CanvasTexture(fc);ft.wrapS=THREE.RepeatWrapping;ft.repeat.set(60,1);
+  const foam=new THREE.Mesh(new THREE.PlaneGeometry(400,2.2),new THREE.MeshBasicMaterial({map:ft,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6}));
+  foam.rotation.x=-Math.PI/2;foam.position.set(0,-.004,WORLD.shore);foam.renderOrder=1;scene.add(foam);return{nm,foam,ft};})();
+function seaStep(dt,t){seaFx.nm.offset.x+=dt*.035;seaFx.nm.offset.y+=dt*.022;const w=Math.sin(t*.7);seaFx.foam.position.z=WORLD.shore+.55+w*.45;seaFx.foam.material.opacity=.55+.4*Math.sin(t*.7+1.2);seaFx.ft.offset.x=Math.sin(t*.23)*.02;}
+
 /* ---------- the small things that make ground look like ground ---------- */
 let groundFx=null;
 // Tufts of grass and little flowers on the lawns (drawn in two batches, however many there are), a kerb line, manhole covers, drain grates and a few stains on the road.
