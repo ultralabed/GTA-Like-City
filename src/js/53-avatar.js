@@ -31,7 +31,7 @@ const deck=new THREE.Group();deck.visible=false;scene.add(deck);
 function thirdCam(dt,t){
   riderStep(dt,t);
   deck.visible=third&&boarding();if(deck.visible){deck.position.set(pos.x,jumpY,pos.z);deck.rotation.y=meYaw-Math.PI/2;}
-  const on=third&&!ride&&!onBus;me.root.visible=on;hand.visible=!on;
+  const on=third&&!ride&&!onBus&&!aloft;me.root.visible=on;hand.visible=!on;
   if(!on)return;
   const sp=Math.hypot(vel.x,vel.z),moving=sp>.3&&!seat;
   if(moving)meYaw+=angDiff(Math.atan2(vel.x,vel.z),meYaw)*(1-Math.exp(-dt*10));      // turn to face the way you walk

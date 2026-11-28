@@ -10,7 +10,7 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,walks,REL,album,shells,gifted,iceCreams,fishGot,isleSeen,carUp,carKind,carDmg,carDirt,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:aloft?WORLD.isle.z+2.5:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,walks,REL,album,shells,gifted,iceCreams,fishGot,isleSeen,carUp,carKind,carDmg,carDirt,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
@@ -22,7 +22,7 @@ const stats={walk:0,drive:0,jobs:0,earned:0,done:{}};let stLast=null,stCash=null
 const BADGES=[['walk1',()=>stats.walk>=500,'小小散步家：走了 500 公尺',20],['walk2',()=>stats.walk>=3000,'健走高手：走了 3 公里',60],
   ['drive1',()=>stats.drive>=1000,'新手駕駛：開（騎）了 1 公里',20],['drive2',()=>stats.drive>=8000,'老司機：開（騎）了 8 公里',80],
   ['job1',()=>stats.jobs>=1,'熱心鄰居：完成第 1 個任務',10],['job5',()=>stats.jobs>=5,'街上的好幫手：完成 5 個任務',50],['job15',()=>stats.jobs>=15,'夕陽街之星：完成 15 個任務',150],
-  ['cab',()=>fares>=3,'小黃司機：載了 3 位客人',40],
+  ['cab',()=>fares>=3,'小黃司機：載了 3 位客人',40],['tower',()=>stats.tower>=1,'登高望遠：爬上燈塔頂',40],
   ['bus',()=>busTrips>=1,'搭過公車了',5],['taxi',()=>taxiTrips>=1,'搭過計程車了',5],['fish',()=>fishCount>=5,'釣魚達人：釣到 5 次',30],['hoop',()=>baskets>=3,'神射手：投進 3 球',30],
   ['stars',()=>Object.keys(starGot).length>=5,'小小探險家：找到 5 顆星星',30],
   ['fish5',()=>Object.keys(fishGot).length>=5,'釣魚圖鑑收集一半（5 種）',40],

@@ -22,6 +22,8 @@
     cyl(1.05,1.5,8,white,0,4,0,16);cyl(1.25,1.32,1.1,red,0,2.6,0,16);cyl(1.12,1.18,1.1,red,0,6,0,16);cyl(1.5,1.5,.14,M.steel,0,8.05,0,16);
     cyl(.75,.75,1.2,M.glass,0,8.7,0,12);cyl(.05,.95,.9,red,0,9.75,0,12);box(.7,1.5,.08,M.walnut,0,.75,1.5);
     box(1.6,.07,.45,M.walnut,3.4,.45,3.2);[2.7,4.1].forEach(x=>box(.07,.45,.4,M.steel,x,.225,3.2));                  // a bench facing the town
+    for(const y of[8.62,9.08]){const m=new THREE.Mesh(new THREE.TorusGeometry(1.47,.022,6,28),M.steel);m.rotation.x=Math.PI/2;m.position.y=y;add(m);}          // a rail round the walkway at the top
+    for(let k=0;k<10;k++)cyl(.02,.02,.98,M.steel,Math.cos(k*.628)*1.47,8.6,Math.sin(k*.628)*1.47,6);box(.5,.9,.06,M.walnut,0,8.57,.78);
     cur=pv;weldStatic(ig);colliders.push([I.x-1.5,I.x+1.5,I.z-1.5,I.z+1.5],[I.x+2.6,I.x+4.2,I.z+3,I.z+3.45]);
     isleLamp=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),new THREE.MeshBasicMaterial({color:0x554a30}));isleLamp.position.set(I.x,8.7,I.z);scene.add(isleLamp);
     isleBeam=new THREE.Group();isleBeam.position.copy(isleLamp.position);scene.add(isleBeam);

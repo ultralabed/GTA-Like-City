@@ -5,6 +5,7 @@ let down=null,bob=0,locked=false;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PR=.3;
 function blocked(x,z){
+  if(aloft){const d=Math.hypot(x-WORLD.isle.x,z-WORLD.isle.z);return d<.97||d>1.36;}                 // on the lighthouse walkway: a ring round the lamp, with a rail
   if(!inWorld(x,z,PR)&&!onIsle(x,z,PR+.3))return true;
   for(const d of doors){const c=doorArea(d),hit=(a,b)=>a>c[0]-PR&&a<c[1]+PR&&b>c[2]-PR&&b<c[3]+PR;
     if(hit(x,z)&&!hit(pos.x,pos.z))return true;}                              // a door stops you, but never traps you if it moved onto you
