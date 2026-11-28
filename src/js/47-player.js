@@ -244,9 +244,12 @@ function rideStep(dt,f,s){
       else say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
   pos.x=r.x;pos.z=r.z;
   if(S.tank&&Math.abs(r.v)>11.4&&performance.now()/1000-fastAt>25&&!(quest&&quest.type==='race')){const g=people.find(n=>n.guard);   // over 40 km/h right past the patrolman
-    if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<13){fastAt=performance.now()/1000;stats.fast=(stats.fast||0)+1;say('你在巡邏員旁邊開到 '+Math.round(Math.abs(r.v)*3.6)+' km/h！街上限速 40。');addRep(-1);}}
+    if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<13){fastAt=performance.now()/1000;stats.fast=(stats.fast||0)+1;addRep(-1);say('你在巡邏員旁邊開到 '+Math.round(Math.abs(r.v)*3.6)+' km/h！街上限速 40。'+'★'.repeat(heat));}}
+  if(S.tank&&onRoad(r.z)&&Math.abs(r.v)>3&&!(quest&&quest.type==='race')&&Math.abs(r.x)<46){const mid=(WORLD.street.z0+WORLD.street.z1)/2,fwd=Math.cos(r.h)*Math.sign(r.v),bad=(r.z>mid+.6&&fwd<-.6)||(r.z<mid-.6&&fwd>.6);   // on the wrong side of the main street, against the traffic
+    wrongT=bad?wrongT+dt:0;if(wrongT>2.5&&performance.now()/1000-wrongAt>25){wrongAt=performance.now()/1000;wrongT=0;const g=people.find(n=>n.guard);
+      if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<28){stats.wrong=(stats.wrong||0)+1;addRep(-1);say('你逆向行駛，被巡邏員看到了！在夕陽街要靠右邊開。'+'★'.repeat(heat));}else say('你開到對向車道了！在夕陽街要靠右邊開（往東走南邊那一線，往西走北邊那一線）。',true);}}
   if(sigCars==='r'&&onRoad(r.z)&&r.x>ZEBRA[0]&&r.x<ZEBRA[1]&&Math.abs(r.v)>2&&performance.now()/1000-redAt>20){redAt=performance.now()/1000;   // driving through on red
-    const g=people.find(n=>n.guard);if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<32){say('你闖紅燈，被巡邏員看到了！');addRep(-1);}else say('你闖紅燈了。這次巡邏員沒看到。');}
+    const g=people.find(n=>n.guard);if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<32){addRep(-1);say('你闖紅燈，被巡邏員看到了！'+'★'.repeat(heat));}else say('你闖紅燈了。這次巡邏員沒看到。');}
   r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;spinWheels(r,r.v,dt,st);
   if(S.water){const tt=performance.now()/1000;r.g.position.y=-.03+Math.sin(tt*1.7)*.04;r.g.rotation.z=Math.sin(tt*1.3)*.03+Math.min(.12,r.v*.012);}   // bobs on the waves, nose up when fast
   if(r.g.userData.lamp){const k=Math.max(0,Math.min(1,(dark-.2)/.4));r.g.userData.lamp.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);}
@@ -316,7 +319,7 @@ function wave(){if(ride||onBus||seat)return;emote='wave';emoteT=1.8;const now=pe
   for(const n of nearFolk(7)){if(k>=3||(n.wavedAt&&n.wavedAt>now-25)||n.react)continue;n.wavedAt=now;waves++;notify(n,'greet');n.like=Math.min(5,n.like+.05);k++;}
   if(!k)say(nearFolk(7).length?'你揮揮手。他們剛剛已經跟你打過招呼了。':'你揮揮手，可是附近沒有人。',true);}
 // --- crouching: you go low and slow. Animals are not afraid of someone small and quiet ---
-let crouch=false,crouchK=0;let fastAt=-99;
+let crouch=false,crouchK=0;let fastAt=-99,wrongT=0,wrongAt=-99;
 function toggleCrouch(){if(ride||onBus||seat||aloft||waterDepth()>.3)return;crouch=!crouch;actKey='';if(crouch){runLock=false;say('你蹲下來了，走得很慢、很安靜。小橘不會怕蹲著的人。再按 C 站起來。');}}
 function crouchStep(dt){if(crouch&&(ride||onBus||seat||jumpY>0||waterDepth()>.3)){crouch=false;actKey='';}crouchK+=((crouch?1:0)-crouchK)*(1-Math.exp(-dt*9));}
 function dance(){if(ride||onBus||seat)return;if(emote==='dance'){emote='';return;}emote='dance';emoteT=1e9;danceTick=0;say('你開始跳舞！動一下就會停。愛玩的人看到可能會跟你一起跳。');}

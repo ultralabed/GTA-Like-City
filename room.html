@@ -2049,9 +2049,12 @@ function rideStep(dt,f,s){
       else say('碰！'+S.name+'撞到東西，東西也用一樣大的力把'+S.name+'推回來，所以彈了一下。');}r.v*=-.2;}}
   pos.x=r.x;pos.z=r.z;
   if(S.tank&&Math.abs(r.v)>11.4&&performance.now()/1000-fastAt>25&&!(quest&&quest.type==='race')){const g=people.find(n=>n.guard);   // over 40 km/h right past the patrolman
-    if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<13){fastAt=performance.now()/1000;stats.fast=(stats.fast||0)+1;say('你在巡邏員旁邊開到 '+Math.round(Math.abs(r.v)*3.6)+' km/h！街上限速 40。');addRep(-1);}}
+    if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<13){fastAt=performance.now()/1000;stats.fast=(stats.fast||0)+1;addRep(-1);say('你在巡邏員旁邊開到 '+Math.round(Math.abs(r.v)*3.6)+' km/h！街上限速 40。'+'★'.repeat(heat));}}
+  if(S.tank&&onRoad(r.z)&&Math.abs(r.v)>3&&!(quest&&quest.type==='race')&&Math.abs(r.x)<46){const mid=(WORLD.street.z0+WORLD.street.z1)/2,fwd=Math.cos(r.h)*Math.sign(r.v),bad=(r.z>mid+.6&&fwd<-.6)||(r.z<mid-.6&&fwd>.6);   // on the wrong side of the main street, against the traffic
+    wrongT=bad?wrongT+dt:0;if(wrongT>2.5&&performance.now()/1000-wrongAt>25){wrongAt=performance.now()/1000;wrongT=0;const g=people.find(n=>n.guard);
+      if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<28){stats.wrong=(stats.wrong||0)+1;addRep(-1);say('你逆向行駛，被巡邏員看到了！在夕陽街要靠右邊開。'+'★'.repeat(heat));}else say('你開到對向車道了！在夕陽街要靠右邊開（往東走南邊那一線，往西走北邊那一線）。',true);}}
   if(sigCars==='r'&&onRoad(r.z)&&r.x>ZEBRA[0]&&r.x<ZEBRA[1]&&Math.abs(r.v)>2&&performance.now()/1000-redAt>20){redAt=performance.now()/1000;   // driving through on red
-    const g=people.find(n=>n.guard);if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<32){say('你闖紅燈，被巡邏員看到了！');addRep(-1);}else say('你闖紅燈了。這次巡邏員沒看到。');}
+    const g=people.find(n=>n.guard);if(g&&!g.hidden&&Math.hypot(g.pos.x-r.x,g.pos.z-r.z)<32){addRep(-1);say('你闖紅燈，被巡邏員看到了！'+'★'.repeat(heat));}else say('你闖紅燈了。這次巡邏員沒看到。');}
   r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;spinWheels(r,r.v,dt,st);
   if(S.water){const tt=performance.now()/1000;r.g.position.y=-.03+Math.sin(tt*1.7)*.04;r.g.rotation.z=Math.sin(tt*1.3)*.03+Math.min(.12,r.v*.012);}   // bobs on the waves, nose up when fast
   if(r.g.userData.lamp){const k=Math.max(0,Math.min(1,(dark-.2)/.4));r.g.userData.lamp.color.setRGB(.2+k*6,.2+k*5.4,.2+k*4);}
@@ -2121,7 +2124,7 @@ function wave(){if(ride||onBus||seat)return;emote='wave';emoteT=1.8;const now=pe
   for(const n of nearFolk(7)){if(k>=3||(n.wavedAt&&n.wavedAt>now-25)||n.react)continue;n.wavedAt=now;waves++;notify(n,'greet');n.like=Math.min(5,n.like+.05);k++;}
   if(!k)say(nearFolk(7).length?'你揮揮手。他們剛剛已經跟你打過招呼了。':'你揮揮手，可是附近沒有人。',true);}
 // --- crouching: you go low and slow. Animals are not afraid of someone small and quiet ---
-let crouch=false,crouchK=0;let fastAt=-99;
+let crouch=false,crouchK=0;let fastAt=-99,wrongT=0,wrongAt=-99;
 function toggleCrouch(){if(ride||onBus||seat||aloft||waterDepth()>.3)return;crouch=!crouch;actKey='';if(crouch){runLock=false;say('你蹲下來了，走得很慢、很安靜。小橘不會怕蹲著的人。再按 C 站起來。');}}
 function crouchStep(dt){if(crouch&&(ride||onBus||seat||jumpY>0||waterDepth()>.3)){crouch=false;actKey='';}crouchK+=((crouch?1:0)-crouchK)*(1-Math.exp(-dt*9));}
 function dance(){if(ride||onBus||seat)return;if(emote==='dance'){emote='';return;}emote='dance';emoteT=1e9;danceTick=0;say('你開始跳舞！動一下就會停。愛玩的人看到可能會跟你一起跳。');}
@@ -3615,18 +3618,24 @@ const cyclist=(function(){const m=bikeMesh(false),Q=RIDE_POSE.bike;while(m.rider
   const p=makePerson({name:'騎車的阿姨',h:1.62,skin:0xd9a67e,hair:0x2a1c14,top:0xe94f37,bottom:0x35508a,shoe:0xf2f2f2,long:true});interact.pop();p.tag.remove();
   m.rider.add(p.root);p.root.position.set(Q.x,Q.y-.05,0);p.root.rotation.y=Math.PI/2;m.rider.visible=true;
   const J=p.J;J.spine.rotation.x=Q.sx*.7;J.neck.rotation.x=Q.nx*.7;J.al.rotation.set(Q.a,0,.1);J.ar.rotation.set(Q.a,0,-.1);J.el.rotation.x=J.er.rotation.x=Q.e;
-  return{m,p,x:-60,dir:1,v:0,ph:0,bell:0,wait:0};})();
+  const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
+  return{m,p,tag,x:-60,dir:1,v:0,ph:0,bell:0,wait:0,ouch:0,why:''};})();
 function updateCyclist(dt,t){const c=cyclist,S=WORLD.street,z=c.dir>0?S.z1-.5:S.z0+.5,show=dark<.75&&rain<.3;c.bell-=dt;
-  if(!show&&Math.abs(c.x-pos.x)>60){c.m.g.visible=false;return;}c.m.g.visible=Math.abs(c.x-pos.x)<95;
-  let want=4.2;const ahead=(x2,z2,r)=>{const d=(x2-c.x)*c.dir;return d>0&&d<r&&Math.abs(z2-z)<1.25;};
-  const stopX=c.dir>0?ZEBRA[0]-1.2:ZEBRA[1]+1.2,ds=(stopX-c.x)*c.dir;if((sigCars==='r'||sigCars==='y')&&ds>0&&ds<6)want=Math.min(want,Math.max(0,(ds-.5)*1.4));                 // red light at the crossing
+  if(!show&&Math.abs(c.x-pos.x)>60){c.m.g.visible=false;c.tag.hidden=true;return;}c.m.g.visible=Math.abs(c.x-pos.x)<95;
+  c.ouch-=dt;c.why='';let want=c.ouch>0?0:4.2;const ahead=(x2,z2,r)=>{const d=(x2-c.x)*c.dir;return d>0&&d<r&&Math.abs(z2-z)<1.25;};
+  const stopX=c.dir>0?ZEBRA[0]-1.2:ZEBRA[1]+1.2,ds=(stopX-c.x)*c.dir;if((sigCars==='r'||sigCars==='y')&&ds>0&&ds<6){want=Math.min(want,Math.max(0,(ds-.5)*1.4));c.why='等紅燈';}                 // red light at the crossing
   for(const n of people)if(!n.hidden&&ahead(n.pos.x,n.pos.z,3))want=0;for(const k of cars)if(k.on&&ahead(k.x,k.z,5.5))want=0;
-  const me2=ride?[ride.x,ride.z]:[pos.x,pos.z];if(!onBus&&!aloft&&ahead(me2[0],me2[1],ride?5:3.2)){want=0;if(c.bell<=0){c.bell=3.5;tone(2093,.25,.12*hear(c.x,z,25),'sine');setTimeout(()=>tone(2093,.3,.1*hear(c.x,z,25),'sine'),170);say('叮鈴叮鈴！騎腳踏車的阿姨在等你讓路。',true);}}
+  const me2=ride?[ride.x,ride.z]:[pos.x,pos.z];if(!onBus&&!aloft&&ahead(me2[0],me2[1],ride?5:3.2)){want=0;c.why='等你讓路';if(c.bell<=0){c.bell=3.5;tone(2093,.25,.12*hear(c.x,z,25),'sine');setTimeout(()=>tone(2093,.3,.1*hear(c.x,z,25),'sine'),170);say('叮鈴叮鈴！騎腳踏車的阿姨在等你讓路。',true);}}
+  if(ride&&c.ouch<=-4&&Math.abs(ride.v)>2&&Math.hypot(ride.x-c.x,ride.z-z)<1.5){c.ouch=3;c.v=0;ride.v*=-.25;sfxBump();addRep(-1);say('你差點撞倒騎腳踏車的阿姨！她嚇了一大跳：「開車要看路啊！」'+'★'.repeat(heat));}   // you clipped her: she stops, shaken, and you are in trouble
+  if(c.ouch>0)c.why='被你嚇到了';
   c.v+=Math.max(-9*dt,Math.min(2.2*dt,want-c.v));c.x+=c.v*c.dir*dt;if(Math.abs(c.x)>82&&Math.abs(c.x-pos.x)>50){c.dir=-c.dir;c.x=Math.sign(c.x)*82;}else if(Math.abs(c.x)>98){c.dir=-c.dir;}
   const g=c.m.g;g.position.set(c.x,0,c.dir>0?S.z1-.5:S.z0+.5);g.rotation.y=c.dir>0?0:Math.PI;spinWheels(c.m,c.v,dt,0);
   c.ph+=c.v*dt*2.4;const w=Math.sin(c.ph),cs=Math.cos(c.ph),Q=RIDE_POSE.bike,J=c.p.J,st=c.v<.3?1:0;                                        // pedalling; one foot down when stopped
   J.hl.rotation.x=Q.h+w*.32+st*.75;J.kl.rotation.x=Q.k-w*.3+cs*.12-st*1.0;J.hr.rotation.x=Q.h-w*.32;J.kr.rotation.x=Q.k+w*.3-cs*.12;g.rotation.x=0;g.rotation.z=st*-.06;
-  c.p.blinkT-=dt;if(c.p.blinkT<-.12)c.p.blinkT=2.2+Math.random()*4;c.p.lids.visible=c.p.blinkT<0;}
+  c.p.blinkT-=dt;if(c.p.blinkT<-.12)c.p.blinkT=2.2+Math.random()*4;c.p.lids.visible=c.p.blinkT<0;
+  const f=c.p.faces,fc=c.ouch>0?'u':c.why?'n':'h';if(fc!==c.p.face){f[c.p.face].visible=false;f[fc].visible=true;c.p.face=fc;}
+  pv3.set(c.x,1.95,g.position.z).project(camera);const near=Math.hypot(c.x-pos.x,g.position.z-pos.z)<14&&pv3.z<1&&Math.abs(pv3.x)<1.1&&Math.abs(pv3.y)<1.1&&!roomAt(pos.x,pos.z);c.tag.hidden=!near;
+  if(near){c.tag.style.left=((pv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-pv3.y)/2*canvas.clientHeight)+'px';const s2='騎車的阿姨 · '+(c.why||'騎腳踏車兜風');if(c.tag.textContent!==s2)c.tag.textContent=s2;}}
 function riderStep(dt,t){const r=ride;if(!r||!r.rig)return;const p=r.rig,Q=r.rigQ,J=p.J;
   if(r.kind==='bike'){p.ph+=r.v*dt*2.4;const w=Math.sin(p.ph),c=Math.cos(p.ph);J.hl.rotation.x=Q.h+w*.32;J.kl.rotation.x=Q.k-w*.3+c*.12;J.hr.rotation.x=Q.h-w*.32;J.kr.rotation.x=Q.k+w*.3-c*.12;}   // pedalling
   J.neck.rotation.set(Q.nx,0,0);const lean=r.kind==='boat'?0:(r.g.rotation.x||0);J.spine.rotation.set(Q.sx,0,0);
