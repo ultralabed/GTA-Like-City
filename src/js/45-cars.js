@@ -135,6 +135,19 @@ const taxi=cars[cars.length-1];
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:70,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,van:true,busDir:1,stopX:21.5+2.1,served:false,dwell:0,sold:0,jing:0}));}
 const iceVan=cars[cars.length-1];
+// --- the rubbish truck: every evening at half past six it plays its tune and crawls along the street, once each way. People at home carry a bag out to the kerb, wait for it, and go back in. ---
+{const m=carMesh(0xf2c23d,'pickup');m.g.visible=false;m.rider.visible=true;const wm=new THREE.MeshStandardMaterial({color:0xf3efe2,roughness:.6}),dk=new THREE.MeshStandardMaterial({color:0x3a3d42,roughness:.7});
+  const add3=(w,h,d,mat,x,y,z)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);b.position.set(x,y,z);b.castShadow=true;m.g.add(b);};
+  add3(1.5,1.0,1.74,wm,-1.2,1.5,0);add3(1.52,.16,1.76,m.paint,-1.2,1.25,0);add3(.42,.8,1.6,dk,-2.12,1.15,0);add3(.3,.1,.5,new THREE.MeshBasicMaterial({color:0xffc24a}),-.1,1.56,0);   // the white body, a yellow band, the dark hopper at the back, an amber light
+  const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
+  cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:1e9,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.3,hw:.92,truck:true,busDir:1,pass:0,dwell:0,jing:0}));}
+const trashTruck=cars[cars.length-1];let trashDay=-1,trashCall=false;
+function trashTune(x,z){const v=.11*hear(x,z,55);[523,659,784,659,880,784,659,523].forEach((f,i)=>setTimeout(()=>tone(f,.3,v,'sine'),i*260));}
+function trashStep(){const c=trashTruck;if(!trashCall&&trashDay!==day&&clock>=18.5&&clock<19.2){trashDay=day;trashCall=true;c.busDir=1;c.pass=0;c.t=14;if(inWorld(pos.x,pos.z,0))say('♪ 遠遠傳來垃圾車的音樂。在家的鄰居會提垃圾到路邊等。',true);}
+  if(trashCall&&!c.on&&c.t>1e8)trashCall=false;}
+function truckTurn(c){const nd=-c.busDir,R2=ROUTES[nd>0?'east':'west'],sx=-nd*76,sz=R2[0][1];if(cars.some(o=>o!==c&&o.on&&Math.abs(o.z-sz)<1.6&&Math.abs(o.x-sx)<16)){c.v=0;return;}
+  c.busDir=nd;c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=2.8;c.dwell=0;c.dir=nd;c.pass=1;}
+
 // the south line: a teal bus that stops by the park, then turns down the side street and stops there too
 const SIDE_STOP=38.2;
 {const m=busMesh(0x2f9fb0);m.g.visible=false;const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
@@ -200,7 +213,7 @@ const STOPS={east:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jE}],eastSouth:[zebraE,{p:[JX
 const onAnyRoad=(x,z)=>onRoad(z)||(x>JX0&&x<JX1&&z>=ST.z1);
 function startCar(c){
   if(c.van&&(dark>.45||rainOn))return false;                                          // no ice cream at night or in the rain
-  const name=c.van?'east':c.line==='south'?'eastSouth':c.bus||c.taxi?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
+  const name=c.van?'east':c.line==='south'?'eastSouth':c.bus||c.taxi||c.truck?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
   const R=ROUTES[name];if(cars.some(o=>o!==c&&o.on&&Math.hypot(o.x-R[0][0],o.z-R[0][1])<24))return false;
   c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=!!c.taxi&&c.served;c.served2=false;c.dwell=0;return true;
 }
@@ -210,18 +223,23 @@ function busTurn(c){const nd=-c.busDir,R2=ROUTES[nd>0?'east':'west'],sx=-nd*76,s
   c.busDir=nd;if(c.bus)c.stopX=BUS_STOP[nd];c.served2=false;c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=CAR_SPEED;c.served=false;c.dwell=0;c.dir=nd;
   camera.position.set(c.x-nd*9,4.6,c.z);say(c.taxi?'計程車在街尾掉頭，往回開。':'公車在街尾繞了一圈，現在往回開，下一站是對面的公車站。');}
 let carClock=0;
+for(const H of houses){const f=H.front;if(!f||H.lot.tpl==='shop'||Math.abs(f.dz)<.5)continue;                          // a place at the kerb for each house on the main street, where its people wait with their rubbish
+  ACT['trash'+H.id]={type:'trash',ap:[f.x,f.dz>0?ST.z0-.55:ST.z1+.55],yaw:f.dz>0?0:Math.PI,pose:'idle',label:'提著垃圾等垃圾車',shared:true,house:H.id,owner:-1,room:null};}
+function trashDone(n){n.need.care=Math.min(1,n.need.care+.25);endGoal(n,true);react(n,n.o.playful>.5?'丟進去囉！咻～':'好，垃圾丟好了。',1.8,null);}
 const cv3=new THREE.Vector3();
 function updateCars(dt){
+  trashStep();
   carClock+=dt;const now=carClock;updateSignal(now);updateJunction(now);          // the lights run on game time, so they pause when the game does
   for(const c of cars){
     if(!c.on){c.t-=dt;if(c.t<=0&&!startCar(c))c.t=2;continue;}
     // steer toward the next point on the route
     if(c===onBus&&c.dir!==0&&c.x*c.busDir>76){busTurn(c);continue;}                    // with you aboard the bus turns back just outside town
+    if(c.truck&&c.pass===0&&c.dir!==0&&c.x*c.busDir>76){truckTurn(c);continue;}               // the rubbish truck comes back down the other side
     let tp=c.route[c.wi],dist=Math.hypot(tp[0]-c.x,tp[1]-c.z);
     if(dist<1.6+c.v*.12){c.wi++;if(c.wi>=c.route.length){
       if(c===onBus){busTurn(c);continue;}
       if(c.bus){c.busDir=c.home;c.stopX=BUS_STOP[c.home];}
-      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.taxi?1e9:c.van?rnd(150,260):c.line?rnd(45,75):c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
+      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.taxi||c.truck?1e9:c.van?rnd(150,260):c.line?rnd(45,75):c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
     const turn=angDiff(Math.atan2(-(tp[1]-c.z),tp[0]-c.x),c.h),maxT=(c.v/3.3+.05)*dt;c.h+=Math.max(-maxT,Math.min(maxT,turn));
     const fx=Math.cos(c.h),fz=-Math.sin(c.h),px0=c.x+fx*c.hl,pz0=c.z+fz*c.hl;c.dir=Math.abs(fx)>.9&&onRoad(c.z)?Math.sign(fx):0;   // dir: +1/-1 while running along the main street, 0 otherwise
     let gap=1e9;
@@ -240,11 +258,16 @@ function updateCars(dt){
       if(c.dwell>0){c.dwell-=dt;gap=0;}
       else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=c.van?22:c.taxi?(onBus===c?3:25):6;c.served=true;sfxDoor(c.x,c.z);if(c.taxi)taxiStopped(c);if(c.van)vanArrived(c);}}
       if(c.van&&c.dwell>0){c.jing-=dt;if(c.jing<=0){c.jing=3.2;sfxJingle(c.x,c.z);}}}
+    if(c.truck){c.jing-=dt;if(c.jing<=0){c.jing=4.2;trashTune(c.x,c.z);}                                 // it never stops playing its tune
+      if(c.dwell>0){c.dwell-=dt;gap=0;}else for(const n of people){if(n.hidden||!n.goal||n.goal.id!=='trash'||n.phase!=='at'||Math.abs(n.pos.z-c.z)>3.3)continue;
+        const d=(n.pos.x-c.x)*c.busDir;if(d>-1&&d<9&&d+.3<gap)gap=Math.max(1.3,d+.3);                    // someone is waiting at the kerb ahead: draw up beside them
+        if(c.v<.25&&d<1.6&&d>-2.4){c.dwell=2.4;sfxDoor(c.x,c.z);for(const m2 of people)if(!m2.hidden&&m2.goal&&m2.goal.id==='trash'&&m2.phase==='at'&&Math.abs(m2.pos.z-c.z)<3.3&&Math.abs(m2.pos.x-c.x)<3.2)trashDone(m2);break;}}}
     if(c.line==='south'&&c.served&&!c.served2&&!(c.dwell>0)&&fz>.9&&Math.abs(c.x-LN.s)<1.5){const d=SIDE_STOP+c.hl-pz0;      // its second stop, on the side street
       if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.4){c.dwell=7;c.served2=true;sfxDoor(c.x,c.z);if(c===onBus)say('第二條馬路站到了。要下車請按「下車」。');}}
     if(c===onBus&&busBell&&!(c.dwell>0)&&c.dir!==0&&(c.x<JX0-8||c.x>JX1+8)&&(c.x<ZEBRA[0]-6||c.x>ZEBRA[1]+6)){gap=0;   // you rang the bell: pull up at the next safe bit of kerb
       if(c.v<.15){c.dwell=4;busBell=false;sfxDoor(c.x,c.z);leaveBus();}}
     let want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
+    if(c.truck)want=Math.min(want,2.8);
     if(Math.abs(turn)>.2)want=Math.min(want,3.6);                                      // slow down for corners
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=fx*c.v*dt;c.z+=fz*c.v*dt;
     if(c.v<.2&&gap<4&&!(c.dwell>0)&&!c.stops.some(sp=>sp.st()!=='g')){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;if(Math.hypot(c.x-pos.x,c.z-pos.z)<32)say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
@@ -253,9 +276,9 @@ function updateCars(dt){
     const hx=Math.abs(fx)*c.hl+Math.abs(fz)*c.hw+.05,hz=Math.abs(fz)*c.hl+Math.abs(fx)*c.hw;
     c.box[0]=c.x-hx;c.box[1]=c.x+hx;c.box[2]=c.z-hz;c.box[3]=c.z+hz;
     carLights(c,want<c.v-.5);
-    const stopd=(c.bus||c.van)&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<28;                     // a bus at its stop shows which line it is
+    const stopd=((c.bus||c.van)&&c.dwell>0||c.truck)&&Math.hypot(c.x-pos.x,c.z-pos.z)<28;                     // a bus at its stop shows which line it is
     c.tag.hidden=c.honk<=0&&!stopd;
-    {const txt=c.honk>0?'叭叭！':c.van?'🍦 冰淇淋車 · 一支 $10':c.line?(c.served2?'南線 · 第二條馬路站':'南線 · 往第二條馬路 →'):c.busDir>0?'公車 · 往東 →':'公車 · ← 往西';if(!c.tag.hidden&&c.tag.textContent!==txt)c.tag.textContent=txt;}
+    {const txt=c.honk>0?'叭叭！':c.truck?'♪ 垃圾車 · 請把垃圾拿出來':c.van?'🍦 冰淇淋車 · 一支 $10':c.line?(c.served2?'南線 · 第二條馬路站':'南線 · 往第二條馬路 →'):c.busDir>0?'公車 · 往東 →':'公車 · ← 往西';if(!c.tag.hidden&&c.tag.textContent!==txt)c.tag.textContent=txt;}
     if(c.honk>0||stopd){cv3.set(c.x,2,c.z).project(camera);if(cv3.z<1){c.tag.style.left=((cv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-cv3.y)/2*canvas.clientHeight)+'px';}else c.tag.hidden=true;}
   }
 }

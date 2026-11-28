@@ -1549,6 +1549,19 @@ const taxi=cars[cars.length-1];
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:70,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92,van:true,busDir:1,stopX:21.5+2.1,served:false,dwell:0,sold:0,jing:0}));}
 const iceVan=cars[cars.length-1];
+// --- the rubbish truck: every evening at half past six it plays its tune and crawls along the street, once each way. People at home carry a bag out to the kerb, wait for it, and go back in. ---
+{const m=carMesh(0xf2c23d,'pickup');m.g.visible=false;m.rider.visible=true;const wm=new THREE.MeshStandardMaterial({color:0xf3efe2,roughness:.6}),dk=new THREE.MeshStandardMaterial({color:0x3a3d42,roughness:.7});
+  const add3=(w,h,d,mat,x,y,z)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);b.position.set(x,y,z);b.castShadow=true;m.g.add(b);};
+  add3(1.5,1.0,1.74,wm,-1.2,1.5,0);add3(1.52,.16,1.76,m.paint,-1.2,1.25,0);add3(.42,.8,1.6,dk,-2.12,1.15,0);add3(.3,.1,.5,new THREE.MeshBasicMaterial({color:0xffc24a}),-.1,1.56,0);   // the white body, a yellow band, the dark hopper at the back, an amber light
+  const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
+  cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:1e9,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.3,hw:.92,truck:true,busDir:1,pass:0,dwell:0,jing:0}));}
+const trashTruck=cars[cars.length-1];let trashDay=-1,trashCall=false;
+function trashTune(x,z){const v=.11*hear(x,z,55);[523,659,784,659,880,784,659,523].forEach((f,i)=>setTimeout(()=>tone(f,.3,v,'sine'),i*260));}
+function trashStep(){const c=trashTruck;if(!trashCall&&trashDay!==day&&clock>=18.5&&clock<19.2){trashDay=day;trashCall=true;c.busDir=1;c.pass=0;c.t=14;if(inWorld(pos.x,pos.z,0))say('♪ 遠遠傳來垃圾車的音樂。在家的鄰居會提垃圾到路邊等。',true);}
+  if(trashCall&&!c.on&&c.t>1e8)trashCall=false;}
+function truckTurn(c){const nd=-c.busDir,R2=ROUTES[nd>0?'east':'west'],sx=-nd*76,sz=R2[0][1];if(cars.some(o=>o!==c&&o.on&&Math.abs(o.z-sz)<1.6&&Math.abs(o.x-sx)<16)){c.v=0;return;}
+  c.busDir=nd;c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=2.8;c.dwell=0;c.dir=nd;c.pass=1;}
+
 // the south line: a teal bus that stops by the park, then turns down the side street and stops there too
 const SIDE_STOP=38.2;
 {const m=busMesh(0x2f9fb0);m.g.visible=false;const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
@@ -1614,7 +1627,7 @@ const STOPS={east:[zebraE,{p:[JX0-2.6,LN.e],st:()=>jE}],eastSouth:[zebraE,{p:[JX
 const onAnyRoad=(x,z)=>onRoad(z)||(x>JX0&&x<JX1&&z>=ST.z1);
 function startCar(c){
   if(c.van&&(dark>.45||rainOn))return false;                                          // no ice cream at night or in the rain
-  const name=c.van?'east':c.line==='south'?'eastSouth':c.bus||c.taxi?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
+  const name=c.van?'east':c.line==='south'?'eastSouth':c.bus||c.taxi||c.truck?(c.busDir>0?'east':'west'):['east','west','east','west','northLeft','northRight','eastSouth','westSouth'][Math.floor(Math.random()*8)];
   const R=ROUTES[name];if(cars.some(o=>o!==c&&o.on&&Math.hypot(o.x-R[0][0],o.z-R[0][1])<24))return false;
   c.route=R;c.stops=STOPS[name];c.wi=1;c.x=R[0][0];c.z=R[0][1];c.h=Math.atan2(-(R[1][1]-c.z),R[1][0]-c.x);c.v=CAR_SPEED;c.on=true;c.g.visible=true;c.served=!!c.taxi&&c.served;c.served2=false;c.dwell=0;return true;
 }
@@ -1624,18 +1637,23 @@ function busTurn(c){const nd=-c.busDir,R2=ROUTES[nd>0?'east':'west'],sx=-nd*76,s
   c.busDir=nd;if(c.bus)c.stopX=BUS_STOP[nd];c.served2=false;c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=CAR_SPEED;c.served=false;c.dwell=0;c.dir=nd;
   camera.position.set(c.x-nd*9,4.6,c.z);say(c.taxi?'計程車在街尾掉頭，往回開。':'公車在街尾繞了一圈，現在往回開，下一站是對面的公車站。');}
 let carClock=0;
+for(const H of houses){const f=H.front;if(!f||H.lot.tpl==='shop'||Math.abs(f.dz)<.5)continue;                          // a place at the kerb for each house on the main street, where its people wait with their rubbish
+  ACT['trash'+H.id]={type:'trash',ap:[f.x,f.dz>0?ST.z0-.55:ST.z1+.55],yaw:f.dz>0?0:Math.PI,pose:'idle',label:'提著垃圾等垃圾車',shared:true,house:H.id,owner:-1,room:null};}
+function trashDone(n){n.need.care=Math.min(1,n.need.care+.25);endGoal(n,true);react(n,n.o.playful>.5?'丟進去囉！咻～':'好，垃圾丟好了。',1.8,null);}
 const cv3=new THREE.Vector3();
 function updateCars(dt){
+  trashStep();
   carClock+=dt;const now=carClock;updateSignal(now);updateJunction(now);          // the lights run on game time, so they pause when the game does
   for(const c of cars){
     if(!c.on){c.t-=dt;if(c.t<=0&&!startCar(c))c.t=2;continue;}
     // steer toward the next point on the route
     if(c===onBus&&c.dir!==0&&c.x*c.busDir>76){busTurn(c);continue;}                    // with you aboard the bus turns back just outside town
+    if(c.truck&&c.pass===0&&c.dir!==0&&c.x*c.busDir>76){truckTurn(c);continue;}               // the rubbish truck comes back down the other side
     let tp=c.route[c.wi],dist=Math.hypot(tp[0]-c.x,tp[1]-c.z);
     if(dist<1.6+c.v*.12){c.wi++;if(c.wi>=c.route.length){
       if(c===onBus){busTurn(c);continue;}
       if(c.bus){c.busDir=c.home;c.stopX=BUS_STOP[c.home];}
-      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.taxi?1e9:c.van?rnd(150,260):c.line?rnd(45,75):c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
+      c.on=false;c.g.visible=false;c.tag.hidden=true;c.t=c.taxi||c.truck?1e9:c.van?rnd(150,260):c.line?rnd(45,75):c.bus?rnd(14,26):rnd(4,14)*(1+dark*1.5);continue;}tp=c.route[c.wi];}
     const turn=angDiff(Math.atan2(-(tp[1]-c.z),tp[0]-c.x),c.h),maxT=(c.v/3.3+.05)*dt;c.h+=Math.max(-maxT,Math.min(maxT,turn));
     const fx=Math.cos(c.h),fz=-Math.sin(c.h),px0=c.x+fx*c.hl,pz0=c.z+fz*c.hl;c.dir=Math.abs(fx)>.9&&onRoad(c.z)?Math.sign(fx):0;   // dir: +1/-1 while running along the main street, 0 otherwise
     let gap=1e9;
@@ -1654,11 +1672,16 @@ function updateCars(dt){
       if(c.dwell>0){c.dwell-=dt;gap=0;}
       else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=c.van?22:c.taxi?(onBus===c?3:25):6;c.served=true;sfxDoor(c.x,c.z);if(c.taxi)taxiStopped(c);if(c.van)vanArrived(c);}}
       if(c.van&&c.dwell>0){c.jing-=dt;if(c.jing<=0){c.jing=3.2;sfxJingle(c.x,c.z);}}}
+    if(c.truck){c.jing-=dt;if(c.jing<=0){c.jing=4.2;trashTune(c.x,c.z);}                                 // it never stops playing its tune
+      if(c.dwell>0){c.dwell-=dt;gap=0;}else for(const n of people){if(n.hidden||!n.goal||n.goal.id!=='trash'||n.phase!=='at'||Math.abs(n.pos.z-c.z)>3.3)continue;
+        const d=(n.pos.x-c.x)*c.busDir;if(d>-1&&d<9&&d+.3<gap)gap=Math.max(1.3,d+.3);                    // someone is waiting at the kerb ahead: draw up beside them
+        if(c.v<.25&&d<1.6&&d>-2.4){c.dwell=2.4;sfxDoor(c.x,c.z);for(const m2 of people)if(!m2.hidden&&m2.goal&&m2.goal.id==='trash'&&m2.phase==='at'&&Math.abs(m2.pos.z-c.z)<3.3&&Math.abs(m2.pos.x-c.x)<3.2)trashDone(m2);break;}}}
     if(c.line==='south'&&c.served&&!c.served2&&!(c.dwell>0)&&fz>.9&&Math.abs(c.x-LN.s)<1.5){const d=SIDE_STOP+c.hl-pz0;      // its second stop, on the side street
       if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.4){c.dwell=7;c.served2=true;sfxDoor(c.x,c.z);if(c===onBus)say('第二條馬路站到了。要下車請按「下車」。');}}
     if(c===onBus&&busBell&&!(c.dwell>0)&&c.dir!==0&&(c.x<JX0-8||c.x>JX1+8)&&(c.x<ZEBRA[0]-6||c.x>ZEBRA[1]+6)){gap=0;   // you rang the bell: pull up at the next safe bit of kerb
       if(c.v<.15){c.dwell=4;busBell=false;sfxDoor(c.x,c.z);leaveBus();}}
     let want=gap<1.3?0:Math.min(CAR_SPEED,Math.sqrt(2*5*(gap-1.3)));                             // the fastest speed that can still stop in time
+    if(c.truck)want=Math.min(want,2.8);
     if(Math.abs(turn)>.2)want=Math.min(want,3.6);                                      // slow down for corners
     c.v=Math.max(0,c.v+Math.max(-16*dt,Math.min(3*dt,want-c.v)));c.x+=fx*c.v*dt;c.z+=fz*c.v*dt;
     if(c.v<.2&&gap<4&&!(c.dwell>0)&&!c.stops.some(sp=>sp.st()!=='g')){c.wait+=dt;if(c.wait>3.5&&c.honk<=0){c.honk=1.4;sfxHonk(c.x,c.z);c.wait=1.2;if(Math.hypot(c.x-pos.x,c.z-pos.z)<32)say('叭叭！車子在等前面的人讓路。',true);}}else c.wait=0;
@@ -1667,9 +1690,9 @@ function updateCars(dt){
     const hx=Math.abs(fx)*c.hl+Math.abs(fz)*c.hw+.05,hz=Math.abs(fz)*c.hl+Math.abs(fx)*c.hw;
     c.box[0]=c.x-hx;c.box[1]=c.x+hx;c.box[2]=c.z-hz;c.box[3]=c.z+hz;
     carLights(c,want<c.v-.5);
-    const stopd=(c.bus||c.van)&&c.dwell>0&&Math.hypot(c.x-pos.x,c.z-pos.z)<28;                     // a bus at its stop shows which line it is
+    const stopd=((c.bus||c.van)&&c.dwell>0||c.truck)&&Math.hypot(c.x-pos.x,c.z-pos.z)<28;                     // a bus at its stop shows which line it is
     c.tag.hidden=c.honk<=0&&!stopd;
-    {const txt=c.honk>0?'叭叭！':c.van?'🍦 冰淇淋車 · 一支 $10':c.line?(c.served2?'南線 · 第二條馬路站':'南線 · 往第二條馬路 →'):c.busDir>0?'公車 · 往東 →':'公車 · ← 往西';if(!c.tag.hidden&&c.tag.textContent!==txt)c.tag.textContent=txt;}
+    {const txt=c.honk>0?'叭叭！':c.truck?'♪ 垃圾車 · 請把垃圾拿出來':c.van?'🍦 冰淇淋車 · 一支 $10':c.line?(c.served2?'南線 · 第二條馬路站':'南線 · 往第二條馬路 →'):c.busDir>0?'公車 · 往東 →':'公車 · ← 往西';if(!c.tag.hidden&&c.tag.textContent!==txt)c.tag.textContent=txt;}
     if(c.honk>0||stopd){cv3.set(c.x,2,c.z).project(camera);if(cv3.z<1){c.tag.style.left=((cv3.x+1)/2*canvas.clientWidth)+'px';c.tag.style.top=((1-cv3.y)/2*canvas.clientHeight)+'px';}else c.tag.hidden=true;}
   }
 }
@@ -3004,6 +3027,7 @@ function weld(g){const parts=g.userData.parts;if(!parts)return;let n=0;
     for(let k=0;k<cnt;k++){C[(at+k)*3]=c.r;C[(at+k)*3+1]=c.g;C[(at+k)*3+2]=c.b;}at+=cnt;q.dispose();});
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(P,3));geo.setAttribute('normal',new THREE.BufferAttribute(N,3));geo.setAttribute('color',new THREE.BufferAttribute(C,3));
   const me=new THREE.Mesh(geo,bodyMat);me.castShadow=true;me.receiveShadow=true;g.add(me);delete g.userData.parts;}
+const trashBagMat=new THREE.MeshStandardMaterial({color:0x3f86b8,roughness:.5});
 function makePerson(o){
   const s=o.h/1.75,root=new THREE.Group(),body=new THREE.Group();body.scale.setScalar(s);root.add(body);dyn.add(root);
   const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85});
@@ -3065,9 +3089,10 @@ function makePerson(o){
     mk(sph(.05,10,8),shoe,kn,0,-.393,.005).scale.set(.9,.78,1.1);mk(sph(.05,10,8),shoe,kn,0,-.408,.085).scale.set(.85,.56,1.5);mk(bx(.085,.02,.25),sole,kn,0,-.437,.055);});
   if(!o.sep)[body,J.spine,J.neck,head,J.al,J.ar,J.el,J.er,J.hl,J.hr,J.kl,J.kr].forEach(weld);
   const book=new THREE.Mesh(new THREE.BoxGeometry(.2,.03,.15),mat(o.top===0x1f6a6e?0xb5533a:0x1f5a5e));book.position.set(-.1,-.29,.02);book.castShadow=true;J.el.add(book);book.rotation.x=.4;book.visible=false;
+  const tbag=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),trashBagMat);tbag.scale.set(1,1.3,1);tbag.position.set(0,-.46,.03);tbag.castShadow=true;tbag.visible=false;J.er.add(tbag);   // the blue rubbish bag carried out to the truck
   const hit=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,1.75,8),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=-.02;body.add(hit);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
-  const n={o,root,J,head,body,lids,faces,face:'n',blinkT:1+Math.random()*4,lookC:0,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
+  const n={o,root,J,head,body,lids,faces,face:'n',tbag,blinkT:1+Math.random()*4,lookC:0,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
     hidden:false,lie:false,sit:false,ph:0,wait:0,kickCd:0,repath:0,settle:9,cur:{},tagText:'',
     need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6,food:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};
@@ -3116,6 +3141,7 @@ const GOALS={                                                           // type 
   fish:{label:'去海邊釣魚',type:'fishing',need:'calm',gain:.8,dur:.7,outside:true,also:'food'},
   hoops:{label:'去公園投籃',type:'hoops',need:'fit',gain:1.2,dur:.4,outside:true,also:'fun'},
   watch:{label:'去海邊看煙火',type:'watch',need:'fun',gain:.8,dur:.9,outside:true,also:'calm'},
+  trash:{label:'去倒垃圾',type:'trash',need:'care',gain:.25,dur:1.4,outside:true},
   flowers:{label:'去公園賞花',type:'flowers',need:'calm',gain:.55,dur:.45,outside:true,also:'fun'},
   guest:{label:'去你家作客',type:'guest',need:'fun',gain:1.1,dur:.35,also:'calm'},
   kite:{label:'去沙灘放風箏',type:'kiteSpot',need:'fun',gain:1.3,dur:.5,outside:true,also:'calm'},
@@ -3155,6 +3181,7 @@ function utility(n,id){
   if(id==='kite'){if(windS<4||rainOn||dark>.5||n.cool[id]>0||!freeAct(n,id))return -1;return (.9+n.o.playful*.9)*(1-n.need.fun*.5);}   // a breezy day: the playful ones fancy flying a kite
   if(id==='picnic'){if(!isWeekend()||clock<10.5||clock>15.5||rainOn||windS>7||n.cool[id]>0||!freeAct(n,id))return -1;   // a weekend lunchtime outing; more tempting when someone from home is already going
     return .9+(1-n.need.food)*.6+(people.some(m=>m!==n&&m.goal&&m.goal.id==='picnic'&&rel(n,m)>=1.5)?1.2:0)-(people.some(m=>m!==n&&m.goal&&m.goal.id==='picnic'&&rel(n,m)<=-1)?.5:0);}   // friends draw you along; someone you cannot stand puts you off
+  if(id==='trash'){if(!trashCall||n.hidden||n.visitor||n.guard||n.cool[id]>0||!freeAct(n,id))return -1;return n.goal&&n.goal.id==='sleep'?-1:2.7;}   // the rubbish truck is coming: whoever is home takes a bag out
   if(id==='watch'&&(!fwOn||rainOn))return -1;
   if(id==='flowers'&&(!stats.done.garden||dark>.6))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
@@ -3179,7 +3206,7 @@ function choose(n){
   setGoal(n,best);
 }
 function endGoal(n,ok){if(n.visitor&&n.goal.id==='work'){n.stay=rnd(1,2.2);for(const k in n.need)n.need[k]=rnd(.25,.6);n.need.energy=1;}   // a visitor arriving: fresh, with things they feel like doing
-  const was=n.goal.id;if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=was==='flowers'?12:.6;}n.goal=null;choose(n);
+  const was=n.goal.id;if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=was==='flowers'?12:was==='trash'?8:.6;}n.goal=null;choose(n);
   if(ok&&was==='picnic')react(n,'吃飽了，在外面吃東西特別香。',1.8,null);
   else if(ok&&was==='kite')react(n,'風箏飛得好高，真過癮！',1.8,null);
   else if(ok&&was==='guest'){const k=Object.keys(decorOwn).length;n.like=Math.min(5,n.like+.3);react(n,k>=3?'你家佈置得好漂亮！我最喜歡那個金魚缸。':k?'你家越來越有樣子了！':'謝謝招待！你家還有點空，可以去商店買些擺設。',2.6,'wave');}
@@ -3202,6 +3229,8 @@ function brain(n,dt){
     if(n.stay<=0||dark>.75||rainOn){n.o.shift=[(clock+23.9)%24,(clock+rnd(.8,2.5)+dark*6)%24];n.resume=null;setGoal(n,'work');return;}}
   if(g.id!=='work'&&onShift(n)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
   if(g.id!=='sleep'&&g.id!=='work'&&n.need.energy<.06&&utility(n,'sleep')>0){setGoal(n,'sleep');return;}   // so does being worn out
+  if(trashCall&&!n.hidden&&g.id!=='trash'&&g.id!=='work'&&g.id!=='sleep'&&n.home>=0&&utility(n,'trash')>0){n.resume=g;setGoal(n,'trash');react(n,n.o.patience<.5?'垃圾車來了！快快快！':'啊，垃圾車來了。',1.4,null);return;}   // the rubbish truck's tune: drop what you are doing, take the bag out, then come back to it
+  if(g.id==='trash'&&!trashCall){endGoal(n,false);return;}                // missed it: the truck has gone
   const done=g.id==='work'?!onShift(n):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
   if(done)endGoal(n,true);
 }
@@ -3360,7 +3389,7 @@ function updNPC(n,dt,t){
     const R2=n.react,speak=(R2&&R2.say||talkN===n)&&Math.sin(t*13+n.stand*5)>0;
     const fc=speak?'o':R2&&(R2.pose==='glare'||R2.pose==='startle')?'u':R2&&R2.pose==='wave'?'h':n.mood<.3||n.like<=-2&&dP<5?'u':n.mood>.66||n.like>=3&&dP<5?'h':'n';
     liveBody(n,t,dt,name==='walk',lk,lie&&ACT[n.act]&&ACT[n.act].type==='sleep',fc);}
-  n.book.visible=name==='read';n.um.visible=n.brolly&&rain>.25&&!lie&&!roomAt(n.pos.x,n.pos.z);
+  n.book.visible=name==='read';n.tbag.visible=!!n.goal&&n.goal.id==='trash'&&!lie;n.um.visible=n.brolly&&rain>.25&&!lie&&!roomAt(n.pos.x,n.pos.z);
   n.root.position.set(n.pos.x,n.y+c.yo,n.pos.z);
   n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
   // name tag above the head
@@ -3916,7 +3945,7 @@ $('bQual').onclick=()=>{qIdx=(qIdx+1)%3;const Q=QUAL[qIdx];$('bQual').textConten
   if(composer)composer.passes[1].enabled=Q[3];resize();};
 if(loadGame()){slider.value=clock;say('歡迎回來！已經接著上次的進度。');}
 applySwitches();applyTime();houses.forEach(H=>H.dev.tvs.forEach(d=>drawTV(d,0)));
-window.__room={set sigSet(v){sigCars=v;},cyclist,updateCyclist,seaFx,flies,updateFlies,toggleScope,get scope(){return scope;},climbTower,nearTower,get aloft(){return aloft;},smokeStep,parcelQuest,setCarKind,get carKind(){return carKind;},groundFx,makePerson,person,helpStep,set stamSet(v){stam=v;},get drinksN(){return drinks;},talkFn:talk,get wetK(){return wet;},dirtStep,showDirt,get carDirt(){return carDirt;},set carDirtSet(v){carDirt=v;},movePlant,plantSpots,colliders,shopOff,shopMenu,get rep(){return rep;},set repSet(v){rep=v;},get heat(){return heat;},utility,GOALS,lieDown,standUp,nearBed,set carDmgSet(v){carDmg=v;},set homeSet(v){homeOwned=v;},toggleCrouch,get crouch(){return crouch;},get crouchK(){return crouchK;},liftMenu,doLift,meteor,meteorNow,meteorStep,camera,STORIES,GARDEN,gardenBeds,get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,get carDmg(){return carDmg;},smoke,askWalk,buddyStep,buddyLine,get buddy(){return buddy;},forecast,rel,relOf,REL,keys,citizenStep,busker,updateBusker,set buskForce(v){buskForce=v;},get buskOn(){return buskOn;},parked,updateParked,snap,album,SHOTS,photo,npcKites,npcKiteStep,SHELLS,shellStep,get shells(){return shells;},kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
+window.__room={trashTruck,get trashCall(){return trashCall;},set trashDay(v){trashDay=v;},set sigSet(v){sigCars=v;},cyclist,updateCyclist,seaFx,flies,updateFlies,toggleScope,get scope(){return scope;},climbTower,nearTower,get aloft(){return aloft;},smokeStep,parcelQuest,setCarKind,get carKind(){return carKind;},groundFx,makePerson,person,helpStep,set stamSet(v){stam=v;},get drinksN(){return drinks;},talkFn:talk,get wetK(){return wet;},dirtStep,showDirt,get carDirt(){return carDirt;},set carDirtSet(v){carDirt=v;},movePlant,plantSpots,colliders,shopOff,shopMenu,get rep(){return rep;},set repSet(v){rep=v;},get heat(){return heat;},utility,GOALS,lieDown,standUp,nearBed,set carDmgSet(v){carDmg=v;},set homeSet(v){homeOwned=v;},toggleCrouch,get crouch(){return crouch;},get crouchK(){return crouchK;},liftMenu,doLift,meteor,meteorNow,meteorStep,camera,STORIES,GARDEN,gardenBeds,get clock(){return clock;},set clock(v){clock=v;envDirty=true;},people,bodies,G,houses,notify,findPath,scene,M,cars,setRain,rides,marks,bag,use,addRep,offer,LOST_AT,stats,trackStats,showStats,finishQuest,refuel,atPump,PUMP,getIn,getOut,rideStep,fishing,fishStep,get carDmg(){return carDmg;},smoke,askWalk,buddyStep,buddyLine,get buddy(){return buddy;},forecast,rel,relOf,REL,keys,citizenStep,busker,updateBusker,set buskForce(v){buskForce=v;},get buskOn(){return buskOn;},parked,updateParked,snap,album,SHOTS,photo,npcKites,npcKiteStep,SHELLS,shellStep,get shells(){return shells;},kite,kiteStep,get kiteH(){return kiteH;},giftStep,gifted,iceVan,buyIce,nearVan,showGuide,FISH,fishGot,onIsle,WORLD,vendors,carUp,applyTune,tuneMenu,SEA_RACE,SEA_START,startFare,rideQuest,updateDoors,chatLines,get market(){return marketOn;},set marketForce(v){marketForce=v;},marketBuy,busAt,treeTops,cat,updateCat,CAT_AT,askFavor,set favorAt(v){favorAt=v;},get daily(){return daily;},dailyStep,get day(){return day;},set day(v){day=v;},wave,dance,emoteStep,get emote(){return emote;},gulls,updateGulls,scareGulls,decorG,decorOwn,showDecor,buyHome,get homeOwned(){return homeOwned;},doors,rideHit,STARS,starGot,starStep,inWorld,startRace,raceStep,RACE,FLAG,storyQuest,drawMap,paperQuest,saveGame,repaint,waterQuest,setGoal,ACT,updNPC,moveSpeed,toggleItem,boarding,roomAt,taxi,hail,canHail,dogQuest,updatePets,blocked,findQuest,get quest(){return quest;},set quest(v){quest=v;},setWeather,strike,puddles,puddleMat,get wind(){return{x:windX,z:windZ,s:windS};},set windForce(v){windForce=v;},physStep,get fw(){return{on:fwOn,count:fwCount,live:FW.filter(f=>f.t<2.6).length};},set fwForce(v){fwForce=v;},bow,sunDir,splashStep,vel,get wx(){return{wet,wx,rain,mist,flash,storm,bolt:bolt.visible};},updateWeather,prof,renderer,get onBus(){return onBus;},boardBus,leaveBus,nearBus,updateCars,get cash(){return cash;},set cash(v){cash=v;},get pos(){return pos;},busAt,updateCars,ROUTES,neighbourChat,rideQuest,passingHello,shopMenu,pets,get heat(){return heat;},get music(){return{trk:trkName,step:stepNo16,ac:AC&&AC.state};},talk,get q(){return{ride:ride&&ride.kind,cash,rep,drinks,stam,heat,quest:quest&&quest.text,talk:talkN&&talkN.o.name};},buyDrink,setView,nextOutfit,waterDepth,get third(){return third;},me,get fish(){return{fish,fishBag,fishCount,baskets,day};},do:{fishing,horn,lieDown,jump,pickUp,putDown,throwHeld,sitDown,standUp,getIn,getOut,toggleItem},get st(){return{held:held&&held.name,seat:seat&&seat.k,jumpY,ride:ride&&ride.kind,bag:Object.keys(bag).join('+')};},rebake:()=>{envDirty=true;envTimer=1;},userTv,userLamp,kick,ACT,colliders,pboxes,rooms,doors,go:(x,z,y)=>{pos.x=x;pos.z=z;if(y!=null)yaw=y;}};
 requestAnimationFrame(tick);
 
 })();

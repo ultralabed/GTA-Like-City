@@ -56,6 +56,7 @@ function weld(g){const parts=g.userData.parts;if(!parts)return;let n=0;
     for(let k=0;k<cnt;k++){C[(at+k)*3]=c.r;C[(at+k)*3+1]=c.g;C[(at+k)*3+2]=c.b;}at+=cnt;q.dispose();});
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(P,3));geo.setAttribute('normal',new THREE.BufferAttribute(N,3));geo.setAttribute('color',new THREE.BufferAttribute(C,3));
   const me=new THREE.Mesh(geo,bodyMat);me.castShadow=true;me.receiveShadow=true;g.add(me);delete g.userData.parts;}
+const trashBagMat=new THREE.MeshStandardMaterial({color:0x3f86b8,roughness:.5});
 function makePerson(o){
   const s=o.h/1.75,root=new THREE.Group(),body=new THREE.Group();body.scale.setScalar(s);root.add(body);dyn.add(root);
   const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85});
@@ -117,9 +118,10 @@ function makePerson(o){
     mk(sph(.05,10,8),shoe,kn,0,-.393,.005).scale.set(.9,.78,1.1);mk(sph(.05,10,8),shoe,kn,0,-.408,.085).scale.set(.85,.56,1.5);mk(bx(.085,.02,.25),sole,kn,0,-.437,.055);});
   if(!o.sep)[body,J.spine,J.neck,head,J.al,J.ar,J.el,J.er,J.hl,J.hr,J.kl,J.kr].forEach(weld);
   const book=new THREE.Mesh(new THREE.BoxGeometry(.2,.03,.15),mat(o.top===0x1f6a6e?0xb5533a:0x1f5a5e));book.position.set(-.1,-.29,.02);book.castShadow=true;J.el.add(book);book.rotation.x=.4;book.visible=false;
+  const tbag=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),trashBagMat);tbag.scale.set(1,1.3,1);tbag.position.set(0,-.46,.03);tbag.castShadow=true;tbag.visible=false;J.er.add(tbag);   // the blue rubbish bag carried out to the truck
   const hit=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,1.75,8),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=-.02;body.add(hit);
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;$('tags').appendChild(tag);
-  const n={o,root,J,head,body,lids,faces,face:'n',blinkT:1+Math.random()*4,lookC:0,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
+  const n={o,root,J,head,body,lids,faces,face:'n',tbag,blinkT:1+Math.random()*4,lookC:0,book,tag,stand:.92*s,pos:new THREE.Vector3(),y:.92*s,yaw:0,vx:0,vz:0,path:[],act:null,phase:'at',from:null,
     hidden:false,lie:false,sit:false,ph:0,wait:0,kickCd:0,repath:0,settle:9,cur:{},tagText:'',
     need:{energy:.6,fun:.3,fit:.5,calm:.55,care:.6,food:.6},cool:{},mood:.75,goal:null,resume:null,want:null,react:null,calmAt:0,
     poked:0,pokeAt:-99,hits:0,hitAt:-99,tvOffs:0,tvOffAt:-99,said:false};

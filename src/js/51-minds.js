@@ -21,6 +21,7 @@ const GOALS={                                                           // type 
   fish:{label:'去海邊釣魚',type:'fishing',need:'calm',gain:.8,dur:.7,outside:true,also:'food'},
   hoops:{label:'去公園投籃',type:'hoops',need:'fit',gain:1.2,dur:.4,outside:true,also:'fun'},
   watch:{label:'去海邊看煙火',type:'watch',need:'fun',gain:.8,dur:.9,outside:true,also:'calm'},
+  trash:{label:'去倒垃圾',type:'trash',need:'care',gain:.25,dur:1.4,outside:true},
   flowers:{label:'去公園賞花',type:'flowers',need:'calm',gain:.55,dur:.45,outside:true,also:'fun'},
   guest:{label:'去你家作客',type:'guest',need:'fun',gain:1.1,dur:.35,also:'calm'},
   kite:{label:'去沙灘放風箏',type:'kiteSpot',need:'fun',gain:1.3,dur:.5,outside:true,also:'calm'},
@@ -60,6 +61,7 @@ function utility(n,id){
   if(id==='kite'){if(windS<4||rainOn||dark>.5||n.cool[id]>0||!freeAct(n,id))return -1;return (.9+n.o.playful*.9)*(1-n.need.fun*.5);}   // a breezy day: the playful ones fancy flying a kite
   if(id==='picnic'){if(!isWeekend()||clock<10.5||clock>15.5||rainOn||windS>7||n.cool[id]>0||!freeAct(n,id))return -1;   // a weekend lunchtime outing; more tempting when someone from home is already going
     return .9+(1-n.need.food)*.6+(people.some(m=>m!==n&&m.goal&&m.goal.id==='picnic'&&rel(n,m)>=1.5)?1.2:0)-(people.some(m=>m!==n&&m.goal&&m.goal.id==='picnic'&&rel(n,m)<=-1)?.5:0);}   // friends draw you along; someone you cannot stand puts you off
+  if(id==='trash'){if(!trashCall||n.hidden||n.visitor||n.guard||n.cool[id]>0||!freeAct(n,id))return -1;return n.goal&&n.goal.id==='sleep'?-1:2.7;}   // the rubbish truck is coming: whoever is home takes a bag out
   if(id==='watch'&&(!fwOn||rainOn))return -1;
   if(id==='flowers'&&(!stats.done.garden||dark>.6))return -1;
   if(n.cool[id]>0||!freeAct(n,id))return -1;
@@ -84,7 +86,7 @@ function choose(n){
   setGoal(n,best);
 }
 function endGoal(n,ok){if(n.visitor&&n.goal.id==='work'){n.stay=rnd(1,2.2);for(const k in n.need)n.need[k]=rnd(.25,.6);n.need.energy=1;}   // a visitor arriving: fresh, with things they feel like doing
-  const was=n.goal.id;if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=was==='flowers'?12:.6;}n.goal=null;choose(n);
+  const was=n.goal.id;if(ok){n.mood=Math.min(1,n.mood+.08);n.cool[n.goal.id]=was==='flowers'?12:was==='trash'?8:.6;}n.goal=null;choose(n);
   if(ok&&was==='picnic')react(n,'吃飽了，在外面吃東西特別香。',1.8,null);
   else if(ok&&was==='kite')react(n,'風箏飛得好高，真過癮！',1.8,null);
   else if(ok&&was==='guest'){const k=Object.keys(decorOwn).length;n.like=Math.min(5,n.like+.3);react(n,k>=3?'你家佈置得好漂亮！我最喜歡那個金魚缸。':k?'你家越來越有樣子了！':'謝謝招待！你家還有點空，可以去商店買些擺設。',2.6,'wave');}
@@ -107,6 +109,8 @@ function brain(n,dt){
     if(n.stay<=0||dark>.75||rainOn){n.o.shift=[(clock+23.9)%24,(clock+rnd(.8,2.5)+dark*6)%24];n.resume=null;setGoal(n,'work');return;}}
   if(g.id!=='work'&&onShift(n)){n.resume=null;setGoal(n,'work');return;}     // work cuts in on anything
   if(g.id!=='sleep'&&g.id!=='work'&&n.need.energy<.06&&utility(n,'sleep')>0){setGoal(n,'sleep');return;}   // so does being worn out
+  if(trashCall&&!n.hidden&&g.id!=='trash'&&g.id!=='work'&&g.id!=='sleep'&&n.home>=0&&utility(n,'trash')>0){n.resume=g;setGoal(n,'trash');react(n,n.o.patience<.5?'垃圾車來了！快快快！':'啊，垃圾車來了。',1.4,null);return;}   // the rubbish truck's tune: drop what you are doing, take the bag out, then come back to it
+  if(g.id==='trash'&&!trashCall){endGoal(n,false);return;}                // missed it: the truck has gone
   const done=g.id==='work'?!onShift(n):g.id==='sleep'?n.need.energy>=.97:(g.elapsed>=G.dur||(G.kicks&&g.kicks>=G.kicks));
   if(done)endGoal(n,true);
 }
@@ -265,7 +269,7 @@ function updNPC(n,dt,t){
     const R2=n.react,speak=(R2&&R2.say||talkN===n)&&Math.sin(t*13+n.stand*5)>0;
     const fc=speak?'o':R2&&(R2.pose==='glare'||R2.pose==='startle')?'u':R2&&R2.pose==='wave'?'h':n.mood<.3||n.like<=-2&&dP<5?'u':n.mood>.66||n.like>=3&&dP<5?'h':'n';
     liveBody(n,t,dt,name==='walk',lk,lie&&ACT[n.act]&&ACT[n.act].type==='sleep',fc);}
-  n.book.visible=name==='read';n.um.visible=n.brolly&&rain>.25&&!lie&&!roomAt(n.pos.x,n.pos.z);
+  n.book.visible=name==='read';n.tbag.visible=!!n.goal&&n.goal.id==='trash'&&!lie;n.um.visible=n.brolly&&rain>.25&&!lie&&!roomAt(n.pos.x,n.pos.z);
   n.root.position.set(n.pos.x,n.y+c.yo,n.pos.z);
   n.root.quaternion.slerp(lie?A.q:qT.setFromAxisAngle(up3,n.yaw),1-Math.exp(-dt*5));
   // name tag above the head
