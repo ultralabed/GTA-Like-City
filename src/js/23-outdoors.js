@@ -17,7 +17,7 @@
   flat(900,400,M.water,0,-.014,WORLD.shore-200);
   {const I=WORLD.isle,ig=new THREE.Group(),pv=cur,pr=root;ig.position.set(I.x,0,I.z);scene.add(ig);cur=ig;        // the lighthouse island
     const disc=(r,mat,y)=>{const m=new THREE.Mesh(new THREE.CircleGeometry(r,28),mat);m.rotation.x=-Math.PI/2;m.position.y=y;m.receiveShadow=true;ig.add(m);};
-    disc(I.r+1.2,M.sand,.02);disc(I.r-3,M.grass,.035);
+    {const sm=M.sand.clone(),gm=M.grass.clone();sm.polygonOffset=gm.polygonOffset=true;sm.polygonOffsetFactor=sm.polygonOffsetUnits=-9;gm.polygonOffsetFactor=gm.polygonOffsetUnits=-10;disc(I.r+1.2,sm,.03);disc(I.r-3,gm,.045);}   // pushed well in front of the sea, or from far away the water shows through the island
     const white=new THREE.MeshStandardMaterial({color:0xf2efe8,roughness:.7}),red=new THREE.MeshStandardMaterial({color:0xc8402f,roughness:.6});
     cyl(1.05,1.5,8,white,0,4,0,16);cyl(1.25,1.32,1.1,red,0,2.6,0,16);cyl(1.12,1.18,1.1,red,0,6,0,16);cyl(1.5,1.5,.14,M.steel,0,8.05,0,16);
     cyl(.75,.75,1.2,M.glass,0,8.7,0,12);cyl(.05,.95,.9,red,0,9.75,0,12);box(.7,1.5,.08,M.walnut,0,.75,1.5);
@@ -57,12 +57,20 @@ function updateStreetLamps(){
 /* ---------- the sea moves: ripples drift across it and a line of foam washes up and down the sand ---------- */
 const seaFx=(function(){const N=128,c=cv(N,N),g=c.getContext('2d'),img=g.createImageData(N,N),h=(x,y)=>{const u=x/N*6.2832,v=y/N*6.2832;return Math.sin(u*3+v*2)*.5+Math.sin(u*5-v*4+1.3)*.3+Math.sin(u*9+v*7+.6)*.2+Math.sin(u*2-v*11+2.1)*.15;};
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){const dx=h(x+1,y)-h(x-1,y),dy=h(x,y+1)-h(x,y-1),i=(y*N+x)*4;img.data[i]=128-dx*260;img.data[i+1]=128-dy*260;img.data[i+2]=255;img.data[i+3]=255;}
-  g.putImageData(img,0,0);const nm=new THREE.CanvasTexture(c);nm.wrapS=nm.wrapT=THREE.RepeatWrapping;nm.repeat.set(210,93);M.water.normalMap=nm;M.water.normalScale=new THREE.Vector2(.32,.32);M.water.needsUpdate=true;
+  g.putImageData(img,0,0);const nm=new THREE.CanvasTexture(c);nm.wrapS=nm.wrapT=THREE.RepeatWrapping;nm.repeat.set(210,93);nm.rotation=.55;M.water.normalMap=nm;M.water.normalScale=new THREE.Vector2(.32,.32);M.water.needsUpdate=true;
   const fc=cv(256,64),fg=fc.getContext('2d');for(let x=0;x<256;x++){const e=30+Math.sin(x/256*6.2832*3)*7+Math.sin(x/256*6.2832*7+1)*4;const gr=fg.createLinearGradient(0,0,0,64);gr.addColorStop(0,'rgba(255,255,255,0)');gr.addColorStop(Math.max(.05,(e-16)/64),'rgba(255,255,255,.25)');gr.addColorStop(e/64,'rgba(255,255,255,.95)');gr.addColorStop(Math.min(1,(e+5)/64),'rgba(255,255,255,0)');fg.fillStyle=gr;fg.fillRect(x,0,1,64);}
   const ft=new THREE.CanvasTexture(fc);ft.wrapS=THREE.RepeatWrapping;ft.repeat.set(60,1);
   const foam=new THREE.Mesh(new THREE.PlaneGeometry(400,2.2),new THREE.MeshBasicMaterial({map:ft,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6}));
-  foam.rotation.x=-Math.PI/2;foam.position.set(0,-.004,WORLD.shore);foam.renderOrder=1;scene.add(foam);return{nm,foam,ft};})();
-function seaStep(dt,t){seaFx.nm.offset.x+=dt*.035;seaFx.nm.offset.y+=dt*.022;const w=Math.sin(t*.7);seaFx.foam.position.z=WORLD.shore+.55+w*.45;seaFx.foam.material.opacity=.55+.4*Math.sin(t*.7+1.2);seaFx.ft.offset.x=Math.sin(t*.23)*.02;}
+  foam.rotation.x=-Math.PI/2;foam.position.set(0,-.004,WORLD.shore);foam.renderOrder=1;scene.add(foam);
+  // a ring of foam round the lighthouse island, and a trail of white water behind the boat
+  const I=WORLD.isle,rings=[0,1].map(k=>{const m=new THREE.Mesh(new THREE.RingGeometry(I.r+1.0+k*.5,I.r+1.45+k*.5,56),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.5,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6}));m.rotation.x=-Math.PI/2;m.position.set(I.x,-.004,I.z);m.renderOrder=1;scene.add(m);return m;});
+  const wg=new THREE.CircleGeometry(.5,10),wake=[];for(let k=0;k<18;k++){const m=new THREE.Mesh(wg,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-7,polygonOffsetUnits:-7}));m.rotation.x=-Math.PI/2;m.visible=false;m.renderOrder=1;scene.add(m);wake.push({m,t:9});}
+  return{nm,foam,ft,rings,wake,wt:0,boat:null};})();
+function seaStep(dt,t){seaFx.nm.offset.x+=dt*.035;seaFx.nm.offset.y+=dt*.022;const w=Math.sin(t*.7);seaFx.foam.position.z=WORLD.shore+.55+w*.45;seaFx.foam.material.opacity=.55+.4*Math.sin(t*.7+1.2);seaFx.ft.offset.x=Math.sin(t*.23)*.02;
+  seaFx.rings.forEach((m,k)=>{const q=1+Math.sin(t*.7+k*1.6)*.022;m.scale.set(q,q,1);m.material.opacity=.3+.28*Math.sin(t*.7+k*1.6+1.2);});
+  const b=seaFx.boat||(seaFx.boat=rides.find(r=>r.kind==='boat'));                              // the boat churns the water white behind it, more the faster it goes
+  if(b&&Math.abs(b.v)>1.2&&ride===b){seaFx.wt-=dt;if(seaFx.wt<=0){seaFx.wt=.11;const w=seaFx.wake.find(q=>q.t>1.7);if(w){const fx=Math.cos(b.h),fz=-Math.sin(b.h),sd=(Math.random()-.5)*.5;w.t=0;w.k=Math.min(1,Math.abs(b.v)/7);w.m.position.set(b.x-fx*1.9*Math.sign(b.v)-fz*sd,-.003,b.z-fz*1.9*Math.sign(b.v)+fx*sd);w.m.visible=true;}}}
+  for(const w of seaFx.wake){if(w.t>1.7)continue;w.t+=dt;const k=w.t/1.7;w.m.scale.setScalar(.7+k*2.2);w.m.material.opacity=.75*w.k*(1-k);if(w.t>1.7)w.m.visible=false;}}
 
 /* ---------- the small things that make ground look like ground ---------- */
 let groundFx=null;
