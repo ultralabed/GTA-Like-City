@@ -375,8 +375,13 @@ function refuel(){const r=ride||rides.find(q=>q.S.tank&&Math.hypot(q.x-PUMP.x,q.
   const pay=Math.min(cost,cash);r.fuel=Math.min(1,r.fuel+pay/r.S.full);cash-=pay;sfxCoin();actKey='';
   say(pay<cost?'你的錢只夠加一部分：花了 $'+pay+'，'+r.S.name+'的油現在 '+Math.round(r.fuel*100)+'%。':'加滿了！花了 $'+pay+'。');}
 // --- tuning your car at the pump: a stronger engine (two steps) and a thriftier one ---
-const carUp={eng:0,eco:0};let carDmg=0;                                     // carDmg: 0 = as new, 1 = a wreck that barely moves
-function applyTune(){const r=rides[0],B=SPEC.car,k=1-.45*carDmg;r.S=Object.assign({},B,{max:B.max*(1+.16*carUp.eng)*k,acc:B.acc*(1+.2*carUp.eng)*k,tank:B.tank*(1+.6*carUp.eco)});
+const carUp={eng:0,eco:0};let carDmg=0;let carKind='sedan';
+// four body styles for your own car. Each one is good at something: the hatchback sips fuel, the pickup earns more on deliveries, the van earns more carrying people.
+const CAR_SHOP={sedan:['轎車',100,'什麼都還可以'],hatch:['掀背車',180,'省油：一箱油多跑 25%'],pickup:['貨卡',320,'送貨多賺四成'],van:['廂型車',320,'載客多賺三成']};
+function setCarKind(k){if(!CAR_SHOP[k])k='sedan';const r=rides[0],old=r.g,m=carMesh(PAINTS[paintIdx][0],k);m.g.position.copy(old.position);m.g.rotation.copy(old.rotation);scene.remove(old);
+  Object.assign(r,m);carKind=k;r.rider.visible=ride===r;applyTune();showDirt();}
+                                     // carDmg: 0 = as new, 1 = a wreck that barely moves
+function applyTune(){const r=rides[0],B=SPEC.car,k=1-.45*carDmg;r.S=Object.assign({},B,{max:B.max*(1+.16*carUp.eng)*k,acc:B.acc*(1+.2*carUp.eng)*k,tank:B.tank*(1+.6*carUp.eco)*(carKind==='hatch'?1.25:1)});
   r.paint.roughness=.35+.5*carDmg;r.paint.metalness=.4*(1-carDmg);}
 const smoke=[];for(let i=0;i<6;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.3,8,6),new THREE.MeshBasicMaterial({color:0x2a2a30}));m.visible=false;scene.add(m);smoke.push({m,t:9});}
 let smokeT=0;
@@ -391,6 +396,7 @@ function tuneMenu(line){const r=rides[0];if(Math.hypot(r.x-PUMP.x,r.z-PUMP.z)>=5
   if(carDmg>.02){const c=Math.max(5,Math.ceil(carDmg*90));add('修車（恢復到 100%）$'+c,()=>buy(c,()=>{carDmg=0;},'修好了！鈑金敲平、引擎也檢查過，跟新的一樣。'));}
   if(carUp.eng<2){const c=carUp.eng?260:160;add('升級引擎（第 '+(carUp.eng+1)+' 級）$'+c,()=>buy(c,()=>{carUp.eng++;},'引擎換好了！車子加速更快、最高速度更高（大約 '+Math.round(SPEC.car.max*(1+.16*(carUp.eng+1))*3.6)+' km/h）。'));}
   if(!carUp.eco)add('省油裝置 $120',()=>buy(120,()=>{carUp.eco=1;},'裝好了！同樣一箱油可以多開六成的路。'));
+  for(const k in CAR_SHOP){if(k===carKind)continue;const C=CAR_SHOP[k];add('換成'+C[0]+'（'+C[2]+'）$'+C[1],()=>buy(C[1],()=>{setCarKind(k);},'換好了！你的車現在是'+C[0]+'。'+C[2]+'。'));}
   add('關閉',()=>{el.hidden=true;});}
 // --- the time trial: from the flag, through the glowing gates in order, as fast as you can ---
 const FLAG=WORLD.outdoor.find(o=>o.type==='flag');

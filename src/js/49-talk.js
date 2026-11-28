@@ -10,11 +10,11 @@ function fine(n){const amt=Math.min(cash,25*heat),h=heat;heat=0;cash-=amt;sfxBum
   showTalk(n,'請注意安全，不要嚇到別人。'+(amt?'這次罰你 $'+amt+'。':'這次先警告你。'),[['對不起，我會小心',closeTalk]]);
   say('你被巡邏員攔下來了（'+'★'.repeat(h)+'）'+(amt?'，罰了 $'+amt+'。':'。'));}
 const SAVE_KEY='sunset-street-save-1';
-function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,walks,REL,album,shells,gifted,iceCreams,fishGot,isleSeen,carUp,carDmg,carDirt,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
+function saveGame(){if(noSave)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({clock,cash,rep,drinks,stam,bag,x:pos.x,z:pos.z,yaw,rides:rides.map(r=>[r.x,r.z,r.h,r.fuel]),third,outfit,day,fishBag,paintIdx,walks,REL,album,shells,gifted,iceCreams,fishGot,isleSeen,carUp,carKind,carDmg,carDirt,fares,daily,waves,homeOwned,decorOwn,starGot,raceBest,seaBest,paperDay,stats,busTrips,taxiTrips,fishCount,baskets,likes:Object.fromEntries(people.map(n=>[n.o.name,n.like]))}));}catch(e){}}
 function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d||typeof d.cash!=='number')return false;
   clock=d.clock;cash=d.cash;rep=d.rep;drinks=d.drinks||0;stam=d.stam;Object.assign(bag,d.bag);pos.x=d.x;pos.z=d.z;yaw=d.yaw;
   for(const n of people)if(d.likes&&d.likes[n.o.name]!=null)n.like=d.likes[n.o.name];
-  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;walks=d.walks||0;if(d.REL)Object.assign(REL,d.REL);if(d.stats&&d.stats.done&&d.stats.done.citizen)$('title').textContent='夕陽街 · 榮譽市民';if(d.album)Object.assign(album,d.album);shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp)Object.assign(carUp,d.carUp);carDmg=d.carDmg||0;carDirt=d.carDirt||0;showDirt();applyTune();fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
+  if(d.third)setView(true);if(d.outfit)wear(d.outfit);if(d.day)day=d.day;fishBag=d.fishBag||0;walks=d.walks||0;if(d.REL)Object.assign(REL,d.REL);if(d.stats&&d.stats.done&&d.stats.done.citizen)$('title').textContent='夕陽街 · 榮譽市民';if(d.album)Object.assign(album,d.album);shells=d.shells||0;if(d.gifted)Object.assign(gifted,d.gifted);iceCreams=d.iceCreams||0;if(d.fishGot)Object.assign(fishGot,d.fishGot);isleSeen=!!d.isleSeen;if(d.carUp)Object.assign(carUp,d.carUp);if(d.carKind&&d.carKind!=='sedan')setCarKind(d.carKind);carDmg=d.carDmg||0;carDirt=d.carDirt||0;showDirt();applyTune();fares=d.fares||0;if(d.daily&&d.daily.list)daily=d.daily;waves=d.waves||0;homeOwned=!!d.homeOwned;if(d.decorOwn){Object.assign(decorOwn,d.decorOwn);showDecor();}if(d.starGot)Object.assign(starGot,d.starGot);raceBest=d.raceBest||0;seaBest=d.seaBest||0;paperDay=d.paperDay||0;if(d.paintIdx)setPaint(d.paintIdx);if(d.stats)Object.assign(stats,d.stats);busTrips=d.busTrips||0;taxiTrips=d.taxiTrips||0;fishCount=d.fishCount||0;baskets=d.baskets||0;
   (d.rides||[]).forEach((q,i)=>{const r=rides[i];if(r){r.x=q[0];r.z=q[1];r.h=q[2];if(q[3]!=null)r.fuel=q[3];r.g.position.set(r.x,0,r.z);r.g.rotation.y=r.h;}});return true;}catch(e){return false;}}
 let noSave=false;
 // --- your record: how far you have gone and what you have done; reaching a mark earns a badge and a little money ---
@@ -350,7 +350,7 @@ function startFare(){if(!ride||ride.kind!=='car'){say('要坐在車子裡才能�
   const c=people.filter(n=>!n.hidden&&!n.lie&&!n.guard&&!n.o.job&&n.home>=0&&n.like>-2&&n.goal&&n.goal.id!=='work'&&n.goal.id!=='sleep'&&n.goal.id!=='lift');
   if(!c.length){say('現在沒有人要叫車。晚一點再試試。');return;}
   const n=c[Math.floor(Math.random()*c.length)],ds=D.filter(d=>Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z)>16&&d[0]!=='碼頭'),d=ds[Math.floor(Math.random()*ds.length)]||D[0];
-  const dist=Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z);quest={type:'ride',from:n,dest:d,reward:Math.round(25+dist*.9),fare:true,text:'載客：去接'+n.o.name+'（他會走到你的車旁邊），載他去'+d[0]};
+  const dist=Math.hypot(d[1]-n.pos.x,d[2]-n.pos.z);quest={type:'ride',from:n,dest:d,reward:Math.round((25+dist*.9)*(carKind==='van'?1.3:1)),fare:true,text:'載客：去接'+n.o.name+'（他會走到你的車旁邊），載他去'+d[0]};
   sfxBell();actKey='';say('叮！'+n.o.name+'叫車，要去'+d[0]+'。把車開到他附近停好，他會自己走過來上車。車錢 $'+quest.reward+'。');}
 // --- people who know you a little will call you over themselves when they need a hand ---
 let favorAt=0;
@@ -472,8 +472,8 @@ function buySnack(){if(cash<15){say('點心一份 $15，你的錢不夠。');ret
 // --- delivery work for the shop: get the parcel to a front door before the clock runs out ---
 function parcelQuest(){const q=quest;if(!q||q.type!=='parcel')return;const left=Math.ceil((q.until-performance.now())/1000),f=q.house.front;
   q.text='把包裹送到 '+q.house.no+' 號門口，還剩 '+Math.max(0,left)+' 秒';
-  if(Math.hypot(f.x+f.dx*.8-pos.x,f.z+f.dz*.8-pos.z)<2.4&&(!ride||Math.abs(ride.v)<1)){const bonus=left>0?Math.round(left/q.secs*40):0;quest=null;cash+=q.reward+bonus;addRep(1);sfxCoin();
-    say(left>0?'準時送到！工資 $'+q.reward+'，加上獎金 $'+bonus+'。':'送到了，可是遲到了。只有工資 $'+q.reward+'，沒有獎金。');}
+  if(Math.hypot(f.x+f.dx*.8-pos.x,f.z+f.dz*.8-pos.z)<2.4&&(!ride||Math.abs(ride.v)<1)){const bonus=left>0?Math.round(left/q.secs*40):0,pk=carKind==='pickup'&&Math.hypot(rides[0].x-pos.x,rides[0].z-pos.z)<14?Math.round((q.reward+bonus)*.4):0;quest=null;cash+=q.reward+bonus+pk;addRep(1);sfxCoin();
+    say((left>0?'準時送到！工資 $'+q.reward+'，加上獎金 $'+bonus+'。':'送到了，可是遲到了。只有工資 $'+q.reward+'，沒有獎金。')+(pk?'開貨卡來送，多賺 $'+pk+'！':''));}
   else if(left<-60){quest=null;say('包裹太晚了，小芳找別人送了。任務取消。');}
 }
 // --- first-time tips: one at a time, so the big things you can do are not missed ---
