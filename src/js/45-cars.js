@@ -141,9 +141,9 @@ const iceVan=cars[cars.length-1];
   add3(1.5,1.0,1.74,wm,-1.2,1.5,0);add3(1.52,.16,1.76,m.paint,-1.2,1.25,0);add3(.42,.8,1.6,dk,-2.12,1.15,0);add3(.3,.1,.5,new THREE.MeshBasicMaterial({color:0xffc24a}),-.1,1.56,0);   // the white body, a yellow band, the dark hopper at the back, an amber light
   const tag=document.createElement('div');tag.className='tag';tag.hidden=true;tag.textContent='叭叭！';$('tags').appendChild(tag);
   cars.push(Object.assign(m,{dir:0,z:0,x:0,h:0,v:0,on:false,t:1e9,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.3,hw:.92,truck:true,busDir:1,pass:0,dwell:0,jing:0}));}
-const trashTruck=cars[cars.length-1];let trashDay=-1,trashCall=false;
+const trashTruck=cars[cars.length-1];let trashDay=-1,trashCall=false,trashMine=-1;
 function trashTune(x,z){const v=.11*hear(x,z,55);[523,659,784,659,880,784,659,523].forEach((f,i)=>setTimeout(()=>tone(f,.3,v,'sine'),i*260));}
-function trashStep(){const c=trashTruck;if(!trashCall&&trashDay!==day&&clock>=18.5&&clock<19.2){trashDay=day;trashCall=true;c.busDir=1;c.pass=0;c.t=14;if(inWorld(pos.x,pos.z,0))say('♪ 遠遠傳來垃圾車的音樂。在家的鄰居會提垃圾到路邊等。',true);}
+function trashStep(){const c=trashTruck;if(!trashCall&&trashDay!==day&&clock>=18.5&&clock<19.2){trashDay=day;trashCall=true;c.busDir=1;c.pass=0;c.t=14;if(inWorld(pos.x,pos.z,0))say('♪ 遠遠傳來垃圾車的音樂。在家的鄰居會提垃圾到路邊等。你也可以站到大馬路的路邊等它來。',true);}
   if(trashCall&&!c.on&&c.t>1e8)trashCall=false;}
 function truckTurn(c){const nd=-c.busDir,R2=ROUTES[nd>0?'east':'west'],sx=-nd*76,sz=R2[0][1];if(cars.some(o=>o!==c&&o.on&&Math.abs(o.z-sz)<1.6&&Math.abs(o.x-sx)<16)){c.v=0;return;}
   c.busDir=nd;c.route=R2;c.stops=STOPS[nd>0?'east':'west'];c.wi=1;c.x=sx;c.z=sz;c.h=nd>0?0:Math.PI;c.v=2.8;c.dwell=0;c.dir=nd;c.pass=1;}
@@ -247,7 +247,8 @@ function updateCars(dt){
     if(ride){const rx=Math.cos(ride.h),rz=-Math.sin(ride.h);for(const k of[-1,0,1])see(ride.x+rx*k*ride.S.len,ride.z+rz*k*ride.S.len,1.6);}
     else if(onAnyRoad(pos.x,pos.z))see(pos.x,pos.z,3.3);                              // you, on foot on the road
     for(const d of pets)if(onAnyRoad(d.x,d.z))see(d.x,d.z,3.3);                        // drivers stop for the dog too
-    for(const n of people)if(!n.hidden&&onAnyRoad(n.pos.x,n.pos.z))see(n.pos.x,n.pos.z,3.3);
+    for(const n of people){if(n.hidden||!onAnyRoad(n.pos.x,n.pos.z))continue;const A=ACT[n.act];if(n.phase==='at'&&A&&(A.type==='exit'||A.type==='trash'))continue;   // someone standing at a bus stop or waiting at the kerb is not crossing: drive on (or a queue at the stop jams the street for good)
+      see(n.pos.x,n.pos.z,3.3);}
     c.still=c.v<.1?(c.still||0)+dt:0;const me=cars.indexOf(c);
     for(let k=0;k<cars.length;k++){const o=cars[k];if(o===c||!o.on)continue;
       if(c.still>4&&o.v<.3&&me<k)continue;                                          // two cars each waiting for the other: the first one goes
@@ -259,6 +260,9 @@ function updateCars(dt){
       else if(!c.served){if(d>-1&&d+1.3<gap)gap=d+1.3;if(c.v<.15&&Math.abs(d)<1.2){c.dwell=c.van?22:c.taxi?(onBus===c?3:25):6;c.served=true;sfxDoor(c.x,c.z);if(c.taxi)taxiStopped(c);if(c.van)vanArrived(c);}}
       if(c.van&&c.dwell>0){c.jing-=dt;if(c.jing<=0){c.jing=3.2;sfxJingle(c.x,c.z);}}}
     if(c.truck){c.jing-=dt;if(c.jing<=0){c.jing=4.2;trashTune(c.x,c.z);}                                 // it never stops playing its tune
+      if(!(c.dwell>0)&&trashMine!==day&&!ride&&!onBus&&!aloft&&Math.abs(pos.z-c.z)<3.4&&!roomAt(pos.x,pos.z)){const d=(pos.x-c.x)*c.busDir;        // you, waiting at the kerb like everyone else
+        if(d>-1&&d<9&&d+.3<gap)gap=Math.max(1.3,d+.3);
+        if(c.v<.25&&d<1.6&&d>-2.4){trashMine=day;c.dwell=2.4;sfxDoor(c.x,c.z);stats.trash=(stats.trash||0)+1;addRep(1);sfxCoin();say('你把垃圾丟上垃圾車了。清潔隊員跟你點點頭：「謝謝配合！」名聲 +1。（一天一次）');}}
       if(c.dwell>0){c.dwell-=dt;gap=0;}else for(const n of people){if(n.hidden||!n.goal||n.goal.id!=='trash'||n.phase!=='at'||Math.abs(n.pos.z-c.z)>3.3)continue;
         const d=(n.pos.x-c.x)*c.busDir;if(d>-1&&d<9&&d+.3<gap)gap=Math.max(1.3,d+.3);                    // someone is waiting at the kerb ahead: draw up beside them
         if(c.v<.25&&d<1.6&&d>-2.4){c.dwell=2.4;sfxDoor(c.x,c.z);for(const m2 of people)if(!m2.hidden&&m2.goal&&m2.goal.id==='trash'&&m2.phase==='at'&&Math.abs(m2.pos.z-c.z)<3.3&&Math.abs(m2.pos.x-c.x)<3.2)trashDone(m2);break;}}}

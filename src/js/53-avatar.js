@@ -21,10 +21,10 @@ const cyclist=(function(){const m=bikeMesh(false),Q=RIDE_POSE.bike;while(m.rider
   return{m,p,tag,x:-60,dir:1,v:0,ph:0,bell:0,wait:0,ouch:0,why:''};})();
 function updateCyclist(dt,t){const c=cyclist,S=WORLD.street,z=c.dir>0?S.z1-.5:S.z0+.5,show=dark<.75&&rain<.3;c.bell-=dt;
   if(!show&&Math.abs(c.x-pos.x)>60){c.m.g.visible=false;c.tag.hidden=true;return;}c.m.g.visible=Math.abs(c.x-pos.x)<95;
-  c.ouch-=dt;c.why='';let want=c.ouch>0?0:4.2;const ahead=(x2,z2,r)=>{const d=(x2-c.x)*c.dir;return d>0&&d<r&&Math.abs(z2-z)<1.25;};
+  c.ouch-=dt;c.why='';let want=c.ouch>0?0:4.2;const ahead=(x2,z2,r,lat)=>{const d=(x2-c.x)*c.dir;return d>0&&d<r&&Math.abs(z2-z)<(lat||1.25);};   // lat: how far to the side still counts as in her way (someone standing on the pavement is not)
   const stopX=c.dir>0?ZEBRA[0]-1.2:ZEBRA[1]+1.2,ds=(stopX-c.x)*c.dir;if((sigCars==='r'||sigCars==='y')&&ds>0&&ds<6){want=Math.min(want,Math.max(0,(ds-.5)*1.4));c.why='等紅燈';}                 // red light at the crossing
-  for(const n of people)if(!n.hidden&&ahead(n.pos.x,n.pos.z,3))want=0;for(const k of cars)if(k.on&&ahead(k.x,k.z,5.5))want=0;
-  const me2=ride?[ride.x,ride.z]:[pos.x,pos.z];if(!onBus&&!aloft&&ahead(me2[0],me2[1],ride?5:3.2)){want=0;c.why='等你讓路';if(c.bell<=0){c.bell=3.5;tone(2093,.25,.12*hear(c.x,z,25),'sine');setTimeout(()=>tone(2093,.3,.1*hear(c.x,z,25),'sine'),170);say('叮鈴叮鈴！騎腳踏車的阿姨在等你讓路。',true);}}
+  for(const n of people)if(!n.hidden&&ahead(n.pos.x,n.pos.z,3,.8)){want=0;c.why='等前面的人過';}for(const k of cars)if(k.on&&ahead(k.x,k.z,5.5,1.0)){want=0;c.why='等前面的車';}   // only a car that has pulled right over to the kerb is in her way; one going by in its lane is not
+  const me2=ride?[ride.x,ride.z]:[pos.x,pos.z];if(!onBus&&!aloft&&ahead(me2[0],me2[1],ride?5:3.2,ride?1.25:.8)){want=0;c.why='等你讓路';if(c.bell<=0){c.bell=3.5;tone(2093,.25,.12*hear(c.x,z,25),'sine');setTimeout(()=>tone(2093,.3,.1*hear(c.x,z,25),'sine'),170);say('叮鈴叮鈴！騎腳踏車的阿姨在等你讓路。',true);}}
   if(ride&&c.ouch<=-4&&Math.abs(ride.v)>2&&Math.hypot(ride.x-c.x,ride.z-z)<1.5){c.ouch=3;c.v=0;ride.v*=-.25;sfxBump();addRep(-1);say('你差點撞倒騎腳踏車的阿姨！她嚇了一大跳：「開車要看路啊！」'+'★'.repeat(heat));}   // you clipped her: she stops, shaken, and you are in trouble
   if(c.ouch>0)c.why='被你嚇到了';
   c.v+=Math.max(-9*dt,Math.min(2.2*dt,want-c.v));c.x+=c.v*c.dir*dt;if(Math.abs(c.x)>82&&Math.abs(c.x-pos.x)>50){c.dir=-c.dir;c.x=Math.sign(c.x)*82;}else if(Math.abs(c.x)>98){c.dir=-c.dir;}
