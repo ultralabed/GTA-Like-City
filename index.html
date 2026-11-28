@@ -1102,6 +1102,46 @@ function updateStreetLamps(){
   streetGlow.forEach((l,i)=>{const m=near[i]&&near[i][1];if(m){l.position.set(m.x,m.y-.15,m.z);l.intensity=k*1.1;}else l.intensity=0;});
 }
 
+/* ---------- the small things that make ground look like ground ---------- */
+// Tufts of grass and little flowers on the lawns (drawn in two batches, however many there are), a kerb line, manhole covers, drain grates and a few stains on the road.
+(function(){
+  const S=WORLD.street,SD=WORLD.side;let seed=12345;const rr=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;},r2=(a,b)=>a+(b-a)*rr();
+  const onLawn=(x,z)=>{
+    if(z>S.z0-S.walk-.3&&z<S.z1+S.walk+.3)return false;                                    // road and sidewalks
+    if(z>S.z1&&x>SD.x0-S.walk-.3&&x<SD.x1+S.walk+.3)return false;                         // the side street
+    if(z<-5.6||!inWorld(x,z,.6)||roomAt(x,z))return false;                                 // sand, the edge of the map, indoors
+    for(const H of houses){const f=H.front;if(!f)continue;                                 // the paved path from each front door
+      if(Math.abs(f.dz)>.5){if(Math.abs(x-f.x)<.85&&(z-f.z)*f.dz>-.3&&Math.abs(z-f.z)<4)return false;}else if(Math.abs(z-f.z)<.85&&(x-f.x)*f.dx>-.3&&Math.abs(x-f.x)<7)return false;}
+    for(const c of colliders)if(x>c[0]-.25&&x<c[1]+.25&&z>c[2]-.25&&z<c[3]+.25)return false;
+    for(const o of WORLD.outdoor)if((o.type==='blanket'&&Math.hypot(x-o.x,z-o.z)<1.7)||(o.type==='spot'&&o.x!=null&&Math.hypot(x-o.x,z-o.z)<.5))return false;   // picnic blankets and the places people stand
+    for(const b of[[16.6,22.6],[26.3,19.9],[17.5,17.5]])if(Math.hypot(x-b[0],z-b[1])<1)return false;                                              // the flower beds
+    return true;};
+  // one tuft = five thin blades fanned out
+  const P=[],N=[];for(let k=0;k<5;k++){const a=k*1.26,h=.07+.07*((k*7)%5)/5,w=.02,lean=.05,cx=Math.cos(a),cz=Math.sin(a);
+    P.push(-cz*w,0,cx*w, cz*w,0,-cx*w, cx*lean,h,cz*lean);for(let q=0;q<3;q++)N.push(0,1,0);}
+  const tg=new THREE.BufferGeometry();tg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));tg.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(N),3));
+  const pts=[],fl=[];for(let i=0;i<22000&&pts.length<6500;i++){const east=rr()<.22,x=east?r2(40.5,67):r2(-38,45),z=east?r2(15.2,74):(rr()<.5?r2(-5.5,3.8):r2(15.2,26));if(onLawn(x,z)){pts.push([x,z]);if(rr()<.05)fl.push([x+r2(-.2,.2),z+r2(-.2,.2)]);}}
+  const tufts=new THREE.InstancedMesh(tg,new THREE.MeshStandardMaterial({roughness:1,side:THREE.DoubleSide}),pts.length),d=new THREE.Object3D(),col=new THREE.Color();
+  pts.forEach((q,i)=>{d.position.set(q[0],-.03,q[1]);d.rotation.y=rr()*6.28;const s=r2(.8,1.5);d.scale.set(s,s*r2(.8,1.5),s);d.updateMatrix();tufts.setMatrixAt(i,d.matrix);col.setHSL(r2(.25,.32),r2(.42,.6),r2(.42,.58));tufts.setColorAt(i,col);});
+  tufts.receiveShadow=true;tufts.frustumCulled=false;scene.add(tufts);
+  const fg=new THREE.SphereGeometry(.035,6,4),flowers=new THREE.InstancedMesh(fg,new THREE.MeshStandardMaterial({roughness:.7}),fl.length),FC=[0xffffff,0xffe066,0xff9ec4,0xb7a3ff];
+  fl.forEach((q,i)=>{d.position.set(q[0],r2(.06,.12),q[1]);d.rotation.set(0,0,0);d.scale.set(1,.6,1);d.updateMatrix();flowers.setMatrixAt(i,d.matrix);col.setHex(FC[Math.floor(rr()*4)]);flowers.setColorAt(i,col);});
+  flowers.frustumCulled=false;scene.add(flowers);
+  // the road: a kerb line each side, manhole covers, drain grates, darker patches where it was mended
+  const prev=cur;cur=scene;
+  const kerb=new THREE.MeshStandardMaterial({color:0x8d8a84,roughness:.9,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+  flat(400,.16,kerb,0,-.006,S.z0-.08);flat(SD.x0+200,.16,kerb,(SD.x0-200)/2,-.006,S.z1+.08);flat(200-SD.x1,.16,kerb,(SD.x1+200)/2,-.006,S.z1+.08);
+  const cover=cardMat(1,1,(g,W,H)=>{g.fillStyle='#3a3c40';g.beginPath();g.arc(W/2,H/2,W/2-2,0,7);g.fill();g.strokeStyle='#23252a';g.lineWidth=7;g.beginPath();g.arc(W/2,H/2,W/2-12,0,7);g.stroke();g.lineWidth=5;
+    for(let k=-3;k<=3;k++){g.beginPath();g.moveTo(W/2+k*26,34);g.lineTo(W/2+k*26,H-34);g.stroke();g.beginPath();g.moveTo(34,H/2+k*26);g.lineTo(W-34,H/2+k*26);g.stroke();}},{px:128});
+  cover.alphaTest=.5;cover.polygonOffset=true;cover.polygonOffsetFactor=-5;cover.polygonOffsetUnits=-5;cover.roughness=.6;cover.metalness=.5;
+  [[-28,8],[-9,11],[12,7.8],[31,11.2],[52.5,24],[52.5,47]].forEach(q=>flat(.75,.75,cover,q[0],-.004,q[1]));
+  const grate=cardMat(.6,.36,(g,W,H)=>{g.fillStyle='#2b2d31';g.fillRect(0,0,W,H);g.fillStyle='#0c0c0e';for(let k=0;k<7;k++)g.fillRect(14+k*34,10,16,H-20);},{px:256});grate.polygonOffset=true;grate.polygonOffsetFactor=-5;grate.polygonOffsetUnits=-5;
+  for(let x=-34;x<=40;x+=18.5){flat(.6,.36,grate,x,-.004,S.z0+.36);flat(.6,.36,grate,x+7,-.004,S.z1-.36);}
+  const patch=new THREE.MeshStandardMaterial({color:0x2a2a2e,roughness:.95,transparent:true,opacity:.5,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+  [[-22,8.2,3.2,1.4],[-3,11.3,2.2,1.8],[16.5,8.8,4.5,1.1],[35,10.6,2.6,2.2],[52.4,34,2,3.6]].forEach(q=>flat(q[2],q[3],patch,q[0],-.005,q[1]));
+  cur=prev;
+})();
+
 /* ---------- outside: sky, far city, sun and moon ---------- */
 renderer.localClippingEnabled=true;
 // the sky is a huge ball painted with three colours (top, middle, horizon) that change with the time of day
