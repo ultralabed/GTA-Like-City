@@ -86,11 +86,19 @@ function carLights(c,braking){const k=Math.max(0,Math.min(1,(dark-.2)/.4));
   cars.push(Object.assign(m,{dir,z:0,x:0,h:0,v:0,on:false,t:rnd(1,8)+i*3,wait:0,honk:0,tag,box:[0,0,0,0],hl:2.1,hw:.92}));
 });
 // two buses, one each way. People going to work wait at the stop and get on; people coming home get off.
-function busMesh(col){const g=new THREE.Group();scene.add(g);const tmp=new THREE.Group();cur=tmp;
+// bus windows are little pictures: dark glass with the heads and shoulders of whoever is sitting by that window (or an empty seat)
+let busN=0;const busWin=[0,1,2,1,0,2,1].map((n,v)=>{const c=document.createElement('canvas');c.width=128;c.height=100;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,100);gr.addColorStop(0,'#3d5263');gr.addColorStop(1,'#1c2630');g.fillStyle=gr;g.fillRect(0,0,128,100);
+  g.fillStyle='#2a323b';g.fillRect(0,70,128,30);                                                                               // seat backs along the bottom
+  const skin=['#d9a67e','#c08a62','#e6b894'],top=['#b5533a','#2f6f8a','#6a8f4a','#7a4fd0','#d9a441'],hair=['#2a1c14','#4a3524','#8a8a8a'];
+  for(let k=0;k<n;k++){const x=n===1?64+(v%2?12:-14):36+k*56,sk=skin[(v+k)%3];g.fillStyle=top[(v*2+k)%5];g.beginPath();g.ellipse(x,96,26,30,0,0,7);g.fill();g.fillStyle=sk;g.beginPath();g.ellipse(x,48,13,16,0,0,7);g.fill();
+    g.fillStyle=hair[(v+k*2)%3];g.beginPath();g.ellipse(x,40,14,12,0,Math.PI,0);g.fill();}
+  g.fillStyle='rgba(255,255,255,.1)';g.beginPath();g.moveTo(0,0);g.lineTo(46,0);g.lineTo(8,100);g.lineTo(0,100);g.fill();     // a streak of reflection
+  const t=new THREE.CanvasTexture(c);if('colorSpace' in t)t.colorSpace='srgb';else t.encoding=THREE.sRGBEncoding;return new THREE.MeshStandardMaterial({map:t,roughness:.25,metalness:.2});});
+function busMesh(col){const g=new THREE.Group();scene.add(g);const tmp=new THREE.Group();cur=tmp;busN+=2;
   const paint=new THREE.MeshStandardMaterial({color:col,roughness:.4,metalness:.3}),white=new THREE.MeshStandardMaterial({color:0xf1eee6,roughness:.5,metalness:.2});
   box(7,1.15,2.3,paint,0,.98,0,{r:.1});box(7,1.2,2.3,white,0,2.0,0,{r:.14});box(6.7,.1,2.1,white,0,2.62,0,{r:.04});             // coloured skirt, pale upper half, roof hump
-  for(const z of[-1.156,1.156]){for(let k=0;k<6;k++)box(.92,.72,.02,carGlass,-2.75+k*1.06,1.98,z,{r:.008});                       // a row of separate side windows
-    [-2.3,2.3].forEach(x=>{const a=new THREE.Mesh(new THREE.CylinderGeometry(.56,.56,.04,16,1,false,0,Math.PI),carTrim);a.rotation.set(Math.PI/2,0,Math.PI/2);a.rotation.order='YXZ';a.position.set(x,.5,z);tmp.add(a);});
+  for(const z of[-1.156,1.156]){for(let k=0;k<6;k++){const w=new THREE.Mesh(new THREE.PlaneGeometry(.92,.72),busWin[(k*3+(z>0?1:0)+busN)%busWin.length]);w.position.set(-2.75+k*1.06,1.98,z*1.004);w.rotation.y=z>0?0:Math.PI;g.add(w);}   // a row of side windows; through each you see who is sitting there
+    [-2.3,2.3].forEach(x=>box(1.2,.5,.03,carTrim,x,.62,z*.998,{r:.01}));                                                       // dark wheel arches
     box(6.9,.05,.02,carTrim,0,1.52,z);}                                                                                          // a dark line under the windows
   box(.9,1.5,.02,carGlass,2.75,1.3,1.158,{r:.008});box(.03,1.5,.025,carTrim,2.75,1.3,1.162);                                     // the folding door on the kerb side
   box(.02,1.0,2.06,carGlass,3.505,1.95,0,{r:.008});box(.02,.8,1.9,carGlass,-3.505,2.0,0,{r:.008});                               // windscreen and rear window

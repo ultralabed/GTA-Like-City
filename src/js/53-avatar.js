@@ -9,6 +9,9 @@ for(const r of rides){const Q=RIDE_POSE[r.kind];if(!r.rider||!Q)continue;while(r
   const p=makePerson({name:'你',h:1.72,skin:0xe8b996,hair:0x3a2a1c,top:0xf2c23d,bottom:0x2b3a67,shoe:0xffffff,long:false,sep:true,mats:me.mats});interact.pop();p.tag.remove();
   r.rider.add(p.root);p.root.position.set(Q.x,Q.y,0);p.root.rotation.y=Math.PI/2;p.ph=0;r.rig=p;r.rigQ=Q;
   const J=p.J;J.spine.rotation.x=Q.sx;J.neck.rotation.x=Q.nx;J.al.rotation.set(Q.a,0,.1);J.ar.rotation.set(Q.a,0,-.1);J.el.rotation.x=J.er.rotation.x=Q.e;J.hl.rotation.x=J.hr.rotation.x=Q.h;J.kl.rotation.x=J.kr.rotation.x=Q.k;}
+// the driver you see through your own car's windows is you: same skin, hair and whatever top you are wearing
+function dressDriver(){const r=rides[0];if(!r.rider)return;for(const m of r.rider.children){if(!m.isMesh)continue;m.material=drvSkin.includes(m.material)||m.material===me.mats.skin?me.mats.skin:drvTop.includes(m.material)||m.material===me.mats.top?me.mats.top:me.mats.hair;}}
+dressDriver();
 function riderStep(dt,t){const r=ride;if(!r||!r.rig)return;const p=r.rig,Q=r.rigQ,J=p.J;
   if(r.kind==='bike'){p.ph+=r.v*dt*2.4;const w=Math.sin(p.ph),c=Math.cos(p.ph);J.hl.rotation.x=Q.h+w*.32;J.kl.rotation.x=Q.k-w*.3+c*.12;J.hr.rotation.x=Q.h-w*.32;J.kr.rotation.x=Q.k+w*.3-c*.12;}   // pedalling
   J.neck.rotation.set(Q.nx,0,0);const lean=r.kind==='boat'?0:(r.g.rotation.x||0);J.spine.rotation.set(Q.sx,0,0);

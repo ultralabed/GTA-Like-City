@@ -379,7 +379,7 @@ const carUp={eng:0,eco:0};let carDmg=0;let carKind='sedan';
 // four body styles for your own car. Each one is good at something: the hatchback sips fuel, the pickup earns more on deliveries, the van earns more carrying people.
 const CAR_SHOP={sedan:['轎車',100,'什麼都還可以'],hatch:['掀背車',180,'省油：一箱油多跑 25%'],pickup:['貨卡',320,'送貨多賺四成'],van:['廂型車',320,'載客多賺三成']};
 function setCarKind(k){if(!CAR_SHOP[k])k='sedan';const r=rides[0],old=r.g,m=carMesh(PAINTS[paintIdx][0],k);m.g.position.copy(old.position);m.g.rotation.copy(old.rotation);scene.remove(old);
-  Object.assign(r,m);carKind=k;r.rider.visible=ride===r;applyTune();showDirt();}
+  Object.assign(r,m);carKind=k;r.rider.visible=ride===r;dressDriver();applyTune();showDirt();}
                                      // carDmg: 0 = as new, 1 = a wreck that barely moves
 function applyTune(){const r=rides[0],B=SPEC.car,k=1-.45*carDmg;r.S=Object.assign({},B,{max:B.max*(1+.16*carUp.eng)*k,acc:B.acc*(1+.2*carUp.eng)*k,tank:B.tank*(1+.6*carUp.eco)*(carKind==='hatch'?1.25:1)});
   r.paint.roughness=.35+.5*carDmg;r.paint.metalness=.4*(1-carDmg);}
